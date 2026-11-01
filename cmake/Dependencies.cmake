@@ -31,7 +31,6 @@ FetchContent_Declare(Catch2
 
 set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "" FORCE)
 set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(JUCE_ENABLE_MODULE_SOURCE_GROUPS ON CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(JUCE clap-juce-extensions)
 if(MM_BUILD_TESTS)

@@ -44,6 +44,7 @@ endif()
 include(MMPlugin)
 
 add_subdirectory(core)
+add_subdirectory(plugin_base)
 
 if(MM_BUILD_TESTS)
     enable_testing()
