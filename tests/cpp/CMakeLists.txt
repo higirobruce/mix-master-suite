@@ -19,6 +19,8 @@ add_executable(mm_core_tests
     test_oversampler.cpp
     test_waveshapers.cpp
     test_adaa.cpp
+    test_tape.cpp
+    test_tube.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp

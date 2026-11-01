@@ -8,6 +8,8 @@
 #include "core/delay/FractionalDelayLine.h"
 #include "core/dynamics/Detector.h"
 #include "core/nonlinear/ADAA.h"
+#include "core/nonlinear/TapeHysteresis.h"
+#include "core/nonlinear/TubeTransfer.h"
 #include "core/nonlinear/Waveshapers.h"
 #include "core/oversampling/Oversampler.h"
 #include "core/dynamics/EnvelopeFollower.h"
@@ -713,6 +715,84 @@ private:
     bool adaa = true;
     float state[2] = {0.0f, 0.0f};
 };
+// Tape hysteresis through the oversampler. params: drive, saturation, width (0..1), oversample
+class TapeModule : public Module
+{
+public:
+    void prepare(double sampleRate, int maxBlock, int channels) override
+    {
+        sr = sampleRate; block = maxBlock; ch = channels;
+        os.prepare(sr, block, ch, factor);
+        for (auto& t : tape) { t.prepare(os.oversampledRate()); t.set(drive, sat, width); }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "drive") drive = v;
+        else if (id == "saturation") sat = v;
+        else if (id == "width") width = v;
+        else if (id == "oversample") factor = static_cast<int>(v);
+        if (block > 0) prepare(sr, block, ch);
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        juce::dsp::AudioBlock<float> in(buf, static_cast<size_t>(channels), 0, static_cast<size_t>(n));
+        auto up = os.up(in);
+        for (size_t c = 0; c < up.getNumChannels() && c < 2; ++c)
+        {
+            float* p = up.getChannelPointer(c);
+            for (size_t i = 0; i < up.getNumSamples(); ++i)
+                p[i] = tape[c].process(p[i]);
+        }
+        os.down(in);
+    }
+    int latencySamples() const override { return os.latencySamples(); }
+    void reset() override { os.reset(); for (auto& t : tape) t.reset(); }
+
+private:
+    mm::Oversampler os;
+    mm::TapeHysteresis tape[2];
+    double sr = 48000.0, drive = 0.5, sat = 0.5, width = 0.5;
+    int block = 0, ch = 2, factor = 4;
+};
+
+// Tube transfer through the oversampler. params: drive, bias, oversample
+class TubeModule : public Module
+{
+public:
+    void prepare(double sampleRate, int maxBlock, int channels) override
+    {
+        sr = sampleRate; block = maxBlock; ch = channels;
+        os.prepare(sr, block, ch, factor);
+        tube.set(drive, bias);
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "drive") drive = v;
+        else if (id == "bias") bias = v;
+        else if (id == "oversample") factor = static_cast<int>(v);
+        if (block > 0) prepare(sr, block, ch);
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        juce::dsp::AudioBlock<float> in(buf, static_cast<size_t>(channels), 0, static_cast<size_t>(n));
+        auto up = os.up(in);
+        for (size_t c = 0; c < up.getNumChannels() && c < 2; ++c)
+        {
+            float* p = up.getChannelPointer(c);
+            for (size_t i = 0; i < up.getNumSamples(); ++i)
+                p[i] = tube.process(p[i]);
+        }
+        os.down(in);
+    }
+    int latencySamples() const override { return os.latencySamples(); }
+    void reset() override { os.reset(); }
+
+private:
+    mm::Oversampler os;
+    mm::TubeTransfer tube;
+    double sr = 48000.0, drive = 1.0, bias = 0.0;
+    int block = 0, ch = 2, factor = 4;
+};
 } // namespace
 
 void registerCoreModules()
@@ -732,5 +812,7 @@ void registerCoreModules()
     r.add("delay", [] { return std::make_unique<DelayModule>(); });
     r.add("oversampled_tanh", [] { return std::make_unique<OversampledTanhModule>(); });
     r.add("waveshaper", [] { return std::make_unique<WaveshaperModule>(); });
+    r.add("tape", [] { return std::make_unique<TapeModule>(); });
+    r.add("tube", [] { return std::make_unique<TubeModule>(); });
 }
 } // namespace mmr
