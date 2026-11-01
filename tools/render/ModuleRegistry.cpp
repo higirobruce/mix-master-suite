@@ -2,6 +2,7 @@
 #include "core/filters/Biquad.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
+#include "core/filters/SVF.h"
 #include "core/smoothing/Smoother.h"
 
 namespace mmr
@@ -170,6 +171,47 @@ private:
     bool useDouble = true;
     bool matched = false;
 };
+// TPT SVF. params: mode {0 lowpass,1 highpass,2 bandpass,3 notch,4 peak,5 lowshelf,6 highshelf,7 allpass}, freq_hz, q, gain_db
+class SvfModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (auto& f : svf)
+        {
+            f.prepare(sampleRate);
+            f.setMode(mode);
+            f.setParams(freq, q, gain);
+        }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "mode") mode = static_cast<mm::SvfMode>(static_cast<int>(v));
+        else if (id == "freq_hz") freq = v;
+        else if (id == "q") q = v;
+        else if (id == "gain_db") gain = v;
+        for (auto& f : svf)
+        {
+            f.setMode(mode);
+            f.setParams(freq, q, gain);
+        }
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                buf[ch][i] = svf[ch].process(buf[ch][i]);
+    }
+    void reset() override
+    {
+        for (auto& f : svf) f.reset();
+    }
+
+private:
+    mm::SVF<float> svf[2];
+    mm::SvfMode mode = mm::SvfMode::LowPass;
+    double freq = 1000.0, q = 0.7071, gain = 0.0;
+};
 } // namespace
 
 void registerCoreModules()
@@ -178,5 +220,6 @@ void registerCoreModules()
     r.add("identity", [] { return std::make_unique<IdentityModule>(); });
     r.add("smoother", [] { return std::make_unique<SmootherModule>(); });
     r.add("biquad", [] { return std::make_unique<BiquadModule>(); });
+    r.add("svf", [] { return std::make_unique<SvfModule>(); });
 }
 } // namespace mmr

@@ -6,6 +6,7 @@ add_executable(mm_core_tests
     test_math_m1.cpp
     test_biquad.cpp
     test_matched.cpp
+    test_svf.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp
