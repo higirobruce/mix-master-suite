@@ -5,8 +5,8 @@
 namespace mm
 {
 PluginProcessorBase::PluginProcessorBase(const ParamTable& t, const juce::String& id, BusesProperties buses,
-                                         PresetManager::FactorySource factory)
-    : juce::AudioProcessor(buses), paramTable(t), pluginId(id),
+                                         PresetManager::FactorySource factory, const juce::String& displayName)
+    : juce::AudioProcessor(buses), paramTable(t), pluginId(id), pluginName(displayName.isEmpty() ? id : displayName),
       state(*this, &undoManager, juce::Identifier(id), t.makeLayout())
 {
     abcd = std::make_unique<AbcdSlots>(state, paramTable, &undoManager);

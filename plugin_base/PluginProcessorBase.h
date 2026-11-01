@@ -22,7 +22,8 @@ class PluginProcessorBase : public juce::AudioProcessor
 {
 public:
     PluginProcessorBase(const ParamTable& table, const juce::String& pluginId, BusesProperties buses,
-                        PresetManager::FactorySource factory = PresetManager::FactorySource());
+                        PresetManager::FactorySource factory = PresetManager::FactorySource(),
+                        const juce::String& displayName = {});
     ~PluginProcessorBase() override;
 
     // ---- host interface (final: the base owns the block structure)
@@ -33,7 +34,7 @@ public:
     bool isBusesLayoutSupported(const BusesLayout&) const override;
     void getStateInformation(juce::MemoryBlock&) final;
     void setStateInformation(const void*, int) final;
-    const juce::String getName() const override { return pluginId; }
+    const juce::String getName() const override { return pluginName; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
@@ -91,7 +92,7 @@ private:
     void resetMeters() noexcept;
 
     const ParamTable& paramTable;
-    juce::String pluginId;
+    juce::String pluginId, pluginName;
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState state;
     std::unique_ptr<AbcdSlots> abcd;

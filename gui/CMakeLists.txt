@@ -10,7 +10,10 @@ add_library(mm_gui STATIC
     MeterBar.cpp
     HeaderBar.cpp
     Footer.cpp
-    PluginEditorBase.cpp)
+    PluginEditorBase.cpp
+    CurveDisplay.cpp
+    SpectrumDisplay.cpp
+    AdvancedDrawer.cpp)
 target_include_directories(mm_gui PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(mm_gui
     PUBLIC mm_plugin_base juce::juce_gui_extra juce::juce_audio_utils

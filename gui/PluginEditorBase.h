@@ -23,6 +23,7 @@ public:
     float scale() const noexcept { return currentScale; }
     juce::Component& content() noexcept { return contentArea; }
     juce::Rectangle<int> contentBounds() const noexcept { return contentArea.getLocalBounds(); }
+    Footer& footerBar() noexcept { return footer; }
 
     void resized() override;
     void paint(juce::Graphics&) override;

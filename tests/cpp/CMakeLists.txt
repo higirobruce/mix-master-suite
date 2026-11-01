@@ -87,3 +87,11 @@ target_link_libraries(mm_channel_eq_tests PRIVATE channel_eq mm_plugin_base Catc
 mm_set_warnings(mm_channel_eq_tests)
 mm_enable_sanitizers(mm_channel_eq_tests)
 catch_discover_tests(mm_channel_eq_tests)
+
+# ---- channel EQ GUI tests
+add_executable(mm_gui_channel_eq_tests test_gui_channel_eq.cpp)
+target_include_directories(mm_gui_channel_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_eq)
+target_link_libraries(mm_gui_channel_eq_tests PRIVATE channel_eq mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_channel_eq_tests)
+mm_enable_sanitizers(mm_gui_channel_eq_tests)
+catch_discover_tests(mm_gui_channel_eq_tests)

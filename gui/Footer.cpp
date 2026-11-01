@@ -40,7 +40,7 @@ void Footer::update(const MeterFrame& f)
     outR.setLevels(f.peakOutDb[1], f.rmsOutDb[1]);
     inValue.setText(juce::String(juce::jmax(f.peakInDb[0], f.peakInDb[1]), 1) + " dB", juce::dontSendNotification);
     outValue.setText(juce::String(juce::jmax(f.peakOutDb[0], f.peakOutDb[1]), 1) + " dB", juce::dontSendNotification);
-    status.setText("Latency " + juce::String(f.latencyMs, 1) + " ms", juce::dontSendNotification);
+    status.setText("Latency " + juce::String(f.latencyMs, 1) + " ms" + (suffix.isEmpty() ? juce::String() : juce::String::fromUTF8(" \xc2\xb7 ") + suffix), juce::dontSendNotification);
 }
 
 void Footer::paint(juce::Graphics& g)

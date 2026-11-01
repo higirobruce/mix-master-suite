@@ -33,7 +33,7 @@ public:
         int type; // 0 bell, 1 low shelf, 2 high shelf
         double freq, gainDb, q;
     };
-    BandView band(int index) const noexcept; // 0..4, from the smoothed values last designed
+    BandView band(int index) const noexcept; // 0..4, current parameter values (valid before prepareToPlay too)
 
 protected:
     void prepareDsp(double sampleRate, int maxBlock, int channels) override;
@@ -46,7 +46,7 @@ private:
     static constexpr int kBands = 5, kMaxChannels = 2, kMaxFilterSections = 4;
     struct BandRefs
     {
-        ParamRef enabled, type;
+        ParamRef enabled, type, freqRaw, gainRaw, qRaw;
         mm::Smoother<float>* freq = nullptr;
         mm::Smoother<float>* gain = nullptr;
         mm::Smoother<float>* q = nullptr;

@@ -49,7 +49,7 @@ ChannelEqProcessor::ChannelEqProcessor()
                               BusesProperties()
                                   .withInput("Input", juce::AudioChannelSet::stereo(), true)
                                   .withOutput("Output", juce::AudioChannelSet::stereo(), true),
-                              factory())
+                              factory(), ep::kPluginName)
 {
     for (int i = 0; i < kBands; ++i)
     {
@@ -58,6 +58,9 @@ ChannelEqProcessor::ChannelEqProcessor()
         bands[static_cast<size_t>(i)].freq = &smoothed(kBandIds[i][2]);
         bands[static_cast<size_t>(i)].gain = &smoothed(kBandIds[i][3]);
         bands[static_cast<size_t>(i)].q = &smoothed(kBandIds[i][4]);
+        bands[static_cast<size_t>(i)].freqRaw = paramRef(kBandIds[i][2]);
+        bands[static_cast<size_t>(i)].gainRaw = paramRef(kBandIds[i][3]);
+        bands[static_cast<size_t>(i)].qRaw = paramRef(kBandIds[i][4]);
     }
     hp.enabled = paramRef(ep::id::hp_enabled);
     hp.slope = paramRef(ep::id::hp_slope);
@@ -393,7 +396,8 @@ std::complex<double> ChannelEqProcessor::evaluateAt(double hz) const
 ChannelEqProcessor::BandView ChannelEqProcessor::band(int index) const noexcept
 {
     const auto& b = bands[static_cast<size_t>(juce::jlimit(0, kBands - 1, index))];
-    return {b.lastEnabled, b.lastType, b.lastFreq, b.lastGain, b.lastQ};
+    return {b.enabled.on(), static_cast<int>(std::lround(b.type.get())), static_cast<double>(b.freqRaw.get()),
+            static_cast<double>(b.gainRaw.get()), static_cast<double>(b.qRaw.get())};
 }
 
 juce::AudioProcessorEditor* ChannelEqProcessor::createEditor() { return new ChannelEqEditor(*this); }
