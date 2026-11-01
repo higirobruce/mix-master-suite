@@ -23,8 +23,8 @@ See the "M1 measurements" table in docs/STATE.md for every number. Summary:
 | Aliasing with oversampling on, 19 kHz | < −80 dBFS | tanh +6 dB at 4×+ADAA1: pass; tube 4×: pass; tape 8×: pass; **tanh +18 dB at 4×: −44 dBFS at 48 k (not met, spec question)** | ✓ / ✗ |
 | Latency reported (oversampler, lookahead) | exact | exact at every factor and rate | ✓ |
 | Sample-rate matrix on every module | 4 rates | every module and every test | ✓ |
-| Sanitizers | clean | ASan/UBSan run on the whole tree (see STATE.md once the run finishes) | pending |
-| CI | green | run on milestone/m1-core-dsp (see STATE.md) | pending |
+| Sanitizers | clean | ASan/UBSan: 88/88 C++ tests clean (local Debug tree) | ✓ |
+| CI | green | **BLOCKED by GitHub Actions billing**: run 41349203968 refused every job ("recent account payments have failed or your spending limit needs to be increased"). The previous run (41342517280) was green on macOS and only failed on a GCC warning fixed in 3cfba90. Local: ctest 88/88, pytest ~900 cases, ASan clean. | blocked |
 
 ## Decisions made without asking (link ADRs)
 Recorded as rulings in the execution ledger; the architectural ones:
@@ -53,6 +53,9 @@ ctest --test-dir build --output-on-failure          # 88 C++ tests
 ./build/tools/bench/mm_bench_core                   # ns/sample per module
 ```
 No new plugin in this milestone; the Utility plugin from M0 is unchanged.
+
+## Blocker
+GitHub Actions on the private repo `higirobruce/mix-master-suite` stopped accepting jobs on 2026-11-01 20:54 UTC (spending limit / payment). Until the limit is raised or the repository is made public, the "CI green on three OSes" gate cannot be demonstrated; the loop continues locally (ctest, pytest, ASan, pluginval on macOS) and pushes commits so CI picks them up when restored. macOS runners bill at 10× and Windows at 2×; a cheaper matrix (Linux on every push, macOS/Windows on `main` and `review/*` tags) is an option if you prefer.
 
 ## Questions for the reviewer (only if any)
 1. Aliasing gate at full drive (see Known gaps): which of the three resolutions do you want for M3?
