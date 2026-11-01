@@ -35,3 +35,17 @@ target_link_libraries(mm_utility_tests PRIVATE utility mm_plugin_base Catch2::Ca
 mm_set_warnings(mm_utility_tests)
 mm_enable_sanitizers(mm_utility_tests)
 catch_discover_tests(mm_utility_tests)
+
+# ---- mm_render CLI smoke tests
+add_executable(mm_render_tests test_render_cli.cpp)
+target_include_directories(mm_render_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(mm_render_tests PRIVATE mm_plugin_base juce::juce_audio_formats Catch2::Catch2WithMain)
+target_compile_definitions(mm_render_tests PRIVATE JUCE_STANDALONE_APPLICATION=1)
+mm_set_warnings(mm_render_tests)
+mm_enable_sanitizers(mm_render_tests)
+target_compile_definitions(mm_render_tests PRIVATE
+    MM_RENDER_PATH="$<TARGET_FILE:mm_render>"
+    MM_UTILITY_VST3_PATH="$<TARGET_FILE_DIR:utility_VST3>/../.."
+    MM_TEST_TMP_PATH="${CMAKE_BINARY_DIR}/tests/tmp")
+add_dependencies(mm_render_tests mm_render utility_VST3)
+catch_discover_tests(mm_render_tests)

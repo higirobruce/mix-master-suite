@@ -42,6 +42,7 @@ public:
     void setCurrentProgram(int) override {}
     const juce::String getProgramName(int) override { return {}; }
     void changeProgramName(int, const juce::String&) override {}
+    juce::AudioProcessorParameter* getBypassParameter() const override { return state.getParameter("bypass"); }
 
     // ---- services for editors and tools
     juce::AudioProcessorValueTreeState& apvts() noexcept { return state; }
