@@ -1,5 +1,7 @@
 #include "tools/render/ModuleRegistry.h"
+#include "core/filters/AllPass.h"
 #include "core/filters/Biquad.h"
+#include "core/filters/OnePole.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
 #include "core/filters/SVF.h"
@@ -212,6 +214,93 @@ private:
     mm::SvfMode mode = mm::SvfMode::LowPass;
     double freq = 1000.0, q = 0.7071, gain = 0.0;
 };
+// One-pole. params: kind {0 highpass, 1 lowpass}, freq_hz
+class OnePoleModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (auto& f : hp) { f.prepare(sampleRate); f.setCutoff(freq); }
+        for (auto& f : lp) { f.prepare(sampleRate); f.setCutoff(freq); }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "kind") lowpass = v >= 0.5;
+        else if (id == "freq_hz") freq = v;
+        for (auto& f : hp) f.setCutoff(freq);
+        for (auto& f : lp) f.setCutoff(freq);
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                buf[ch][i] = lowpass ? lp[ch].process(buf[ch][i]) : hp[ch].process(buf[ch][i]);
+    }
+    void reset() override
+    {
+        for (auto& f : hp) f.reset();
+        for (auto& f : lp) f.reset();
+    }
+
+private:
+    mm::OnePoleHP<float> hp[2];
+    mm::OnePoleLP<float> lp[2];
+    double freq = 1000.0;
+    bool lowpass = false;
+};
+
+// First-order all-pass. params: freq_hz
+class AllPass1Module : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (auto& f : ap) { f.prepare(sampleRate); f.setCorner(freq); }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "freq_hz") freq = v;
+        for (auto& f : ap) f.setCorner(freq);
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                buf[ch][i] = ap[ch].process(buf[ch][i]);
+    }
+    void reset() override { for (auto& f : ap) f.reset(); }
+
+private:
+    mm::FirstOrderAllPass<float> ap[2];
+    double freq = 1000.0;
+};
+
+// Second-order all-pass. params: freq_hz, q
+class AllPass2Module : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (auto& f : ap) { f.prepare(sampleRate); f.setParams(freq, q); }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "freq_hz") freq = v;
+        else if (id == "q") q = v;
+        for (auto& f : ap) f.setParams(freq, q);
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                buf[ch][i] = ap[ch].process(buf[ch][i]);
+    }
+    void reset() override { for (auto& f : ap) f.reset(); }
+
+private:
+    mm::SecondOrderAllPass<float> ap[2];
+    double freq = 1000.0, q = 0.7071;
+};
 } // namespace
 
 void registerCoreModules()
@@ -221,5 +310,8 @@ void registerCoreModules()
     r.add("smoother", [] { return std::make_unique<SmootherModule>(); });
     r.add("biquad", [] { return std::make_unique<BiquadModule>(); });
     r.add("svf", [] { return std::make_unique<SvfModule>(); });
+    r.add("onepole", [] { return std::make_unique<OnePoleModule>(); });
+    r.add("allpass1", [] { return std::make_unique<AllPass1Module>(); });
+    r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
 }
 } // namespace mmr
