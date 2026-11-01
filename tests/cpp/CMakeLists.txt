@@ -29,7 +29,8 @@ catch_discover_tests(mm_plugin_base_tests)
 
 # ---- utility plugin tests (link the plugin's static sources via the shared-code target JUCE creates)
 add_executable(mm_utility_tests
-    test_utility_params.cpp)
+    test_utility_params.cpp
+    test_presets.cpp)
 target_include_directories(mm_utility_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/utility)
 target_link_libraries(mm_utility_tests PRIVATE utility mm_plugin_base Catch2::Catch2WithMain)
 mm_set_warnings(mm_utility_tests)
