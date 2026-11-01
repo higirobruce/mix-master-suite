@@ -55,6 +55,7 @@ public:
     void setDeltaListen(bool on) noexcept { delta.store(on); }
     bool deltaListen() const noexcept { return delta.load(); }
     std::atomic<int>& nanCounter() noexcept { return nanCount; }
+    float currentGainReductionDb() const noexcept { return gainReduction.load(std::memory_order_relaxed); }
     juce::ValueTree& uiState() noexcept { return ui; } // scale, theme, drawer; saved with the plugin state
     const juce::String& id() const noexcept { return pluginId; }
 
@@ -79,6 +80,7 @@ protected:
     Smoother<float>& smoothed(ParamId id) noexcept; // table scan; cache the reference
     void updateSmoothers() noexcept; // called by the base at the start of each block
     void snapSmoothersToTargets() noexcept; // jump every smoother to its parameter value (preset load, tests)
+    void reportGainReduction(float db) noexcept { gainReduction.store(db, std::memory_order_relaxed); } // -> MeterFrame
 
     // Subclass contract:
     //  - processDsp() sees any block size <= the prepareToPlay maximum (the base splits larger host blocks);
@@ -112,6 +114,7 @@ private:
 
     std::atomic<bool> delta{false};
     std::atomic<int> nanCount{0};
+    std::atomic<float> gainReduction{0.0f};
 
     juce::AudioBuffer<float> dryBuffer;
     IntegerDelay<float> dryDelay;

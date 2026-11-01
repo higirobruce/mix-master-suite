@@ -1,0 +1,174 @@
+{
+  "plugin": {
+    "id": "channel_comp",
+    "name": "Channel Compressor",
+    "family": "dynamics",
+    "version": "0.1.0",
+    "code": "Chcp",
+    "accent": "#E0B45C"
+  },
+  "params": [
+    {
+      "id": "threshold_db",
+      "name": "Threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "ratio",
+      "name": "Ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 4,
+      "skew": 0.4,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "ratio_inf",
+      "name": "Infinite ratio",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "id": "attack_ms",
+      "name": "Attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "release_ms",
+      "name": "Release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "auto_release",
+      "name": "Auto release",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "id": "knee_db",
+      "name": "Knee",
+      "type": "float",
+      "unit": "dB",
+      "min": 0,
+      "max": 24,
+      "default": 6,
+      "skew": 1.0,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "detector",
+      "name": "Detector",
+      "type": "choice",
+      "choices": [
+        "Peak",
+        "RMS"
+      ],
+      "default": 0
+    },
+    {
+      "id": "topology",
+      "name": "Topology",
+      "type": "choice",
+      "choices": [
+        "Feed-forward",
+        "Feedback"
+      ],
+      "default": 0,
+      "group": "advanced"
+    },
+    {
+      "id": "mix_pct",
+      "name": "Mix",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "sc_hp_enabled",
+      "name": "Sidechain HP on",
+      "type": "bool",
+      "default": false,
+      "group": "advanced"
+    },
+    {
+      "id": "sc_hp_hz",
+      "name": "Sidechain HP",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 500,
+      "default": 90,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "advanced"
+    },
+    {
+      "id": "ext_key",
+      "name": "External key",
+      "type": "bool",
+      "default": false,
+      "group": "advanced"
+    },
+    {
+      "id": "makeup_db",
+      "name": "Makeup",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 24,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20
+    },
+    {
+      "id": "auto_makeup",
+      "name": "Auto makeup",
+      "type": "bool",
+      "default": false
+    },
+    {
+      "id": "stereo_link_pct",
+      "name": "Stereo link",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "advanced"
+    },
+    {
+      "id": "listen_sc",
+      "name": "Listen to sidechain",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "advanced"
+    }
+  ]
+}

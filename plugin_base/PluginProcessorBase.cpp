@@ -325,6 +325,7 @@ void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce
         frame.rmsOutDb[1] = frame.rmsOutDb[0];
     }
     frame.latencyMs = static_cast<float>(1000.0 * latency / currentSampleRate);
+    frame.gainReductionDb = gainReduction.load(std::memory_order_relaxed);
     meters.push(frame);
 }
 

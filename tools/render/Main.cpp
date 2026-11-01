@@ -130,7 +130,7 @@ int renderJob(const juce::File& jobFile)
             if (ch < job.inChannels)
                 work.copyFrom(ch, 0, input, ch, pos, n);
             else if (ch < job.inChannels + job.sidechainChannels)
-                work.copyFrom(ch, 0, input, 0, pos, n);
+                work.copyFrom(ch, 0, input.getReadPointer(0, pos), n, static_cast<float>(std::pow(10.0, job.sidechainDb / 20.0)));
             else
                 work.clear(ch, 0, n);
         }
