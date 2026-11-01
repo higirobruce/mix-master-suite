@@ -25,6 +25,17 @@ function(_mm_apply_warnings target)
     endforeach()
     if(ours)
         set_source_files_properties(${ours} TARGET_DIRECTORY ${target} PROPERTIES COMPILE_OPTIONS "${flags}")
+        # Fetched dependency headers are third-party code: mark their include dirs SYSTEM so GCC/Clang do not
+        # apply our -Werror set to them when included from our sources (a -I that is also -isystem is ignored).
+        set(sys_dirs ${juce_SOURCE_DIR}/modules)
+        if(catch2_SOURCE_DIR)
+            list(APPEND sys_dirs ${catch2_SOURCE_DIR}/src ${catch2_BINARY_DIR}/generated-includes)
+        endif()
+        if(clap-juce-extensions_SOURCE_DIR)
+            list(APPEND sys_dirs ${clap-juce-extensions_SOURCE_DIR}/include ${clap-juce-extensions_SOURCE_DIR}/clap-libs/clap/include
+                 ${clap-juce-extensions_SOURCE_DIR}/clap-libs/clap-helpers/include)
+        endif()
+        target_include_directories(${target} SYSTEM PRIVATE ${sys_dirs})
     endif()
 endfunction()
 
