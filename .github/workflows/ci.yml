@@ -82,7 +82,9 @@ jobs:
 
       - name: pluginval + clap-validator
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a tools/run_pluginval.sh utility; else tools/run_pluginval.sh utility; fi
+          for p in utility channel_eq channel_comp gate; do
+            if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a tools/run_pluginval.sh $p; else tools/run_pluginval.sh $p; fi
+          done
         shell: bash
 
       - name: CPU benchmark
