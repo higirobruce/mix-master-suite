@@ -113,7 +113,8 @@ void PluginProcessorBase::prepareToPlay(double sampleRate, int maxBlock)
     }
     dryBuffer.setSize(preparedChannels, maxBlock, false, false, true);
     dryDelay.prepare(juce::jmax(0, maxDspLatencySamples()), preparedChannels);
-    dryDelay.setDelay(dspLatencySamples());
+    reportedLatency = dspLatencySamples();
+    dryDelay.setDelay(reportedLatency);
     dryDelay.reset();
     bypassMix.prepare(sampleRate, 20.0);
     bypassMix.snap(bypassRaw->load() >= 0.5f ? 1.0f : 0.0f);
@@ -127,7 +128,7 @@ void PluginProcessorBase::prepareToPlay(double sampleRate, int maxBlock)
     }
     matchIn.prepare(sampleRate, 400.0);
     matchOut.prepare(sampleRate, 400.0);
-    setLatencySamples(dspLatencySamples());
+    setLatencySamples(reportedLatency);
     prepared = true;
 }
 
@@ -150,45 +151,93 @@ void PluginProcessorBase::processBlockBypassed(juce::AudioBuffer<float>& buffer,
 void PluginProcessorBase::processInternal(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, bool hostBypass)
 {
     ScopedNoDenormals noDenormals;
+    if (!prepared || buffer.getNumSamples() == 0)
+        return;
+    // Hosts may deliver more samples than prepareToPlay announced: process in sub-blocks that fit our buffers.
+    const int maxBlock = dryBuffer.getNumSamples();
+    const int total = buffer.getNumSamples();
+    for (int start = 0; start < total; start += maxBlock)
+    {
+        const int n = juce::jmin(maxBlock, total - start);
+        juce::AudioBuffer<float> view(buffer.getArrayOfWritePointers(), buffer.getNumChannels(), start, n);
+        processSubBlock(view, midi, hostBypass);
+    }
+}
+
+void PluginProcessorBase::resetMeters() noexcept
+{
+    for (int ch = 0; ch < 2; ++ch)
+    {
+        peakIn[ch].reset();
+        peakOut[ch].reset();
+        rmsIn[ch].reset();
+        rmsOut[ch].reset();
+    }
+    matchIn.reset();
+    matchOut.reset();
+    matchGain = 1.0f;
+}
+
+void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, bool hostBypass)
+{
     const int numSamples = buffer.getNumSamples();
-    const int numIn = getTotalNumInputChannels();
-    const int numOut = juce::jmin(getTotalNumOutputChannels(), buffer.getNumChannels(), preparedChannels);
-    if (!prepared || numSamples == 0 || numOut == 0)
+    const int numIn = juce::jmin(getMainBusNumInputChannels(), buffer.getNumChannels());   // main bus only
+    const int numOut = juce::jmin(getMainBusNumOutputChannels(), buffer.getNumChannels(), preparedChannels);
+    if (numOut == 0 || numIn == 0)
         return;
     jassert(numSamples <= dryBuffer.getNumSamples());
 
-    // mono -> stereo: copy the mono input to every output channel before processing
-    for (int ch = numIn; ch < numOut; ++ch)
-        buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
-    for (int ch = numOut; ch < buffer.getNumChannels(); ++ch)
-        buffer.clear(ch, 0, numSamples);
-
     updateSmoothers();
 
-    // input metering (pre): vectorised peak, one sum of squares per channel
-    const int meterCh = juce::jmin(numOut, 2);
-    for (int ch = 0; ch < meterCh; ++ch)
+    // input metering (pre) on the main input channels; a non-finite host block is silenced before it reaches the DSP
+    const int meterIn = juce::jmin(numIn, 2);
+    bool badInput = false;
+    float inSq[2] = {0.0f, 0.0f};
+    for (int ch = 0; ch < meterIn; ++ch)
+    {
+        inSq[ch] = sumSquares(buffer.getReadPointer(ch), numSamples);
+        if (!std::isfinite(inSq[ch]))
+            badInput = true;
+    }
+    if (badInput)
+    {
+        for (int ch = 0; ch < numIn; ++ch)
+            buffer.clear(ch, 0, numSamples);
+        nanCount.fetch_add(1);
+        resetMeters();
+        inSq[0] = inSq[1] = 0.0f;
+    }
+    for (int ch = 0; ch < meterIn; ++ch)
     {
         peakIn[ch].processPeak(buffer.getMagnitude(ch, 0, numSamples), numSamples);
-        const double sq = sumSquares(buffer.getReadPointer(ch), numSamples);
-        rmsIn[ch].processSumSquares(sq, numSamples);
-        if (ch == 0)
-            matchIn.processSumSquares(sq, numSamples);
+        rmsIn[ch].processSumSquares(inSq[ch], numSamples);
     }
+    matchIn.processSumSquares(inSq[0], numSamples);
 
+    // bypass state first, then the dry copy (always: it is the bypass/delta source and must be current)
     const bool bypassed = hostBypass || bypassRaw->load() >= 0.5f;
     const bool deltaOn = delta.load();
+    bypassMix.setTarget(bypassed ? 1.0f : 0.0f);
+    for (int ch = 0; ch < numOut; ++ch)
+        dryBuffer.copyFrom(ch, 0, buffer, juce::jmin(ch, numIn - 1), 0, numSamples);
+
+    // latency may change at runtime (oversampling / lookahead): report it and keep the dry path aligned
     const int latency = dspLatencySamples();
-    if (dryDelay.getDelay() != latency)
+    jassert(latency <= maxDspLatencySamples() && "maxDspLatencySamples() must bound every runtime latency");
+    if (latency != reportedLatency)
+    {
+        reportedLatency = latency;
         dryDelay.setDelay(latency);
-    const bool needDry = bypassed || deltaOn || bypassMix.isSmoothing() || latency > 0;
-    if (needDry)
-        for (int ch = 0; ch < numOut; ++ch)
-            dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+        setLatencySamples(latency);
+    }
 
     processDsp(buffer, midi);
 
-    if (latency > 0) // keep the dry path aligned with the reported DSP latency
+    // mono -> stereo: the processed mono channel feeds every main output
+    for (int ch = numIn; ch < numOut; ++ch)
+        buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
+
+    if (latency > 0)
         for (int ch = 0; ch < numOut; ++ch)
         {
             float* d = dryBuffer.getWritePointer(ch);
@@ -196,14 +245,8 @@ void PluginProcessorBase::processInternal(juce::AudioBuffer<float>& buffer, juce
                 d[n] = dryDelay.process(d[n], ch);
         }
 
-    bypassMix.setTarget(bypassed ? 1.0f : 0.0f);
-    if (!bypassed) // wet level (pre-trim) for gain matching; measured on channel 0 like matchIn
-    {
-        matchOut.processSumSquares(sumSquares(buffer.getReadPointer(0), numSamples), numSamples);
-        const float inLin = matchIn.levelLinear(), outLin = matchOut.levelLinear();
-        if (inLin > 1e-6f && outLin > 1e-6f)
-            matchGain = juce::jlimit(0.0630957f /* -24 dB */, 15.8489f /* +24 dB */, outLin / inLin);
-    }
+    // wet level (pre-trim, channel 0) for gain matching; applied only if the block turns out finite
+    const float wetSq = sumSquares(buffer.getReadPointer(0), numSamples);
 
     // output stage: bypass crossfade / delta, then trim (block-rate ramps of the dB smoothers)
     auto& trim = *trimSmoother;
@@ -225,11 +268,12 @@ void PluginProcessorBase::processInternal(juce::AudioBuffer<float>& buffer, juce
         }
     }
     if (trimStart != 1.0f || trimEnd != 1.0f)
-        buffer.applyGainRamp(0, numSamples, trimStart, trimEnd);
+        for (int ch = 0; ch < numOut; ++ch)
+            buffer.applyGainRamp(ch, 0, numSamples, trimStart, trimEnd);
 
     // NaN/Inf guard (a non-finite sample poisons the sum of squares) and output metering in one pass per channel
     float outSq[2] = {0.0f, 0.0f};
-    bool bad = false;
+    bool bad = !std::isfinite(wetSq);
     for (int ch = 0; ch < numOut; ++ch)
     {
         const float sq = sumSquares(buffer.getReadPointer(ch), numSamples);
@@ -240,30 +284,40 @@ void PluginProcessorBase::processInternal(juce::AudioBuffer<float>& buffer, juce
     }
     if (bad)
     {
-        buffer.clear();
+        for (int ch = 0; ch < numOut; ++ch)
+            buffer.clear(ch, 0, numSamples);
         nanCount.fetch_add(1);
         resetDsp();
+        resetMeters();
         outSq[0] = outSq[1] = 0.0f;
+    }
+    else // wet is computed even while bypassed, so the match ratio stays current for the next un-bypass
+    {
+        matchOut.processSumSquares(wetSq, numSamples);
+        const float inLin = matchIn.levelLinear(), outLin = matchOut.levelLinear();
+        if (inLin > 1e-6f && outLin > 1e-6f)
+            matchGain = juce::jlimit(0.0630957f /* -24 dB */, 15.8489f /* +24 dB */, outLin / inLin);
     }
 
     MeterFrame frame;
-    for (int ch = 0; ch < meterCh; ++ch)
+    const int meterOut = juce::jmin(numOut, 2);
+    for (int ch = 0; ch < meterOut; ++ch)
     {
         peakOut[ch].processPeak(bad ? 0.0f : buffer.getMagnitude(ch, 0, numSamples), numSamples);
         rmsOut[ch].processSumSquares(outSq[ch], numSamples);
-        frame.peakInDb[ch] = peakIn[ch].levelDb();
+        frame.peakInDb[ch] = peakIn[juce::jmin(ch, meterIn - 1)].levelDb();
         frame.peakOutDb[ch] = peakOut[ch].levelDb();
-        frame.rmsInDb[ch] = rmsIn[ch].levelDb();
+        frame.rmsInDb[ch] = rmsIn[juce::jmin(ch, meterIn - 1)].levelDb();
         frame.rmsOutDb[ch] = rmsOut[ch].levelDb();
     }
-    if (numOut == 1)
+    if (meterOut == 1)
     {
         frame.peakInDb[1] = frame.peakInDb[0];
         frame.peakOutDb[1] = frame.peakOutDb[0];
         frame.rmsInDb[1] = frame.rmsInDb[0];
         frame.rmsOutDb[1] = frame.rmsOutDb[0];
     }
-    frame.latencyMs = static_cast<float>(1000.0 * getLatencySamples() / currentSampleRate);
+    frame.latencyMs = static_cast<float>(1000.0 * latency / currentSampleRate);
     meters.push(frame);
 }
 
@@ -295,11 +349,22 @@ void PluginProcessorBase::setStateInformation(const void* data, int sizeInBytes)
         return;
     if (auto params = root.getChildWithName("PARAMETERS"); params.isValid())
     {
-        // missing params -> default first, then apply what is present
-        for (const auto& s : paramTable.specs())
-            if (auto* p = state.getParameter(s.id))
-                p->setValueNotifyingHost(p->getDefaultValue());
-        StateIO::applySnapshot(params, state, paramTable, nullptr);
+        // one set per parameter: the stored value when present, the default when missing (unknown ids ignored)
+        for (const auto& spec : paramTable.specs())
+        {
+            auto* p = state.getParameter(spec.id);
+            if (p == nullptr)
+                continue;
+            float norm = p->getDefaultValue();
+            for (const auto& stored : params)
+                if (stored.hasType("PARAM") && stored["id"].toString() == spec.id)
+                {
+                    const float real = juce::jlimit(spec.min, spec.max, static_cast<float>(static_cast<double>(stored["value"])));
+                    norm = p->convertTo0to1(real);
+                    break;
+                }
+            p->setValueNotifyingHost(norm);
+        }
     }
     abcd->fromState(root.getChildWithName("SLOTS"));
     if (auto u = root.getChildWithName("UI"); u.isValid())

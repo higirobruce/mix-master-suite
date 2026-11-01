@@ -78,8 +78,16 @@ protected:
     Smoother<float>& smoothed(ParamId id) noexcept; // table scan; cache the reference
     void updateSmoothers() noexcept; // called by the base at the start of each block
 
+    // Subclass contract:
+    //  - processDsp() sees any block size <= the prepareToPlay maximum (the base splits larger host blocks);
+    //    main input channels are 0..getMainBusNumInputChannels()-1, sidechain channels follow (use getBusBuffer).
+    //    For mono-in / stereo-out the base copies the processed channel 0 to the other outputs afterwards.
+    //  - resetDsp() may be called from the audio thread (NaN guard) and must not allocate.
+    //  - dspLatencySamples() may change at runtime; maxDspLatencySamples() must bound every value it can take.
 private:
     void processInternal(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, bool hostBypass);
+    void processSubBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi, bool hostBypass);
+    void resetMeters() noexcept;
 
     const ParamTable& paramTable;
     juce::String pluginId;
@@ -115,6 +123,7 @@ private:
     MeterFifo<MeterFrame, 64> meters;
     double currentSampleRate = 48000.0;
     int preparedChannels = 0;
+    int reportedLatency = 0;
     bool prepared = false;
 };
 } // namespace mm

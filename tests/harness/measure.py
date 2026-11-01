@@ -53,3 +53,17 @@ def max_step_ratio(x: np.ndarray) -> float:
     prev, cur = x[:-1], x[1:]
     mask = np.abs(prev) > 1e-9
     return float(np.max(np.abs(cur[mask] / prev[mask]))) if mask.any() else 1.0
+
+
+def max_gain_step_db(y: np.ndarray, x: np.ndarray, min_level: float = 0.02) -> float:
+    """Largest sample-to-sample change (dB) of the gain envelope y/x, over samples where |x| > min_level."""
+    y = np.asarray(y, dtype=np.float64)
+    x = np.asarray(x, dtype=np.float64)
+    mask = np.abs(x) > min_level
+    g = np.zeros_like(y)
+    g[mask] = y[mask] / x[mask]
+    valid = mask[1:] & mask[:-1] & (np.abs(g[:-1]) > 1e-9)
+    if not valid.any():
+        return 0.0
+    r = np.abs(g[1:][valid] / g[:-1][valid])
+    return float(np.max(np.abs(20 * np.log10(r + 1e-30))))

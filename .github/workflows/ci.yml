@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, windows-2022, ubuntu-22.04]
+        os: [macos-15, windows-2022, ubuntu-22.04]
     steps:
       - uses: actions/checkout@v4
 
@@ -70,7 +70,14 @@ jobs:
       - name: Measurement suite
         run: |
           PY=.venv/bin/python; [ -f .venv/Scripts/python.exe ] && PY=.venv/Scripts/python.exe
-          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a $PY -m pytest tests -q -n auto; else $PY -m pytest tests -q -n auto; fi
+          # parallel suite without timing tests, then the CPU budget test alone (timing needs an idle machine)
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a $PY -m pytest tests -q -n auto -k "not cpu_budget"
+            xvfb-run -a $PY -m pytest tests -q -k cpu_budget
+          else
+            $PY -m pytest tests -q -n auto -k "not cpu_budget"
+            $PY -m pytest tests -q -k cpu_budget
+          fi
         shell: bash
 
       - name: pluginval + clap-validator
@@ -99,7 +106,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, ubuntu-22.04]
+        os: [macos-15, ubuntu-22.04]
     env:
       ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1

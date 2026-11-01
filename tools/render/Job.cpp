@@ -41,7 +41,14 @@ Job Job::parse(const juce::var& v, juce::String& error)
             ScheduleEvent e;
             e.timeSeconds = static_cast<double>(s.getProperty("t_s", 0.0));
             if (s.hasProperty("block_size"))
+            {
                 e.blockSize = static_cast<int>(s["block_size"]);
+                if (*e.blockSize < 1)
+                {
+                    error = "schedule block_size must be >= 1 (an empty host block is covered by the in-process tests)";
+                    return j;
+                }
+            }
             if (s.hasProperty("sample_rate"))
                 e.sampleRate = static_cast<double>(s["sample_rate"]);
             j.schedule.push_back(e);

@@ -3,14 +3,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <juce_audio_formats/juce_audio_formats.h>
-#include <cstdlib>
 
 namespace
 {
 juce::String setting(const char* env, const char* compiled)
 {
-    const char* e = std::getenv(env);
-    return e != nullptr ? juce::String(e) : juce::String(compiled);
+    const juce::String e = juce::SystemStats::getEnvironmentVariable(env, {});
+    return e.isNotEmpty() ? e : juce::String(compiled);
 }
 
 juce::File tmpDir()
@@ -80,4 +79,13 @@ TEST_CASE("mm_render hosts the Utility VST3 and applies gain")
     auto params = r.getProperty("params", juce::var());
     REQUIRE(params.isArray());
     REQUIRE(params.getArray()->size() == 11);
+}
+
+TEST_CASE("mm_render rejects a scheduled block size below 1 instead of hanging")
+{
+    auto dir = tmpDir();
+    auto job = dir.getChildFile("bad.job.json");
+    job.replaceWithText(R"({"module":"identity","sample_rate":48000,"block_size":64,"channels":2,
+      "input":{"gen":"impulse","dur_s":0.1},"schedule":[{"t_s":0.05,"block_size":0}]})");
+    REQUIRE(runRender(job) == 2);
 }

@@ -206,6 +206,7 @@ TEST_CASE("bus layouts")
     auto layout = [&](juce::AudioChannelSet in, juce::AudioChannelSet out) {
         juce::AudioProcessor::BusesLayout l;
         l.inputBuses.add(in);
+        l.inputBuses.add(juce::AudioChannelSet::disabled()); // sidechain off
         l.outputBuses.add(out);
         return p.checkBusesLayoutSupported(l);
     };
@@ -218,6 +219,7 @@ TEST_CASE("bus layouts")
 
     juce::AudioProcessor::BusesLayout l;
     l.inputBuses.add(CS::mono());
+    l.inputBuses.add(CS::disabled());
     l.outputBuses.add(CS::stereo());
     REQUIRE(p.setBusesLayout(l));
     p.prepareToPlay(48000.0, 64);
@@ -285,4 +287,124 @@ TEST_CASE("smoothed parameter ramps")
             REQUIRE(cur / prev <= maxRatio);
     }
     REQUIRE(buf.getSample(0, buf.getNumSamples() - 1) == Catch::Approx(mm::dbToGain(24.0f)).margin(1e-3));
+}
+
+TEST_CASE("un-bypass at zero latency plays current audio, not a stale block")
+{
+    const double sr = 48000.0;
+    for (int latency : {0, TestProcessor::kLatency})
+    {
+        TestProcessor p(latency);
+        setParam(p, "gain_db", 0.0f);
+        p.prepareToPlay(sr, 64);
+        auto x = mm::test::sine(1000.0, sr, 1.0, 0.5);
+        auto buf = toBuffer(x, 2);
+        juce::MidiBuffer midi;
+        for (int pos = 0; pos < buf.getNumSamples(); pos += 64)
+        {
+            if (pos == 64 * 100)
+                setParam(p, "bypass", 1.0f);
+            if (pos == 64 * 300)
+                setParam(p, "bypass", 0.0f);
+            juce::AudioBuffer<float> view(buf.getArrayOfWritePointers(), 2, pos, 64);
+            p.processBlock(view, midi);
+        }
+        // gain 0 dB: wet == dry, so output must equal the (latency-delayed) input everywhere, bypass or not
+        for (int n = latency + 64; n < buf.getNumSamples(); ++n)
+        {
+            INFO("latency " << latency << " sample " << n << " block " << n / 64);
+            REQUIRE(buf.getSample(0, n) == Catch::Approx(x[static_cast<size_t>(n - latency)]).margin(2e-3)); // -54 dB; the stale-block glitch was -7 dBFS
+        }
+    }
+}
+
+TEST_CASE("host block larger than prepared is processed in sub-blocks")
+{
+    const double sr = 48000.0;
+    TestProcessor a, b; // latency 10: the dry path (latency alignment / bypass) runs through the base buffers
+    setParam(a, "gain_db", 6.0206f);
+    setParam(b, "gain_db", 6.0206f);
+    a.prepareToPlay(sr, 4096);
+    b.prepareToPlay(sr, 64); // host then sends 4096-sample blocks
+    auto x = mm::test::sine(440.0, sr, 0.5, 0.25);
+    auto ref = toBuffer(x, 2);
+    auto big = toBuffer(x, 2);
+    run(a, ref, 4096);
+    run(b, big, 4096);
+    float maxDiff = 0.0f;
+    for (int n = 0; n < ref.getNumSamples(); ++n)
+        maxDiff = std::max(maxDiff, std::abs(ref.getSample(0, n) - big.getSample(0, n)));
+    REQUIRE(maxDiff < 1e-6f);
+    REQUIRE(b.nanCounter().load() == 0);
+}
+
+TEST_CASE("non-finite host input is silenced and meters recover")
+{
+    TestProcessor p(0);
+    p.prepareToPlay(48000.0, 64);
+    auto buf = toBuffer(mm::test::sine(1000.0, 48000.0, 0.1, 0.5), 2);
+    buf.setSample(0, 10, std::numeric_limits<float>::infinity());
+    run(p, buf, 64);
+    for (int n = 0; n < buf.getNumSamples(); ++n)
+        REQUIRE(std::isfinite(buf.getSample(0, n)));
+    REQUIRE(p.nanCounter().load() >= 1);
+    // after clean audio the published meter frame is finite and reads the signal level (pop as a GUI would)
+    auto clean = toBuffer(mm::test::sine(1000.0, 48000.0, 0.5, 0.5), 2);
+    mm::MeterFrame frame;
+    bool got = false;
+    juce::MidiBuffer midi;
+    for (int pos = 0; pos < clean.getNumSamples(); pos += 64)
+    {
+        juce::AudioBuffer<float> view(clean.getArrayOfWritePointers(), 2, pos, 64);
+        p.processBlock(view, midi);
+        while (p.meterFifo().pop(frame))
+            got = true;
+    }
+    REQUIRE(got);
+    REQUIRE(std::isfinite(frame.rmsInDb[0]));
+    REQUIRE(std::isfinite(frame.rmsOutDb[0]));
+    REQUIRE(frame.rmsInDb[0] == Catch::Approx(-9.03).margin(0.3));
+}
+
+TEST_CASE("mono main input with a sidechain bus still copies mono to both outputs")
+{
+    TestProcessor p(0);
+    juce::AudioProcessor::BusesLayout l;
+    l.inputBuses.add(juce::AudioChannelSet::mono());
+    l.inputBuses.add(juce::AudioChannelSet::mono()); // sidechain enabled
+    l.outputBuses.add(juce::AudioChannelSet::stereo());
+    REQUIRE(p.setBusesLayout(l));
+    p.prepareToPlay(48000.0, 64);
+    auto x = mm::test::sine(1000.0, 48000.0, 0.1, 0.25);
+    juce::AudioBuffer<float> buf(2, static_cast<int>(x.size())); // JUCE packs main + sidechain into 2 input channels
+    buf.clear();
+    buf.copyFrom(0, 0, x.data(), static_cast<int>(x.size()));
+    for (int n = 0; n < buf.getNumSamples(); ++n)
+        buf.setSample(1, n, 0.9f); // sidechain data must not leak to the right output
+    run(p, buf, 64);
+    for (int n = 0; n < buf.getNumSamples(); ++n)
+        REQUIRE(buf.getSample(1, n) == Catch::Approx(buf.getSample(0, n)).margin(1e-6));
+}
+
+TEST_CASE("runtime latency change is reported to the host and keeps the dry path aligned")
+{
+    const double sr = 48000.0;
+    TestProcessor p(0);
+    setParam(p, "gain_db", 0.0f);
+    p.prepareToPlay(sr, 64);
+    REQUIRE(p.getLatencySamples() == 0);
+    p.setDeltaListen(true); // delta = wet - dry: zero only when the dry path matches the new latency
+    auto x = mm::test::sine(1000.0, sr, 0.3, 0.5);
+    auto buf = toBuffer(x, 2);
+    juce::MidiBuffer midi;
+    for (int pos = 0; pos < buf.getNumSamples(); pos += 64)
+    {
+        if (pos == 64 * 50)
+            p.runtimeLatency = 32;
+        juce::AudioBuffer<float> view(buf.getArrayOfWritePointers(), 2, pos, 64);
+        p.processBlock(view, midi);
+    }
+    REQUIRE(p.getLatencySamples() == 32);
+    for (int n = 64 * 52; n < buf.getNumSamples(); ++n)
+        REQUIRE(std::abs(buf.getSample(0, n)) < 1e-4f);
 }

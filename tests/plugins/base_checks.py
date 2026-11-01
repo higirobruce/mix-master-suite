@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from tests.harness import measure, signals
 from tests.harness.params import continuous, extremes, load_spec
@@ -56,18 +58,22 @@ def check_state_roundtrip(name: str, params: dict | None = None) -> None:
     assert res < -120, f"state round trip changed the output: {res:.1f} dBFS"
 
 
-def check_param_extremes(name: str, max_peak_db: float = 24.5, max_step_ratio_db: float | None = None) -> None:
+def check_param_extremes(name: str, max_peak_db: float = 24.5, ramp_params: dict[str, float] | None = None) -> None:
+    """Every parameter jumped to min/max/default (each choice, both bools) mid-signal: finite, bounded, and for the
+    pure-gain parameters listed in ramp_params the gain envelope never steps more than the given dB per sample."""
     spec = load_spec(name)
     sr = 48000
     x = signals.sine(1000, sr, 1.0, amp_db=-12)
-    smoothed = {p["id"]: p for p in continuous(spec)}
+    smoothed = {p["id"] for p in continuous(spec)}
+    ramp_params = ramp_params or {}
     for pid, value in extremes(spec):
         y, rep = render_plugin(name, sr=sr, input=x, automation=[{"param": pid, "t_s": 0.5, "value": value}])
         assert rep["nan_count"] == 0, f"{pid}={value} produced non-finite samples"
         assert rep["peak_db"] < max_peak_db, f"{pid}={value} peak {rep['peak_db']:.1f} dB"
-        if pid in smoothed and max_step_ratio_db is not None:
-            r = measure.max_step_ratio(y[:, 0])
-            assert 20 * np.log10(r) < max_step_ratio_db, f"{pid}={value} click: step ratio {r:.3f}"
+        if pid in ramp_params:
+            assert pid in smoothed, f"{pid} is not a smoothed parameter"
+            step = measure.max_gain_step_db(y[:, 0], x[:, 0])
+            assert step < ramp_params[pid], f"{pid}={value} click: gain step {step:.3f} dB/sample"
 
 
 def check_denormal_tail(name: str, params: dict | None = None) -> None:
@@ -78,7 +84,7 @@ def check_denormal_tail(name: str, params: dict | None = None) -> None:
     y, rep = render_plugin(name, sr=sr, params=params, input=np.concatenate([loud, silent]))
     assert rep["nan_count"] == 0
     tail_ratio = rep["realtime_ratio"]
-    assert tail_ratio < 2.5 * max(rep_loud["realtime_ratio"], 1e-4) + 1e-3, "silence after audio runs slower (denormals?)"
+    assert tail_ratio < 2.0 * max(rep_loud["realtime_ratio"], 1e-4) + 1e-3, "silence after audio runs slower (denormals?)"
     assert np.max(np.abs(y[int(3.5 * sr):])) < 1e-6
 
 
@@ -95,6 +101,9 @@ def check_channel_configs(name: str, params: dict | None = None) -> None:
 
 
 def check_cpu_budget(name: str, instances: int = 100, seconds: float = 5.0) -> float:
+    """Timing is only meaningful on an optimised build run serially (CI runs this test on its own)."""
+    if os.environ.get("MM_PLUGIN_CONFIG", "Release") != "Release":
+        pytest.skip("CPU budget is measured on Release builds only")
     r = bench_plugin(name, instances=instances, seconds=seconds)
     cpu = r["cpu_percent_per_instance"]
     budget = BUDGETS[name]

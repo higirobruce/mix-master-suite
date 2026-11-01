@@ -21,29 +21,36 @@ inline const mm::ParamTable& testTable()
 class TestProcessor : public mm::PluginProcessorBase
 {
 public:
-    TestProcessor()
+    // latency: DSP latency in samples (0 = the common zero-latency case; 10 = the alignment case).
+    explicit TestProcessor(int latencySamples = 10)
         : mm::PluginProcessorBase(testTable(), "test_plugin",
                                   BusesProperties()
                                       .withInput("Input", juce::AudioChannelSet::stereo(), true)
-                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true))
+                                      .withInput("Sidechain", juce::AudioChannelSet::mono(), false)
+                                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+          latency(latencySamples)
     {
     }
 
     std::atomic<bool> injectNaN{false};
+    std::atomic<int> runtimeLatency{-1}; // when >= 0, dspLatencySamples() reports this (runtime latency change)
     static constexpr int kLatency = 10;
+    static constexpr int kMaxLatency = 64;
 
 protected:
-    void prepareDsp(double, int maxBlock, int channels) override
+    void prepareDsp(double, int, int channels) override
     {
-        delay.prepare(kLatency, channels);
-        delay.setDelay(kLatency);
-        (void) maxBlock;
+        delay.prepare(kMaxLatency, channels);
+        delay.setDelay(dspLatencySamples());
     }
     void resetDsp() override { delay.reset(); }
-    int dspLatencySamples() const override { return kLatency; }
+    int dspLatencySamples() const override { return runtimeLatency.load() >= 0 ? runtimeLatency.load() : latency; }
+    int maxDspLatencySamples() const override { return kMaxLatency; }
     void processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) override
     {
         auto& g = smoothed(ids::gain_db);
+        if (delay.getDelay() != dspLatencySamples())
+            delay.setDelay(dspLatencySamples());
         for (int n = 0; n < buffer.getNumSamples(); ++n)
         {
             const float gain = mm::dbToGain(g.next());
@@ -62,5 +69,6 @@ private:
         static constexpr const char* gain_db = "gain_db";
     };
     mm::IntegerDelay<float> delay;
+    int latency;
 };
 } // namespace mm::test

@@ -78,7 +78,8 @@ int renderJob(const juce::File& jobFile)
         return 3;
     }
 
-    const int channels = juce::jmax(job.inChannels, job.outChannels);
+    // host buffer: main inputs, then sidechain channels (fed with input channel 0 until a job key says otherwise)
+    const int channels = juce::jmax(job.inChannels + job.sidechainChannels, job.outChannels);
     juce::AudioBuffer<float> output(job.outChannels, totalSamples);
     output.clear();
     juce::AudioBuffer<float> work(channels, maxBlock);
@@ -128,6 +129,8 @@ int renderJob(const juce::File& jobFile)
         {
             if (ch < job.inChannels)
                 work.copyFrom(ch, 0, input, ch, pos, n);
+            else if (ch < job.inChannels + job.sidechainChannels)
+                work.copyFrom(ch, 0, input, 0, pos, n);
             else
                 work.clear(ch, 0, n);
         }

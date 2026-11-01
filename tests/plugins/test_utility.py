@@ -119,6 +119,22 @@ def test_bypass_gain_match(host_bypass):
     assert abs(byp - wet) < 0.1
 
 
+@pytest.mark.parametrize("gain", [0, 12])
+def test_unbypass_has_no_stale_block(gain):
+    """Releasing bypass must crossfade into current audio: at 0 dB the output equals the input throughout."""
+    sr = 48000
+    x = signals.sine(1000, sr, 2.0, amp_db=-24)
+    y, rep = render_plugin(PLUGIN, sr=sr, params={"gain_db": gain}, input=x,
+                           automation=[{"param": "bypass", "t_s": 0.5, "value": 1}, {"param": "bypass", "t_s": 1.0, "value": 0}])
+    assert rep["nan_count"] == 0
+    if gain == 0:
+        assert measure.residual_dbfs(y[int(0.1 * sr):], x[int(0.1 * sr):]) < -80
+    else:
+        # largest gain-envelope step across the un-bypass region is bounded by the 20 ms ramp (+12 dB over 960 samples)
+        seg = slice(int(0.95 * sr), int(1.1 * sr))
+        assert measure.max_gain_step_db(y[seg, 0], x[seg, 0]) < 0.05
+
+
 def test_mono_to_stereo():
     sr = 48000
     x = signals.sine(1000, sr, 0.1, amp_db=-12, channels=1)
@@ -141,11 +157,12 @@ def test_state_roundtrip():
 
 
 def test_param_extremes():
-    base_checks.check_param_extremes(PLUGIN, max_peak_db=24.5)
+    base_checks.check_param_extremes(PLUGIN, max_peak_db=24.5, ramp_params={"gain_db": 0.06, "trim_db": 0.06})
 
 
 def test_denormal_tail():
-    base_checks.check_denormal_tail(PLUGIN)
+    # recursive stages on, so the tail actually exercises filter state
+    base_checks.check_denormal_tail(PLUGIN, params={"dc_block": 1, "phase_rotation_deg": 90})
 
 
 def test_channel_configs():

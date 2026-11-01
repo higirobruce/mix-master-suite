@@ -83,7 +83,7 @@ summary=()
 
 run_pluginval() { # format path
   local fmt="$1" path="$2"
-  if [ ! -e "$path" ]; then summary+=("$fmt: not built"); return; fi
+  if [ ! -e "$path" ]; then summary+=("$fmt: NOT BUILT"); status=1; return; fi
   echo "== pluginval $fmt: $path"
   if "$PLUGINVAL" --strictness-level 10 --validate-in-process --timeout-ms 600000 --output-dir "$OUT_DIR" --validate "$path"; then
     summary+=("$fmt: PASS")
@@ -106,7 +106,7 @@ if [ "$OS" = mac ]; then
     run_pluginval AU "$AU_INSTALLED"
     [ "${MM_KEEP_AU:-0}" = 1 ] || rm -rf "$AU_INSTALLED"
   else
-    summary+=("AU: not built")
+    summary+=("AU: NOT BUILT"); status=1
   fi
 fi
 CLAP="$(ls -d "$ART"/CLAP/*.clap 2>/dev/null | head -1 || true)"
@@ -114,7 +114,7 @@ if [ -n "$CLAP" ]; then
   echo "== clap-validator: $CLAP"
   if "$CLAPVAL" validate "$CLAP"; then summary+=("CLAP: PASS"); else summary+=("CLAP: FAIL"); status=1; fi
 else
-  summary+=("CLAP: not built")
+  summary+=("CLAP: NOT BUILT"); status=1
 fi
 
 echo "---- $PLUGIN validation summary"
