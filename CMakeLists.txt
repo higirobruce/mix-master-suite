@@ -1,0 +1,51 @@
+cmake_minimum_required(VERSION 3.25)
+
+option(MM_UNIVERSAL_BINARY "Build macOS Universal (arm64 + x86_64); CI release builds set this ON" OFF)
+if(APPLE)
+    if(MM_UNIVERSAL_BINARY)
+        set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "")
+    endif()
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "12.0" CACHE STRING "")
+endif()
+
+project(MixMasterSuite VERSION 0.1.0 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+option(MM_BUILD_TESTS "Build C++ unit tests" ON)
+option(MM_SANITIZE "Enable ASan/UBSan in Debug builds" OFF)
+option(MM_BUNDLE_MODELS "Bundle AI models (Full installer)" OFF)
+set(MM_AAX_SDK_PATH "" CACHE PATH "Path to the AAX SDK; AAX format is skipped when empty")
+
+# Python 3.11 for parameter code generation (ADR-0001/0002). Prefer the project venv.
+if(NOT MM_PYTHON)
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.venv/bin/python)
+        set(MM_PYTHON ${CMAKE_SOURCE_DIR}/.venv/bin/python CACHE FILEPATH "Python interpreter for codegen")
+    elseif(EXISTS ${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe)
+        set(MM_PYTHON ${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe CACHE FILEPATH "Python interpreter for codegen")
+    else()
+        find_package(Python3 3.11 COMPONENTS Interpreter REQUIRED)
+        set(MM_PYTHON ${Python3_EXECUTABLE} CACHE FILEPATH "Python interpreter for codegen")
+    endif()
+endif()
+message(STATUS "MM_PYTHON = ${MM_PYTHON}")
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(Warnings)
+include(Sanitizers)
+include(Dependencies)
+if(MM_AAX_SDK_PATH)
+    juce_set_aax_sdk_path(${MM_AAX_SDK_PATH})
+endif()
+include(MMPlugin)
+
+add_subdirectory(core)
+
+if(MM_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests/cpp)
+endif()

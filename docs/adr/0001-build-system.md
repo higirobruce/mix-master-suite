@@ -9,7 +9,7 @@ Sixteen plugins share one C++20/JUCE 8 codebase and must ship as VST3, AU, AAX a
 ## Decision
 
 - CMake ≥ 3.25 with the Ninja generator; one root `CMakeLists.txt`, helpers in `cmake/`.
-- Dependencies are declared once in `cmake/Dependencies.cmake` with `FetchContent` and a full commit SHA as `GIT_TAG` (a SHA is content-addressed, so it is the hash pin CLAUDE.md asks for): JUCE 8.0.x, free-audio/clap-juce-extensions (with its clap and clap-helpers submodules), Catch2 v3. Pinned SHAs are recorded in that file; updating one is a reviewed commit.
+- Dependencies are declared once in `cmake/Dependencies.cmake` with `FetchContent`. JUCE (8.0.16-security, commit ea77444750de45e036e0279bb0291144bf8e3688) and Catch2 (v3.8.1, commit 2b60af89e23d28eefc081bc930831ee9d45ea58b) are fetched as the source tarball of that exact commit with a `URL_HASH SHA256` pin; free-audio/clap-juce-extensions (commit 7adee3a1bd4684d4caa5601100e364abccff4b4d, with its clap and clap-helpers submodules) is fetched by git at the full commit SHA. Verified tarballs are cached in `.cache/downloads` (git-ignored, cached in CI). Updating a pin is a reviewed commit.
 - Formats: VST3, CLAP and Standalone everywhere; AU on macOS. AAX is built only when `MM_AAX_SDK_PATH` points at the SDK; otherwise the configure step logs "AAX stubbed" and the format is skipped. The gap is listed in every REVIEW.md until the SDK is available.
 - macOS: Universal binary (`arm64;x86_64`), deployment target 12.0, built with Command Line Tools; `auval` and pluginval validate AU. Windows: MSVC 2022 x64. Linux: GCC 12, x86-64.
 - Warnings as errors on our own targets only: `-Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror` (Clang/GCC), `/W4 /WX` (MSVC). JUCE and other fetched code keep their own flags.
