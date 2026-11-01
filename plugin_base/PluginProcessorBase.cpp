@@ -64,6 +64,12 @@ void PluginProcessorBase::updateSmoothers() noexcept
         sp.smoother.setTarget(sp.raw->load(std::memory_order_relaxed));
 }
 
+void PluginProcessorBase::snapSmoothersToTargets() noexcept
+{
+    for (auto& sp : smoothers)
+        sp.smoother.snap(sp.raw->load(std::memory_order_relaxed));
+}
+
 namespace
 {
 // Sum of squares with four accumulators (vectorises); returns a float so a NaN/Inf poisons the result.
@@ -105,12 +111,13 @@ void PluginProcessorBase::prepareToPlay(double sampleRate, int maxBlock)
 {
     currentSampleRate = sampleRate;
     preparedChannels = juce::jmax(1, getTotalNumOutputChannels());
-    prepareDsp(sampleRate, maxBlock, preparedChannels);
+    // smoothers first, so prepareDsp() designs from the current parameter values (no ramp in the first block)
     for (auto& sp : smoothers)
     {
         sp.smoother.prepare(sampleRate, sp.rampMs);
         sp.smoother.snap(sp.raw->load());
     }
+    prepareDsp(sampleRate, maxBlock, preparedChannels);
     dryBuffer.setSize(preparedChannels, maxBlock, false, false, true);
     dryDelay.prepare(juce::jmax(0, maxDspLatencySamples()), preparedChannels);
     reportedLatency = dspLatencySamples();

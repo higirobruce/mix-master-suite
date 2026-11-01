@@ -1,0 +1,391 @@
+{
+  "plugin": {
+    "id": "channel_eq",
+    "name": "Channel EQ",
+    "family": "eq",
+    "version": "0.1.0",
+    "code": "Cheq",
+    "accent": "#5B9DE8"
+  },
+  "params": [
+    {
+      "id": "hp_enabled",
+      "name": "HP on",
+      "type": "bool",
+      "default": false,
+      "group": "filters"
+    },
+    {
+      "id": "hp_freq_hz",
+      "name": "HP frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 2000,
+      "default": 80,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "filters"
+    },
+    {
+      "id": "hp_slope",
+      "name": "HP slope",
+      "type": "choice",
+      "choices": [
+        "6 dB/oct",
+        "12 dB/oct",
+        "18 dB/oct",
+        "24 dB/oct",
+        "36 dB/oct",
+        "48 dB/oct"
+      ],
+      "default": 3,
+      "group": "filters"
+    },
+    {
+      "id": "lp_enabled",
+      "name": "LP on",
+      "type": "bool",
+      "default": false,
+      "group": "filters"
+    },
+    {
+      "id": "lp_freq_hz",
+      "name": "LP frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 1000,
+      "max": 20000,
+      "default": 12000,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "filters"
+    },
+    {
+      "id": "lp_slope",
+      "name": "LP slope",
+      "type": "choice",
+      "choices": [
+        "6 dB/oct",
+        "12 dB/oct",
+        "18 dB/oct",
+        "24 dB/oct",
+        "36 dB/oct",
+        "48 dB/oct"
+      ],
+      "default": 1,
+      "group": "filters"
+    },
+    {
+      "id": "b1_enabled",
+      "name": "Band 1 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b1_type",
+      "name": "Band 1 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "LowShelf",
+        "HighShelf"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b1_freq_hz",
+      "name": "Band 1 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 120.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_gain_db",
+      "name": "Band 1 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_q",
+      "name": "Band 1 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_enabled",
+      "name": "Band 2 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b2_type",
+      "name": "Band 2 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "LowShelf",
+        "HighShelf"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b2_freq_hz",
+      "name": "Band 2 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 250.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_gain_db",
+      "name": "Band 2 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_q",
+      "name": "Band 2 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_enabled",
+      "name": "Band 3 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b3_type",
+      "name": "Band 3 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "LowShelf",
+        "HighShelf"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b3_freq_hz",
+      "name": "Band 3 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 1000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_gain_db",
+      "name": "Band 3 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_q",
+      "name": "Band 3 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_enabled",
+      "name": "Band 4 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b4_type",
+      "name": "Band 4 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "LowShelf",
+        "HighShelf"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b4_freq_hz",
+      "name": "Band 4 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 3200.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_gain_db",
+      "name": "Band 4 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_q",
+      "name": "Band 4 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_enabled",
+      "name": "Band 5 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b5_type",
+      "name": "Band 5 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "LowShelf",
+        "HighShelf"
+      ],
+      "default": 2,
+      "group": "band"
+    },
+    {
+      "id": "b5_freq_hz",
+      "name": "Band 5 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 8000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_gain_db",
+      "name": "Band 5 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_q",
+      "name": "Band 5 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "q_mode",
+      "name": "Q behaviour",
+      "type": "choice",
+      "choices": [
+        "Digital",
+        "Analog"
+      ],
+      "default": 0,
+      "group": "advanced"
+    },
+    {
+      "id": "oversample",
+      "name": "Oversampling",
+      "type": "choice",
+      "choices": [
+        "Off",
+        "2x"
+      ],
+      "default": 0,
+      "group": "advanced"
+    },
+    {
+      "id": "analyser",
+      "name": "Analyser",
+      "type": "choice",
+      "choices": [
+        "Off",
+        "Pre",
+        "Post",
+        "Pre + Post"
+      ],
+      "default": 3,
+      "ai": false,
+      "group": "advanced"
+    }
+  ]
+}

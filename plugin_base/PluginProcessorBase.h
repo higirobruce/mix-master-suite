@@ -77,6 +77,7 @@ protected:
     float param(ParamId id) const noexcept; // convenience: table scan + atomic load
     Smoother<float>& smoothed(ParamId id) noexcept; // table scan; cache the reference
     void updateSmoothers() noexcept; // called by the base at the start of each block
+    void snapSmoothersToTargets() noexcept; // jump every smoother to its parameter value (preset load, tests)
 
     // Subclass contract:
     //  - processDsp() sees any block size <= the prepareToPlay maximum (the base splits larger host blocks);
