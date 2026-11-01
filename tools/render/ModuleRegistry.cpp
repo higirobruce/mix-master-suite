@@ -7,6 +7,7 @@
 #include "core/filters/LinkwitzRiley.h"
 #include "core/delay/FractionalDelayLine.h"
 #include "core/dynamics/Detector.h"
+#include "core/oversampling/Oversampler.h"
 #include "core/dynamics/EnvelopeFollower.h"
 #include "core/dynamics/GainComputer.h"
 #include "core/dynamics/Lookahead.h"
@@ -595,6 +596,49 @@ private:
     int numCh = 2;
     bool prepared = false;
 };
+// tanh at drive through the oversampler (aliasing test). params: factor {1,2,4,8}, drive_db
+class OversampledTanhModule : public Module
+{
+public:
+    void prepare(double sampleRate, int maxBlock, int channels) override
+    {
+        sr = sampleRate;
+        block = maxBlock;
+        ch = channels;
+        os.prepare(sr, block, ch, factor);
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "factor")
+        {
+            factor = static_cast<int>(v);
+            if (block > 0)
+                os.prepare(sr, block, ch, factor);
+        }
+        else if (id == "drive_db")
+            drive = mm::dbToGain(static_cast<float>(v));
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        juce::dsp::AudioBlock<float> in(buf, static_cast<size_t>(channels), 0, static_cast<size_t>(n));
+        auto up = os.up(in);
+        for (size_t c = 0; c < up.getNumChannels(); ++c)
+        {
+            float* p = up.getChannelPointer(c);
+            for (size_t i = 0; i < up.getNumSamples(); ++i)
+                p[i] = std::tanh(p[i] * drive);
+        }
+        os.down(in);
+    }
+    int latencySamples() const override { return os.latencySamples(); }
+    void reset() override { os.reset(); }
+
+private:
+    mm::Oversampler os;
+    double sr = 48000.0;
+    int block = 0, ch = 2, factor = 4;
+    float drive = 1.0f;
+};
 } // namespace
 
 void registerCoreModules()
@@ -612,5 +656,6 @@ void registerCoreModules()
     r.add("envelope", [] { return std::make_unique<EnvelopeModule>(); });
     r.add("compressor_core", [] { return std::make_unique<CompressorCoreModule>(); });
     r.add("delay", [] { return std::make_unique<DelayModule>(); });
+    r.add("oversampled_tanh", [] { return std::make_unique<OversampledTanhModule>(); });
 }
 } // namespace mmr
