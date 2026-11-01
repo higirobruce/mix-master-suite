@@ -10,6 +10,8 @@ add_executable(mm_core_tests
     test_onepole_allpass_m1.cpp
     test_fir.cpp
     test_linkwitz_riley.cpp
+    test_detector.cpp
+    test_envelope.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp

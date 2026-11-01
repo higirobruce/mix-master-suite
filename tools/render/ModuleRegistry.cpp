@@ -1,9 +1,12 @@
 #include "tools/render/ModuleRegistry.h"
+#include "core/common/Math.h"
 #include "core/filters/AllPass.h"
 #include "core/filters/Biquad.h"
 #include "core/filters/FIRDesign.h"
 #include "core/filters/FIRFilter.h"
 #include "core/filters/LinkwitzRiley.h"
+#include "core/dynamics/Detector.h"
+#include "core/dynamics/EnvelopeFollower.h"
 #include "core/filters/OnePole.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
@@ -387,6 +390,65 @@ private:
     Order order = Order::LR4;
     int output = 0;
 };
+// Detector + envelope follower; output = envelope in dB / 100 (so it fits a WAV). params: mode {0 peak, 1 rms},
+// rms_ms, attack_ms, release_ms, auto_release
+class EnvelopeModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            det[ch].prepare(sampleRate);
+            det[ch].setMode(mode);
+            det[ch].setRmsWindowMs(rmsMs);
+            env[ch].prepare(sampleRate);
+            env[ch].setAttackMs(attackMs);
+            env[ch].setReleaseMs(releaseMs);
+            env[ch].setAutoRelease(autoRel);
+        }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "mode") mode = v >= 0.5 ? mm::DetectorMode::Rms : mm::DetectorMode::Peak;
+        else if (id == "rms_ms") rmsMs = v;
+        else if (id == "attack_ms") attackMs = v;
+        else if (id == "release_ms") releaseMs = v;
+        else if (id == "auto_release") autoRel = v >= 0.5;
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            det[ch].setMode(mode);
+            det[ch].setRmsWindowMs(rmsMs);
+            env[ch].setAttackMs(attackMs);
+            env[ch].setReleaseMs(releaseMs);
+            env[ch].setAutoRelease(autoRel);
+        }
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+            {
+                const float level = det[ch].process(buf[ch][i]);
+                buf[ch][i] = env[ch].process(mm::gainToDb(level)) * 0.01f;
+            }
+    }
+    void reset() override
+    {
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            det[ch].reset();
+            env[ch].reset();
+        }
+    }
+
+private:
+    mm::Detector<float> det[2];
+    mm::EnvelopeFollower<float> env[2];
+    mm::DetectorMode mode = mm::DetectorMode::Peak;
+    double rmsMs = 50.0, attackMs = 10.0, releaseMs = 100.0;
+    bool autoRel = false;
+};
 } // namespace
 
 void registerCoreModules()
@@ -401,5 +463,6 @@ void registerCoreModules()
     r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
     r.add("fir", [] { return std::make_unique<FirModule>(); });
     r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
+    r.add("envelope", [] { return std::make_unique<EnvelopeModule>(); });
 }
 } // namespace mmr
