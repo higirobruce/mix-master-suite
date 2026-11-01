@@ -7,6 +7,9 @@
 #include "core/filters/LinkwitzRiley.h"
 #include "core/dynamics/Detector.h"
 #include "core/dynamics/EnvelopeFollower.h"
+#include "core/dynamics/GainComputer.h"
+#include "core/dynamics/Lookahead.h"
+#include "core/dynamics/SidechainFilter.h"
 #include "core/filters/OnePole.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
@@ -449,6 +452,100 @@ private:
     double rmsMs = 50.0, attackMs = 10.0, releaseMs = 100.0;
     bool autoRel = false;
 };
+// Feed-forward compressor chain (Giannoulis et al. 2012, "ballistics on the gain"): sidechain filter -> detector
+// -> dB -> static gain computer -> attack/release smoothing of the gain reduction (log domain) -> gain.
+// params: threshold_db, ratio, knee_db, attack_ms, release_ms, lookahead_ms, sc_hp_hz, expander, range_db, detector {0 peak,1 rms}
+class CompressorCoreModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int channels) override
+    {
+        numCh = channels > 2 ? 2 : channels;
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            sc[ch].prepare(sampleRate);
+            det[ch].prepare(sampleRate);
+            env[ch].prepare(sampleRate);
+        }
+        la.prepare(sampleRate, 10.0, 2);
+        for (auto& e : env)
+            e.snapTo(0.0f); // the smoothed quantity is gain reduction: starts at 0 dB
+        prepared = true;
+        apply();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "threshold_db") gp.thresholdDb = v;
+        else if (id == "ratio") gp.ratio = v;
+        else if (id == "knee_db") gp.kneeDb = v;
+        else if (id == "expander") gp.expander = v >= 0.5;
+        else if (id == "range_db") gp.rangeDb = v;
+        else if (id == "attack_ms") attackMs = v;
+        else if (id == "release_ms") releaseMs = v;
+        else if (id == "lookahead_ms") lookaheadMs = v;
+        else if (id == "sc_hp_hz") scHp = v;
+        else if (id == "detector") rms = v >= 0.5;
+        if (prepared)
+            apply();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            // stereo-linked: max of channel levels
+            float level = 0.0f;
+            for (int ch = 0; ch < channels && ch < 2; ++ch)
+                level = std::max(level, det[ch].process(sc[ch].process(buf[ch][i])));
+            if (lookaheadOn)
+                level = la.maxEnvelope(level);
+            // static reduction (positive dB) then ballistics: attack when reduction grows, release when it falls
+            const float reduction = -gc.gainDb(mm::gainToDb(level));
+            const float smoothed = env[0].process(reduction);
+            const float gain = mm::dbToGain(-smoothed);
+            for (int ch = 0; ch < channels && ch < 2; ++ch)
+            {
+                const float x = lookaheadOn ? la.delaySignal(buf[ch][i], ch) : buf[ch][i];
+                buf[ch][i] = x * gain;
+            }
+        }
+    }
+    int latencySamples() const override { return lookaheadOn ? la.latencySamples() : 0; }
+    void reset() override
+    {
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            sc[ch].reset();
+            det[ch].reset();
+            env[ch].reset();
+            env[ch].snapTo(0.0f);
+        }
+        la.reset();
+    }
+
+private:
+    void apply()
+    {
+        gc.set(gp);
+        for (int ch = 0; ch < 2; ++ch)
+        {
+            sc[ch].setHighPass(scHp);
+            det[ch].setMode(rms ? mm::DetectorMode::Rms : mm::DetectorMode::Peak);
+            env[ch].setAttackMs(attackMs);
+            env[ch].setReleaseMs(releaseMs);
+        }
+        la.setMs(lookaheadMs);
+        lookaheadOn = lookaheadMs > 0.0;
+    }
+    mm::SidechainFilter<float> sc[2];
+    mm::Detector<float> det[2];
+    mm::EnvelopeFollower<float> env[2];
+    mm::GainComputer<float> gc;
+    mm::Lookahead<float> la;
+    mm::GainComputerParams gp{-20.0, 4.0, 0.0, false, -80.0};
+    double attackMs = 1.0, releaseMs = 100.0, lookaheadMs = 0.0, scHp = 0.0;
+    bool rms = false, lookaheadOn = false, prepared = false;
+    int numCh = 2;
+};
 } // namespace
 
 void registerCoreModules()
@@ -464,5 +561,6 @@ void registerCoreModules()
     r.add("fir", [] { return std::make_unique<FirModule>(); });
     r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
     r.add("envelope", [] { return std::make_unique<EnvelopeModule>(); });
+    r.add("compressor_core", [] { return std::make_unique<CompressorCoreModule>(); });
 }
 } // namespace mmr

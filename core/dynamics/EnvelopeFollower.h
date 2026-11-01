@@ -60,6 +60,11 @@ public:
         aboveSamples = 0;
     }
     T current() const noexcept { return static_cast<T>(env); }
+    void snapTo(T value) noexcept
+    {
+        env = static_cast<double>(value);
+        aboveSamples = 0;
+    }
 
 private:
     double coeffFor(double ms) const noexcept
