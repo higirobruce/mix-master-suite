@@ -111,3 +111,11 @@ target_link_libraries(mm_gui_channel_comp_tests PRIVATE channel_comp mm_gui mm_p
 mm_set_warnings(mm_gui_channel_comp_tests)
 mm_enable_sanitizers(mm_gui_channel_comp_tests)
 catch_discover_tests(mm_gui_channel_comp_tests)
+
+# ---- gate
+add_executable(mm_gate_tests test_gate.cpp)
+target_include_directories(mm_gate_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/gate)
+target_link_libraries(mm_gate_tests PRIVATE gate mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gate_tests)
+mm_enable_sanitizers(mm_gate_tests)
+catch_discover_tests(mm_gate_tests)

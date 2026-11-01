@@ -16,5 +16,7 @@ The spec's Gate / Expander: threshold, range, attack, hold, release, ratio (expa
 
 ## Consequences
 
-- Chatter is prevented by construction for any hysteresis > 0 (tested: tone at the threshold with ±1 dB AM at 5 Hz, ≤ 1 transition per cycle at 3 dB hysteresis).
+- The key level is a 2 ms sliding maximum (peak hold) of the detector, so a tone at or above 250 Hz reads as its amplitude rather than its instantaneous |x|; without it the level touches zero at every zero crossing and the hysteresis never engages. The close decision therefore lags the signal by 2 ms (measured hold = hold + 1 ms). Below 250 Hz the hold (default 50 ms, restarted on every peak ≥ threshold) bridges the cycles.
+- Chatter is prevented by construction for any hysteresis > 0 on material the peak hold reads flat (tested: 1 kHz tone at the threshold with ±1 dB AM at 5 Hz: 0 open→close transitions at 3 dB hysteresis, 15 at 0 dB).
+- The key is linked (maximum over the main channels); one gain is applied to every channel. The detector is peak only (a gate wants the transient); RMS keying is not offered.
 - Hold restart on retrigger means fast repeated hits keep the gate open (the expected drum behaviour).
