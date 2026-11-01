@@ -1,12 +1,15 @@
 # Review: M0 Scaffold
-Commit: 8b2b795   Branch: milestone/m0-scaffold
+Commit: ae6b569   Branch: milestone/m0-scaffold
+
+## Review history
+A fresh reviewer (whole-branch, 8e8b677..457f5cf) found 3 Critical / 10 Important / 11 Minor issues. All Critical and Important items were fixed in one pass with a failing test first for each (commit cfcdd38 and follow-ups): un-bypass played a stale 20 ms block on zero-latency plugins; host blocks larger than prepared overran buffers; non-finite input poisoned the meters; sidechain channels were counted as main inputs; runtime latency changes were not reported; the render host hung on a zero block size; timing tests ran where they could not be trusted; a missing format passed pluginval silently; state restore set every parameter twice; the RMS meter allocated one slot per sample; MSVC warnings had never been compiled. Minors are listed in the ledger as deferred.
 
 ## What was built
 - Repo layout per CLAUDE.md (core, plugin_base, gui, plugins/utility, tools, tests, docs/adr, docs/superpowers/plans).
 - CMake ≥ 3.25 + Ninja build with SHA256-pinned JUCE 8.0.16 and Catch2 3.8.1 tarballs and SHA-pinned clap-juce-extensions (ADR-0001). Formats: VST3, AU, CLAP, Standalone. AAX stubbed (no SDK).
 - `tools/gen_params.py`: `params.json` → generated `Params.h` (string ids, ParamTable) and `tool_schema.json` (AI schema, `mm-schema-1`) at configure/build time; reserved `bypass` / `trim_db` (ADR-0002).
 - `mm_core` first modules: Smoother (linear), IntegerDelay, OnePoleHP (double state), FirstOrderAllPass, MeterFifo (SPSC), PeakMeter, RmsMeter, DbGainCache, ScopedNoDenormals.
-- `mm_plugin_base`: APVTS from the ParamTable, per-parameter smoothing, gain-matched bypass (param and host bypass through `getBypassParameter`), delta listen, output trim, latency-aligned dry path, NaN guard, metering FIFO, A/B/C/D slots, undo, presets (`.mmpreset` ValueTree XML + JSON meta), state save/load with forward compatibility, bus layouts mono/stereo/mono→stereo.
+- `mm_plugin_base`: APVTS from the ParamTable, per-parameter smoothing, gain-matched bypass (param and host bypass through `getBypassParameter`), delta listen, output trim, latency-aligned dry path with runtime latency reporting, sub-block processing of oversized host blocks, input and output NaN guards with meter reset, metering FIFO, A/B/C/D slots, undo, presets (`.mmpreset` ValueTree XML + JSON meta), single-pass state restore with forward compatibility, bus layouts mono/stereo/mono→stereo with sidechain-aware channel counts.
 - `mm_gui`: Theme (dark/light, family accents), MMLookAndFeel (Inter, flat-arc knobs), Knob, Toggle, Selector, MeterBar, HeaderBar (name, presets, A/B/C/D, undo/redo, delta, bypass, settings), Footer (in/out meters, latency, trim), PluginEditorBase (50–200 % with fixed aspect, 60 Hz meters, theme + scale persisted in plugin state).
 - Utility plugin: gain, polarity L/R, swap, mono sum, DC block (10 Hz), phase rotation (first-order all-pass, −θ at 100 Hz), mutes; editor with large stereo meters; six factory presets.
 - `mm_render` offline host (VST3/AU + core modules, JSON jobs, automation, block/sample-rate schedules, state round trip, host bypass, `--bench`, `--dump-params`), Python harness, Utility measurement suite, shared base checks, `tools/measure.py`, `tools/bench_cpu.py`, `tools/run_pluginval.sh` (pinned pluginval 1.0.4 + clap-validator 0.4.1, sha256-verified), `tools/snapshot` (offscreen editor PNGs), `tools/bench` (in-process processor cost).
@@ -17,11 +20,11 @@ Commit: 8b2b795   Branch: milestone/m0-scaffold
 | --- | --- | --- | --- |
 | Repo layout, CMake | as CLAUDE.md | present; `cmake -B build -G Ninja && cmake --build build` | ✓ |
 | Utility builds in all formats | VST3, AU, AAX, CLAP (+Standalone) | VST3, AU, CLAP, Standalone built; AAX stubbed (no SDK) | ✓ / AAX gap |
-| pluginval level 10 | pass on macOS/Windows/Linux | macOS local: VST3 PASS, AU PASS; Windows/Linux: CI run 41328502710 (see STATE.md for the final status) | pending CI |
-| CI matrix green | green | run 41328502710 in progress at the time of writing; the tag is pushed only when green | pending CI |
+| pluginval level 10 | pass on macOS/Windows/Linux | macOS: VST3 PASS, AU PASS (local + CI); Windows: VST3 PASS; Linux: VST3 PASS; clap-validator PASS on all three (CI run https://github.com/higirobruce/mix-master-suite/actions/runs/41335217507) | ✓ |
+| CI matrix green | green | run 41335217507: build-test macos-15 / windows-2022 / ubuntu-22.04 success; sanitizers macos-15 / ubuntu-22.04 success | ✓ |
 | ADR-0001, ADR-0002 | written before code | docs/adr/0001-build-system.md, 0002-parameter-model.md | ✓ |
 | Null test (utility) | < −120 dBFS | −200 dBFS at 44.1/48/96/192 k | ✓ |
-| CPU (utility) | < 0.1 % / instance | 0.055–0.058 % hosted, 100 instances | ✓ |
+| CPU (utility) | < 0.1 % / instance | 0.055–0.058 % hosted, 100 instances (local Release, serial run) | ✓ |
 | Sanitizers | no report | ASan/UBSan clean on ctest and plugin suite | ✓ |
 
 ## Decisions made without asking (link ADRs)
@@ -40,7 +43,8 @@ Commit: 8b2b795   Branch: milestone/m0-scaffold
 - Preset browser overlay (search, tags, favourites) is a popup menu until M6; MIDI learn / macros / accessibility labels beyond parameter names deferred to M6.
 - The 1-hour parameter fuzz lands with M2 (nightly placeholder exists).
 - Listening gate not applicable to Utility.
-- Windows/Linux pluginval results come from CI (no local machines).
+- Windows/Linux pluginval results come from CI (no local machines); the AU is validated on macOS only.
+- Deferred minors from the review (see `.superpowers` ledger / git history): A/B/C/D undo of the active slot, MeterBar clip latch, editor not following host state loads of UI scale, dead snapshot() call, generator accepting C++ keywords as ids, render host clock after a sample-rate change, sample-rate automation as block size 1, ARM64 MSVC denormal asm, harness temp dirs, PopupMenu raw `this` captures.
 
 ## How to try it (exact commands, which DAW, which preset)
 ```
