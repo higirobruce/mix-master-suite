@@ -31,3 +31,10 @@ TEST_CASE("channel compressor table, latency, sidechain bus and gain-reduction r
     REQUIRE(got);
     REQUIRE(frame.gainReductionDb > 10.0f);
 }
+
+#include "helpers/preset_checks.h"
+TEST_CASE("every channel_comp factory preset loads and names itself")
+{
+    ChannelCompProcessor p;
+    mm::test::checkFactoryPresets(p, mm::plugins::channel_comp::table(), 8);
+}

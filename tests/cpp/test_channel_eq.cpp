@@ -25,3 +25,10 @@ TEST_CASE("channel eq evaluateAt is the product of its active sections")
     REQUIRE(20.0 * std::log10(std::abs(h)) == Catch::Approx(6.0).margin(0.05));
     REQUIRE(std::abs(p.evaluateAt(20.0)) == Catch::Approx(1.0).margin(0.01));
 }
+
+#include "helpers/preset_checks.h"
+TEST_CASE("every channel_eq factory preset loads and names itself")
+{
+    ChannelEqProcessor p;
+    mm::test::checkFactoryPresets(p, mm::plugins::channel_eq::table(), 8);
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Bass · Even" plugin="channel_comp" version="1" meta="{&quot;tags&quot;:[&quot;dynamics&quot;,&quot;bass&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;RMS, 4:1, slow release, sidechain HP keeps the sub from pumping.&quot;}">
+  <PARAMS>
+    <PARAM id="threshold_db" value="-20"/>
+    <PARAM id="ratio" value="4"/>
+    <PARAM id="ratio_inf" value="0"/>
+    <PARAM id="attack_ms" value="8"/>
+    <PARAM id="release_ms" value="200"/>
+    <PARAM id="auto_release" value="0"/>
+    <PARAM id="knee_db" value="6"/>
+    <PARAM id="detector" value="1"/>
+    <PARAM id="topology" value="0"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="sc_hp_enabled" value="1"/>
+    <PARAM id="sc_hp_hz" value="60"/>
+    <PARAM id="ext_key" value="0"/>
+    <PARAM id="makeup_db" value="0"/>
+    <PARAM id="auto_makeup" value="0"/>
+    <PARAM id="stereo_link_pct" value="100"/>
+    <PARAM id="listen_sc" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

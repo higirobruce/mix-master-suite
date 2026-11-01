@@ -43,3 +43,10 @@ TEST_CASE("gate table, lookahead latency, open state and gain-reduction readout"
     REQUIRE(p.getLatencySamples() == 480);
     REQUIRE(p.maxDspLatencySamples() == 480);
 }
+
+#include "helpers/preset_checks.h"
+TEST_CASE("every gate factory preset loads and names itself")
+{
+    GateProcessor p;
+    mm::test::checkFactoryPresets(p, mm::plugins::gate::table(), 8);
+}

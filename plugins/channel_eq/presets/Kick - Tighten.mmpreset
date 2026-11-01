@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Kick · Tighten" plugin="channel_eq" version="1" meta="{&quot;tags&quot;:[&quot;eq&quot;,&quot;drums&quot;,&quot;kick&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Sub shelf, scoop the 350 Hz box, click at 4 kHz.&quot;}">
+  <PARAMS>
+    <PARAM id="hp_enabled" value="1"/>
+    <PARAM id="hp_freq_hz" value="30"/>
+    <PARAM id="hp_slope" value="3"/>
+    <PARAM id="lp_enabled" value="0"/>
+    <PARAM id="lp_freq_hz" value="12000"/>
+    <PARAM id="lp_slope" value="1"/>
+    <PARAM id="b1_enabled" value="1"/>
+    <PARAM id="b1_type" value="1"/>
+    <PARAM id="b1_freq_hz" value="70"/>
+    <PARAM id="b1_gain_db" value="2.0"/>
+    <PARAM id="b1_q" value="0.7"/>
+    <PARAM id="b2_enabled" value="1"/>
+    <PARAM id="b2_type" value="0"/>
+    <PARAM id="b2_freq_hz" value="350"/>
+    <PARAM id="b2_gain_db" value="-4.0"/>
+    <PARAM id="b2_q" value="1.2"/>
+    <PARAM id="b3_enabled" value="1"/>
+    <PARAM id="b3_type" value="0"/>
+    <PARAM id="b3_freq_hz" value="4000"/>
+    <PARAM id="b3_gain_db" value="3.0"/>
+    <PARAM id="b3_q" value="1.5"/>
+    <PARAM id="b4_enabled" value="0"/>
+    <PARAM id="b4_type" value="0"/>
+    <PARAM id="b4_freq_hz" value="8000"/>
+    <PARAM id="b4_gain_db" value="0"/>
+    <PARAM id="b4_q" value="1.0"/>
+    <PARAM id="b5_enabled" value="0"/>
+    <PARAM id="b5_type" value="2"/>
+    <PARAM id="b5_freq_hz" value="12000"/>
+    <PARAM id="b5_gain_db" value="0"/>
+    <PARAM id="b5_q" value="0.7"/>
+    <PARAM id="q_mode" value="0"/>
+    <PARAM id="oversample" value="0"/>
+    <PARAM id="analyser" value="3"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>
