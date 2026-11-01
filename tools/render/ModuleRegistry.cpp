@@ -3,6 +3,7 @@
 #include "core/filters/Biquad.h"
 #include "core/filters/FIRDesign.h"
 #include "core/filters/FIRFilter.h"
+#include "core/filters/LinkwitzRiley.h"
 #include "core/filters/OnePole.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
@@ -342,6 +343,50 @@ private:
     double cutoff = 0.25, beta = 8.6;
     mm::fir::Window window = mm::fir::Window::Kaiser;
 };
+// Linkwitz-Riley crossover (64-bit, as the spec budgets for crossovers). params: freq_hz, order {2,4,8},
+// output {0 low, 1 high, 2 sum}
+class LrCrossoverModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        for (auto& x : xo)
+        {
+            x.prepare(sampleRate);
+            x.setOrder(order);
+            x.setCrossover(freq);
+        }
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "freq_hz") freq = v;
+        else if (id == "order") order = v >= 8 ? Order::LR8 : (v >= 4 ? Order::LR4 : Order::LR2);
+        else if (id == "output") output = static_cast<int>(v);
+        for (auto& x : xo)
+        {
+            x.setOrder(order);
+            x.setCrossover(freq);
+        }
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+            {
+                double lo, hi;
+                xo[ch].process(static_cast<double>(buf[ch][i]), lo, hi);
+                buf[ch][i] = static_cast<float>(output == 0 ? lo : (output == 1 ? hi : lo + hi));
+            }
+    }
+    void reset() override { for (auto& x : xo) x.reset(); }
+
+private:
+    using Order = mm::LrOrder;
+    mm::LinkwitzRiley<double> xo[2];
+    double freq = 1000.0;
+    Order order = Order::LR4;
+    int output = 0;
+};
 } // namespace
 
 void registerCoreModules()
@@ -355,5 +400,6 @@ void registerCoreModules()
     r.add("allpass1", [] { return std::make_unique<AllPass1Module>(); });
     r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
     r.add("fir", [] { return std::make_unique<FirModule>(); });
+    r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
 }
 } // namespace mmr
