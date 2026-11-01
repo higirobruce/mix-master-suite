@@ -16,8 +16,8 @@ public:
     bool hasEditor() const override { return true; }
     bool isBusesLayoutSupported(const BusesLayout&) const override;
 
-    // transfer curve for the editor (static, current parameters)
-    float staticGainDb(float levelDb) const noexcept { return gc.gainDb(levelDb); }
+    // transfer curve for the editor: static gain at a level from the current (unsmoothed) parameter values
+    float staticGainDb(float levelDb) noexcept;
 
 protected:
     void prepareDsp(double sampleRate, int maxBlock, int channels) override;

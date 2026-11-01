@@ -12,3 +12,4 @@ endfunction()
 
 mm_add_snapshot(utility plugins/utility/UtilityProcessor.h UtilityProcessor)
 mm_add_snapshot(channel_eq plugins/channel_eq/ChannelEqProcessor.h ChannelEqProcessor)
+mm_add_snapshot(channel_comp plugins/channel_comp/ChannelCompProcessor.h ChannelCompProcessor)

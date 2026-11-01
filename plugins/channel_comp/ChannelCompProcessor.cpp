@@ -176,3 +176,15 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
 juce::AudioProcessorEditor* ChannelCompProcessor::createEditor() { return new ChannelCompEditor(*this); }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter() { return new ChannelCompProcessor(); }
+
+float ChannelCompProcessor::staticGainDb(float levelDb) noexcept
+{
+    mm::GainComputerParams gp;
+    gp.thresholdDb = apvts().getRawParameterValue(cp::id::threshold_db)->load();
+    gp.ratio = apvts().getRawParameterValue(cp::id::ratio_inf)->load() >= 0.5f ? 1000.0
+                                                                                : apvts().getRawParameterValue(cp::id::ratio)->load();
+    gp.kneeDb = apvts().getRawParameterValue(cp::id::knee_db)->load();
+    mm::GainComputer<float> staticGc;
+    staticGc.set(gp);
+    return staticGc.gainDb(levelDb);
+}

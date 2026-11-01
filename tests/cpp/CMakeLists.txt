@@ -103,3 +103,11 @@ target_link_libraries(mm_channel_comp_tests PRIVATE channel_comp mm_plugin_base 
 mm_set_warnings(mm_channel_comp_tests)
 mm_enable_sanitizers(mm_channel_comp_tests)
 catch_discover_tests(mm_channel_comp_tests)
+
+# ---- channel compressor GUI tests
+add_executable(mm_gui_channel_comp_tests test_gui_channel_comp.cpp)
+target_include_directories(mm_gui_channel_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_comp)
+target_link_libraries(mm_gui_channel_comp_tests PRIVATE channel_comp mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_channel_comp_tests)
+mm_enable_sanitizers(mm_gui_channel_comp_tests)
+catch_discover_tests(mm_gui_channel_comp_tests)
