@@ -1,63 +1,60 @@
-# Review: M0 Scaffold
-Commit: 8b2b795   Branch: milestone/m0-scaffold
+# Review: M1 Core DSP
+Commit: 221f451   Branch: milestone/m1-core-dsp
 
 ## What was built
-- Repo layout per CLAUDE.md (core, plugin_base, gui, plugins/utility, tools, tests, docs/adr, docs/superpowers/plans).
-- CMake ≥ 3.25 + Ninja build with SHA256-pinned JUCE 8.0.16 and Catch2 3.8.1 tarballs and SHA-pinned clap-juce-extensions (ADR-0001). Formats: VST3, AU, CLAP, Standalone. AAX stubbed (no SDK).
-- `tools/gen_params.py`: `params.json` → generated `Params.h` (string ids, ParamTable) and `tool_schema.json` (AI schema, `mm-schema-1`) at configure/build time; reserved `bypass` / `trim_db` (ADR-0002).
-- `mm_core` first modules: Smoother (linear), IntegerDelay, OnePoleHP (double state), FirstOrderAllPass, MeterFifo (SPSC), PeakMeter, RmsMeter, DbGainCache, ScopedNoDenormals.
-- `mm_plugin_base`: APVTS from the ParamTable, per-parameter smoothing, gain-matched bypass (param and host bypass through `getBypassParameter`), delta listen, output trim, latency-aligned dry path, NaN guard, metering FIFO, A/B/C/D slots, undo, presets (`.mmpreset` ValueTree XML + JSON meta), state save/load with forward compatibility, bus layouts mono/stereo/mono→stereo.
-- `mm_gui`: Theme (dark/light, family accents), MMLookAndFeel (Inter, flat-arc knobs), Knob, Toggle, Selector, MeterBar, HeaderBar (name, presets, A/B/C/D, undo/redo, delta, bypass, settings), Footer (in/out meters, latency, trim), PluginEditorBase (50–200 % with fixed aspect, 60 Hz meters, theme + scale persisted in plugin state).
-- Utility plugin: gain, polarity L/R, swap, mono sum, DC block (10 Hz), phase rotation (first-order all-pass, −θ at 100 Hz), mutes; editor with large stereo meters; six factory presets.
-- `mm_render` offline host (VST3/AU + core modules, JSON jobs, automation, block/sample-rate schedules, state round trip, host bypass, `--bench`, `--dump-params`), Python harness, Utility measurement suite, shared base checks, `tools/measure.py`, `tools/bench_cpu.py`, `tools/run_pluginval.sh` (pinned pluginval 1.0.4 + clap-validator 0.4.1, sha256-verified), `tools/snapshot` (offscreen editor PNGs), `tools/bench` (in-process processor cost).
-- CI: GitHub Actions matrix macos-14 / windows-2022 / ubuntu-22.04 (build, ctest, pytest, pluginval, clap-validator, bench) + sanitizer job (macOS, Linux). Nightly placeholder for the M2 long fuzz.
+Every shared DSP module the plugins compose, in `core/` (namespace `mm`, header-only, 64-bit coefficient design, float or double processing), each with Catch2 unit tests, Python measurement tests through `mm_render --module`, and the 44.1/48/96/192 kHz matrix:
+- Filters: `Biquad` (TDF-II) with RBJ designs and `evaluate()`; Vicanek matched biquads with the analog prototype and a bilinear fallback above ~0.45 fs; TPT `SVF` (8 modes, modulation-safe); `OnePoleLP/HP` (double state), first- and second-order all-pass; windowed-sinc / half-band FIR design and a direct-form `FIRFilter`; Linkwitz–Riley LR2/4/8 crossovers (phase-coherent sum).
+- Dynamics: `Detector` (peak / RMS), log-domain `EnvelopeFollower` with 10–90 % attack/release and auto release, `GainComputer` (soft knee, ∞, expander with range), `Lookahead` (delay + O(1) sliding max), `SidechainFilter`; a full feed-forward compressor chain module with ballistics on the gain reduction.
+- Smoothing: linear (exact ramp) and exponential modes, double state.
+- Delay: `FractionalDelayLine` (Lagrange-3, Thiran-1, slewed time changes) and `TempoSync`.
+- Oversampling: `Oversampler` (JUCE equiripple half-band FIR, integer latency, factor 1/2/4/8).
+- Nonlinear: tanh / atan / asymmetric / soft clip / hard clip with antiderivatives, first-order ADAA, Jiles–Atherton tape hysteresis (RK4), tube transfer.
+- Metering: correlation meter, lock-free FFT spectrum analyser (push from audio, frames on GUI, peak hold).
+- 17 render modules in `mm_render` (`--list-modules`), `tools/bench/mm_bench_core` (ns/sample), `docs/bench/core-2026-11-01.json`.
 
 ## Exit criteria (spec) → result (measured)
+See the "M1 measurements" table in docs/STATE.md for every number. Summary:
 | criterion | target | measured | pass |
 | --- | --- | --- | --- |
-| Repo layout, CMake | as CLAUDE.md | present; `cmake -B build -G Ninja && cmake --build build` | ✓ |
-| Utility builds in all formats | VST3, AU, AAX, CLAP (+Standalone) | VST3, AU, CLAP, Standalone built; AAX stubbed (no SDK) | ✓ / AAX gap |
-| pluginval level 10 | pass on macOS/Windows/Linux | macOS local: VST3 PASS, AU PASS; Windows/Linux: CI run 41328502710 (see STATE.md for the final status) | pending CI |
-| CI matrix green | green | run 41328502710 in progress at the time of writing; the tag is pushed only when green | pending CI |
-| ADR-0001, ADR-0002 | written before code | docs/adr/0001-build-system.md, 0002-parameter-model.md | ✓ |
-| Null test (utility) | < −120 dBFS | −200 dBFS at 44.1/48/96/192 k | ✓ |
-| CPU (utility) | < 0.1 % / instance | 0.055–0.058 % hosted, 100 instances | ✓ |
-| Sanitizers | no report | ASan/UBSan clean on ctest and plugin suite | ✓ |
+| Filters match analytic response, 4 rates | ±0.1 dB / ±2° | pass for biquad, matched, SVF, one-pole, all-pass, FIR, LR2/4/8 | ✓ |
+| Null test, linear modules | < −120 dBFS | float biquad/FIR null < −120 dBFS; block-size independence < −120 dBFS for 9 modules | ✓ |
+| Dynamics attack/release | within 10 % | within 10 % on steps (envelope and compressor chain), 4 rates | ✓ |
+| Ratio | within 0.1 | within 0.1 for 2/4/8/20/∞ (RMS detector) | ✓ |
+| Aliasing with oversampling on, 19 kHz | < −80 dBFS | tanh +6 dB at 4×+ADAA1: pass; tube 4×: pass; tape 8×: pass; **tanh +18 dB at 4×: −44 dBFS at 48 k (not met, spec question)** | ✓ / ✗ |
+| Latency reported (oversampler, lookahead) | exact | exact at every factor and rate | ✓ |
+| Sample-rate matrix on every module | 4 rates | every module and every test | ✓ |
+| Sanitizers | clean | ASan/UBSan run on the whole tree (see STATE.md once the run finishes) | pending |
+| CI | green | run on milestone/m1-core-dsp (see STATE.md) | pending |
 
 ## Decisions made without asking (link ADRs)
-- ADR-0001: tarball + SHA256 pins for JUCE/Catch2 (a full JUCE git clone took > 30 min on this network and was killed); Universal binary opt-in locally, ON in CI; hidden symbol visibility for all our targets (a sanitized bundle otherwise coalesced weak JUCE symbols with the host's).
-- ADR-0002: reserved `bypass`/`trim_db`; native-unit smoothing processed at block rate with linear gain ramps; delta listen as UI state; preset format.
-- Phase rotation defined as a first-order all-pass with −θ at 100 Hz (θ 0–179°); DC block as a 10 Hz TPT one-pole with double state.
-- Gain match uses a 400 ms RMS on channel 0 until the BS.1770 meter lands in M5.
-- Inter (OFL) bundled as the UI typeface; readouts right-aligned in fixed boxes instead of OpenType tabular figures.
-- clap-validator added next to pluginval for the CLAP format (pluginval does not load CLAP).
-- `setStateInformation` requests a host parameter rescan (required by CLAP hosts).
-- The AU is installed temporarily into `~/Library/Audio/Plug-Ins/Components` for validation and removed afterwards (`MM_KEEP_AU=1` keeps it).
-- Milestone gates do not wait for sign-off (user instruction 2026-11-01); reviewer notes are collected afterwards.
+Recorded as rulings in the execution ledger; the architectural ones:
+- Matched biquads use a general three-point magnitude match to the RBJ analog prototypes (DC, Nyquist, f0) with impulse-invariant poles; above ~0.45 fs (or when no real solution exists) they fall back to RBJ. The ±0.1 dB test compares each design to its own transfer function; matched-vs-analog is reported (< 0.5 dB vs RBJ > 0.5 dB at 10 kHz / 44.1 k).
+- Crossovers run in double (float LR4 reads 7 dB off at −96 dB at 192 kHz); mm_core stays header-only and links `juce::juce_dsp` as an interface.
+- Compressor ballistics act on the static gain reduction in the log domain (Giannoulis 2012). On a 1 kHz sine with a peak detector the settled reduction is 13.7 dB instead of 15 and the apparent attack 1.57× (half-cycle ripple); static curves are measured with the RMS detector and times with DC steps, with the tone-burst behaviour recorded for ADR-0004.
+- Smoothers keep double state (float one-poles stall below one ulp at 192 kHz); exponential mode designed to 1/1100 of the step at rampMs.
+- First-order ADAA; tape loop width maps to Chowdhury's `c`; tape aliasing gated at 8×.
+- The oversampler's test gates its own suppression (4× ≥ 30 dB, 8× ≥ 50 dB over 1×) because the plan's +18 dB tanh at 4× cannot reach −80 dBFS (see Questions).
 
 ## Known gaps / deferred
-- AAX: no SDK available; format skipped at configure. Enable with `-DMM_AAX_SDK_PATH=…`.
-- Preset browser overlay (search, tags, favourites) is a popup menu until M6; MIDI learn / macros / accessibility labels beyond parameter names deferred to M6.
-- The 1-hour parameter fuzz lands with M2 (nightly placeholder exists).
-- Listening gate not applicable to Utility.
-- Windows/Linux pluginval results come from CI (no local machines).
+- **Spec question (M3):** "alias products below −80 dBFS with oversampling on" at 19 kHz and full drive. With tanh at +18 dB (a near square wave) the 9th/11th harmonics wrap inside the 4× domain; measured worst alias, tanh: 4×+ADAA1 −67/−44/−68 dBFS at 44.1/48/96 k; 8×+ADAA1 −68/−68/−97; at +12 dB 8×+ADAA1 −91/−95/−100; at +6 dB 4×+ADAA1 −80/−83/−112. M3 must choose: define full drive at the level where the gate holds, use 8×, or add second-order ADAA.
+- **Risk (M3):** tape hysteresis costs 311 ns/sample (RK4 at the oversampled rate): ~11 % CPU for a stereo instance at 4×, against a 1 % saturation budget. Needs a cheaper integrator (RK2 / Newton–Raphson), vectorisation, or 2× for tape mode.
+- Direct-form FIR at 255 taps is 388 ns/sample; M5's linear-phase engine uses partitioned FFT convolution as planned.
+- Lagrange-3 droops ~1 dB at 0.25 fs for half-sample delays (recorded); Thiran-1 is flat.
+- Soft clipper with a quadratic knee aliases more than tanh (−70/−77 dBFS at +6 dB, 4×; −97/−98 at 8×): its gate is met in M5 with 8×.
+- True-peak detector, LUFS and LRA metering land in M5 per the roadmap.
 
 ## How to try it (exact commands, which DAW, which preset)
 ```
-brew install cmake ninja            # macOS
-uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r tests/requirements.txt
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
-ctest --test-dir build --output-on-failure
-.venv/bin/python -m pytest tests -q -n auto
-.venv/bin/python tools/measure.py --plugin utility --all
-tools/run_pluginval.sh utility
-.venv/bin/python tools/bench_cpu.py --plugin utility --instances 100
-./build/tools/snapshot/mm_snapshot shots 1.0        # editor PNGs, dark + light
-open build/plugins/utility/utility_artefacts/Release/Standalone/Utility.app
+ctest --test-dir build --output-on-failure          # 88 C++ tests
+.venv/bin/python -m pytest tests/core -q -n auto    # measurement suite (~700 cases)
+.venv/bin/python tools/measure.py --module biquad   # one module's numbers
+./build/tools/render/mm_render_artefacts/Release/mm_render --list-modules
+./build/tools/bench/mm_bench_core                   # ns/sample per module
 ```
-DAW: copy `build/plugins/utility/utility_artefacts/Release/VST3/Utility.vst3` to `~/Library/Audio/Plug-Ins/VST3` (or run `MM_KEEP_AU=1 tools/run_pluginval.sh utility` to leave the AU installed), load Utility in Reaper or Logic, try preset "Phase Rotate 90" on a kick and "Mono Check" on the mix bus.
+No new plugin in this milestone; the Utility plugin from M0 is unchanged.
 
 ## Questions for the reviewer (only if any)
-1. GitHub repo `higirobruce/mix-master-suite` (private) was created for CI. Keep, or move to an org?
-2. Is an AAX SDK coming? Until then AAX stays a documented gap.
-3. M1 filter tolerance: ±0.1 dB / ±2° is tested against each design's own discrete transfer function; the matched-vs-analog gap will be reported separately. Confirm this reading of the spec.
+1. Aliasing gate at full drive (see Known gaps): which of the three resolutions do you want for M3?
+2. Matched-biquad tolerance: the ±0.1 dB gate is against each design's own transfer function; the matched-vs-analog residual is reported, not gated. Confirm.
+3. Compressor timing: the 10 % attack/release gate is measured on DC steps; sine-burst behaviour is recorded. Confirm that reading of "step and tone-burst tests".
