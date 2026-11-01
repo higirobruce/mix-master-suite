@@ -7,6 +7,8 @@
 #include "core/filters/LinkwitzRiley.h"
 #include "core/delay/FractionalDelayLine.h"
 #include "core/dynamics/Detector.h"
+#include "core/nonlinear/ADAA.h"
+#include "core/nonlinear/Waveshapers.h"
 #include "core/oversampling/Oversampler.h"
 #include "core/dynamics/EnvelopeFollower.h"
 #include "core/dynamics/GainComputer.h"
@@ -639,6 +641,78 @@ private:
     int block = 0, ch = 2, factor = 4;
     float drive = 1.0f;
 };
+// Waveshaper stage: oversampling + optional first-order ADAA. params: shape {0 tanh,1 atan,2 asym,3 softclip,4 hardclip},
+// drive_db, bias, knee, adaa {0,1}, oversample {1,2,4,8}
+class WaveshaperModule : public Module
+{
+public:
+    void prepare(double sampleRate, int maxBlock, int channels) override
+    {
+        sr = sampleRate;
+        block = maxBlock;
+        ch = channels;
+        os.prepare(sr, block, ch, factor);
+        reset();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "shape") shape = static_cast<int>(v);
+        else if (id == "drive_db") drive = mm::dbToGain(static_cast<float>(v));
+        else if (id == "bias") bias = static_cast<float>(v);
+        else if (id == "knee") knee = static_cast<float>(v);
+        else if (id == "adaa") adaa = v >= 0.5;
+        else if (id == "oversample")
+        {
+            factor = static_cast<int>(v);
+            if (block > 0)
+                os.prepare(sr, block, ch, factor);
+        }
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        juce::dsp::AudioBlock<float> in(buf, static_cast<size_t>(channels), 0, static_cast<size_t>(n));
+        auto up = os.up(in);
+        for (size_t c = 0; c < up.getNumChannels() && c < 2; ++c)
+        {
+            float* p = up.getChannelPointer(c);
+            float& x1 = state[c];
+            for (size_t i = 0; i < up.getNumSamples(); ++i)
+                p[i] = shapeSample(p[i] * drive, x1);
+        }
+        os.down(in);
+    }
+    int latencySamples() const override { return os.latencySamples(); }
+    void reset() override
+    {
+        os.reset();
+        state[0] = state[1] = 0.0f;
+    }
+
+private:
+    float shapeSample(float x, float& x1) noexcept
+    {
+        using namespace mm::shape;
+        const float b = bias, k = knee;
+        switch (shape)
+        {
+        case 0: return adaa ? mm::adaa1Step(tanhS, tanhAD1, x, x1) : tanhS(x);
+        case 1: return adaa ? mm::adaa1Step(atanS, atanAD1, x, x1) : atanS(x);
+        case 2:
+            return adaa ? mm::adaa1Step([b](float v) { return asym(v, b); }, [b](float v) { return asymAD1(v, b); }, x, x1)
+                        : asym(x, b);
+        case 3:
+            return adaa ? mm::adaa1Step([k](float v) { return softClip(v, k); }, [k](float v) { return softClipAD1(v, k); }, x, x1)
+                        : softClip(x, k);
+        default: return adaa ? mm::adaa1Step(hardClip, hardClipAD1, x, x1) : hardClip(x);
+        }
+    }
+    mm::Oversampler os;
+    double sr = 48000.0;
+    int block = 0, ch = 2, factor = 4, shape = 0;
+    float drive = 1.0f, bias = 0.0f, knee = 0.5f;
+    bool adaa = true;
+    float state[2] = {0.0f, 0.0f};
+};
 } // namespace
 
 void registerCoreModules()
@@ -657,5 +731,6 @@ void registerCoreModules()
     r.add("compressor_core", [] { return std::make_unique<CompressorCoreModule>(); });
     r.add("delay", [] { return std::make_unique<DelayModule>(); });
     r.add("oversampled_tanh", [] { return std::make_unique<OversampledTanhModule>(); });
+    r.add("waveshaper", [] { return std::make_unique<WaveshaperModule>(); });
 }
 } // namespace mmr
