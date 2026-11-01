@@ -1,6 +1,8 @@
 #include "tools/render/ModuleRegistry.h"
 #include "core/filters/AllPass.h"
 #include "core/filters/Biquad.h"
+#include "core/filters/FIRDesign.h"
+#include "core/filters/FIRFilter.h"
 #include "core/filters/OnePole.h"
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/MatchedBiquad.h"
@@ -301,6 +303,45 @@ private:
     mm::SecondOrderAllPass<float> ap[2];
     double freq = 1000.0, q = 0.7071;
 };
+// Windowed-sinc FIR. params: taps, cutoff_norm, window {0 hann,1 hamming,2 blackman,3 kaiser}, beta
+class FirModule : public Module
+{
+public:
+    void prepare(double, int, int channels) override
+    {
+        fir.prepare(16385, channels);
+        prepared = true;
+        design();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "taps") taps = static_cast<int>(v);
+        else if (id == "cutoff_norm") cutoff = v;
+        else if (id == "window") window = static_cast<mm::fir::Window>(static_cast<int>(v));
+        else if (id == "beta") beta = v;
+        if (prepared)
+            design();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels; ++ch)
+            fir.process(buf[ch], n, ch);
+    }
+    int latencySamples() const override { return fir.latencySamples(); }
+    void reset() override { fir.reset(); }
+
+private:
+    void design()
+    {
+        const auto h = mm::fir::windowedSinc(taps, cutoff, window, beta);
+        fir.setTaps(h.data(), static_cast<int>(h.size()));
+    }
+    mm::FIRFilter<float> fir;
+    bool prepared = false;
+    int taps = 63;
+    double cutoff = 0.25, beta = 8.6;
+    mm::fir::Window window = mm::fir::Window::Kaiser;
+};
 } // namespace
 
 void registerCoreModules()
@@ -313,5 +354,6 @@ void registerCoreModules()
     r.add("onepole", [] { return std::make_unique<OnePoleModule>(); });
     r.add("allpass1", [] { return std::make_unique<AllPass1Module>(); });
     r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
+    r.add("fir", [] { return std::make_unique<FirModule>(); });
 }
 } // namespace mmr
