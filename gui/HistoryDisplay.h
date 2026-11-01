@@ -22,6 +22,7 @@ public:
     float thresholdDb() const noexcept { return threshold; }
     std::function<void(float thresholdDb)> onThresholdChange; // user dragged the line
     void setShadeClosed(bool shade) noexcept { shadeClosed = shade; }
+    bool shadesClosed() const noexcept { return shadeClosed; }
 
     float yForDb(float db) const noexcept;
     float dbForY(float y) const noexcept;
