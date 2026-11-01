@@ -43,6 +43,7 @@ public:
 
     void process(T x, T& low, T& high) noexcept
     {
+        low = high = T(0);
         switch (order)
         {
         case Order::LR2:

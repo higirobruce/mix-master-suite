@@ -73,7 +73,7 @@ int main()
     lr.prepare(kSr);
     lr.setOrder(mm::LrOrder::LR4);
     lr.setCrossover(1000.0);
-    rows.push_back({"lr4_double", nsPerSample([&](float v) { double lo, hi; lr.process(v, lo, hi); return static_cast<float>(lo + hi); }, x)});
+    rows.push_back({"lr4_double", nsPerSample([&](float v) { double lo = 0.0, hi = 0.0; lr.process(v, lo, hi); return static_cast<float>(lo + hi); }, x)});
     mm::FIRFilter<float> fir;
     fir.prepare(255, 1);
     auto taps = mm::fir::windowedSinc(255, 0.25, mm::fir::Window::Kaiser);
