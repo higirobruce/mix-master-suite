@@ -109,3 +109,25 @@ TEST_CASE("matched designs are finite and bounded at the edges")
                     REQUIRE(peak < 20.0f);
                 }
 }
+
+TEST_CASE("matched high shelf response is continuous as f0 sweeps through the Nyquist fallback region")
+{
+    const double sr = 44100.0;
+    double prev18 = 0.0, prev20 = 0.0;
+    bool first = true;
+    for (double f0 = 12000.0; f0 <= 20000.0; f0 *= 1.01)
+    {
+        const auto c = mm::matched::highShelf(sr, f0, 12.0, 0.7);
+        const double at18 = 20.0 * std::log10(std::abs(mm::evaluate(c, sr, 18000.0)));
+        const double at20 = 20.0 * std::log10(std::abs(mm::evaluate(c, sr, 20000.0)));
+        INFO("f0 " << f0 << " 18k " << at18 << " 20k " << at20);
+        if (!first)
+        {
+            REQUIRE(std::abs(at18 - prev18) < 0.5); // 1 % f0 step: < 0.5 dB change
+            REQUIRE(std::abs(at20 - prev20) < 0.5);
+        }
+        prev18 = at18;
+        prev20 = at20;
+        first = false;
+    }
+}

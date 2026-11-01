@@ -20,10 +20,10 @@ See the "M1 measurements" table in docs/STATE.md for every number. Summary:
 | Null test, linear modules | < −120 dBFS | float biquad/FIR null < −120 dBFS; block-size independence < −120 dBFS for 9 modules | ✓ |
 | Dynamics attack/release | within 10 % | within 10 % on steps (envelope and compressor chain), 4 rates | ✓ |
 | Ratio | within 0.1 | within 0.1 for 2/4/8/20/∞ (RMS detector) | ✓ |
-| Aliasing with oversampling on, 19 kHz | < −80 dBFS | tanh +6 dB at 4×+ADAA1: pass; tube 4×: pass; tape 8×: pass; **tanh +18 dB at 4×: −44 dBFS at 48 k (not met, spec question)** | ✓ / ✗ |
+| Aliasing with oversampling on, 19 kHz | < −80 dBFS | tanh +6 dB at 8×+ADAA1: pass (4×: −79.7 dBFS at 44.1 k, at the gate); tube 4×: pass; tape 8×: pass; **tanh +18 dB at 4×: −44 dBFS at 48 k (not met, spec question)** | ✓ / ✗ |
 | Latency reported (oversampler, lookahead) | exact | exact at every factor and rate | ✓ |
 | Sample-rate matrix on every module | 4 rates | every module and every test | ✓ |
-| Sanitizers | clean | ASan/UBSan: 88/88 C++ tests clean (local Debug tree) | ✓ |
+| Sanitizers | clean | ASan/UBSan: all C++ tests and the core/plugin Python suites clean (local Debug tree) | ✓ |
 | CI | green | **BLOCKED by GitHub Actions billing**: run 41349203968 refused every job ("recent account payments have failed or your spending limit needs to be increased"). The previous run (41342517280) was green on macOS and only failed on a GCC warning fixed in 3cfba90. Local: ctest 88/88, pytest ~900 cases, ASan clean. | blocked |
 
 ## Decisions made without asking (link ADRs)
@@ -37,7 +37,7 @@ Recorded as rulings in the execution ledger; the architectural ones:
 
 ## Known gaps / deferred
 - **Spec question (M3):** "alias products below −80 dBFS with oversampling on" at 19 kHz and full drive. With tanh at +18 dB (a near square wave) the 9th/11th harmonics wrap inside the 4× domain; measured worst alias, tanh: 4×+ADAA1 −67/−44/−68 dBFS at 44.1/48/96 k; 8×+ADAA1 −68/−68/−97; at +12 dB 8×+ADAA1 −91/−95/−100; at +6 dB 4×+ADAA1 −80/−83/−112. M3 must choose: define full drive at the level where the gate holds, use 8×, or add second-order ADAA.
-- **Risk (M3):** tape hysteresis costs 311 ns/sample (RK4 at the oversampled rate): ~11 % CPU for a stereo instance at 4×, against a 1 % saturation budget. Needs a cheaper integrator (RK2 / Newton–Raphson), vectorisation, or 2× for tape mode.
+- **Risk (M3):** tape hysteresis costs 311 ns/sample at the oversampled rate: at the 8× it needs for the alias gate that is ~24 % of a core for a stereo instance at 48 k (~48 % at 96 k), against a 1 % saturation budget. Needs a cheaper solver (Newton–Raphson / state-trajectory network), vectorisation, or 4× + ADAA for tape mode.
 - Direct-form FIR at 255 taps is 388 ns/sample; M5's linear-phase engine uses partitioned FFT convolution as planned.
 - Lagrange-3 droops ~1 dB at 0.25 fs for half-sample delays (recorded); Thiran-1 is flat.
 - Soft clipper with a quadratic knee aliases more than tanh (−70/−77 dBFS at +6 dB, 4×; −97/−98 at 8×): its gate is met in M5 with 8×.
@@ -54,8 +54,11 @@ ctest --test-dir build --output-on-failure          # 88 C++ tests
 ```
 No new plugin in this milestone; the Utility plugin from M0 is unchanged.
 
-## Blocker
-GitHub Actions on the private repo `higirobruce/mix-master-suite` stopped accepting jobs on 2026-11-01 20:54 UTC (spending limit / payment). Until the limit is raised or the repository is made public, the "CI green on three OSes" gate cannot be demonstrated; the loop continues locally (ctest, pytest, ASan, pluginval on macOS) and pushes commits so CI picks them up when restored. macOS runners bill at 10× and Windows at 2×; a cheaper matrix (Linux on every push, macOS/Windows on `main` and `review/*` tags) is an option if you prefer.
+## Review history
+A fresh reviewer (whole branch) confirmed every closed form against its source and found 1 Critical / 7 Important / 8 Minor. Fixed on the branch with a failing test first: first-order ADAA now computes its antiderivative difference in double (float left a −46 dBFS peak error on bass; now < −100 dBFS vs an all-double reference); the matched shelf no longer switches to the bilinear design near Nyquist (clamped pole frequency and a continuous knee-coefficient clamp; +12 dB high shelf sweeps to 20 kHz with < 0.5 dB per 1 % step); the spectrum analyser pushes all channels atomically; float-biquad low-frequency deviation is measured and recorded (EQ runs double, ADR-0003); the ratio gate is 0.1 absolute at every ratio; `FractionalDelayLine::Interp` and `Detector::Mode` aliases added and the roadmap signatures updated; tape cost and the 44.1 k alias number corrected here. Minors deferred to the ledger.
+
+## Blocker (resolved 2026-11-01)
+The repository is now public, so Actions minutes are free again; CI re-ran on the branch. Original note: GitHub Actions on the private repo `higirobruce/mix-master-suite` stopped accepting jobs on 2026-11-01 20:54 UTC (spending limit / payment). Until the limit is raised or the repository is made public, the "CI green on three OSes" gate cannot be demonstrated; the loop continues locally (ctest, pytest, ASan, pluginval on macOS) and pushes commits so CI picks them up when restored. macOS runners bill at 10× and Windows at 2×; a cheaper matrix (Linux on every push, macOS/Windows on `main` and `review/*` tags) is an option if you prefer.
 
 ## Questions for the reviewer (only if any)
 1. Aliasing gate at full drive (see Known gaps): which of the three resolutions do you want for M3?

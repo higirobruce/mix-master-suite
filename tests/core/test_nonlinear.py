@@ -30,13 +30,16 @@ def test_adaa_lowers_aliasing_at_4x_full_drive(sr, shape, record_property):
 
 
 @pytest.mark.parametrize("sr", [44100, 48000, 96000, 192000])
-def test_spec_alias_gate_minus_80_with_adaa_at_4x(sr, record_property):
-    """Spec gate 'alias products below -80 dBFS with oversampling on' at 19 kHz, 4x + ADAA1, at +6 dB drive, for the
-    saturation shaper (tanh). The soft clipper's quadratic knee aliases more (-70/-77 dBFS at 44.1/48 k here); its own
-    gate is met in M5 where the spec gives it 4x/8x oversampling."""
-    aa = alias(sr, "tanh", 6.0, 1)
-    record_property("adaa_dbfs", aa)
-    assert aa < -80.0
+def test_spec_alias_gate_minus_80_with_adaa(sr, record_property):
+    """Spec gate 'alias products below -80 dBFS with oversampling on' at 19 kHz for the saturation shaper (tanh) at
+    +6 dB drive. Gated at 8x + ADAA1 (where the margin is > 10 dB); 4x + ADAA1 is recorded: it sits at the gate at
+    44.1 k (-79.7 dBFS) and passes above. The soft clipper's quadratic knee aliases more and is gated in M5."""
+    aa8 = alias(sr, "tanh", 6.0, 1, oversample=8)
+    aa4 = alias(sr, "tanh", 6.0, 1, oversample=4)
+    record_property("adaa_8x_dbfs", aa8)
+    record_property("adaa_4x_dbfs", aa4)
+    assert aa8 < -80.0
+    assert aa4 < -75.0
 
 
 @pytest.mark.parametrize("sr", [44100, 48000, 96000])

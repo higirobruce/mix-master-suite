@@ -7,7 +7,7 @@ Updated: 2026-11-01
 | Milestone | Status | Branch | Review tag |
 | --- | --- | --- | --- |
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
-| M1 Core DSP | built; CI pending; review tag on green | milestone/m1-core-dsp | review/m1-core-dsp (after CI) |
+| M1 Core DSP | built; review fix pass done; CI re-running (repo public) | milestone/m1-core-dsp | review/m1-core-dsp (after CI) |
 | M2 Channel essentials | planned (roadmap) | — | — |
 | M3 Colour and space | planned (roadmap) | — | — |
 | M4 Stereo and vocal | planned (roadmap) | — | — |
@@ -83,18 +83,18 @@ Exit criteria (CLAUDE.md, verbatim): "filters (biquad, matched, FIR, Linkwitz–
 
 | Criterion | Target | Measured | Date |
 | --- | --- | --- | --- |
-| Biquad (7 RBJ types) vs analytic, 20 Hz–min(20 k, 0.45 fs), 4 rates | ±0.1 dB / ±2° | pass (C++ 65k-point IR; Python 172 cases vs scipy) | 2026-11-01 |
-| Matched biquads vs own transfer; DC/Nyquist/f0 equal analog | ±0.1 dB / ±2°; 1e-6 dB | pass; matched < 0.5 dB vs analog at 10 kHz/44.1 k where RBJ > 0.5 dB | 2026-11-01 |
+| Biquad (7 RBJ types) vs analytic, 20 Hz–min(20 k, 0.45 fs), 4 rates | ±0.1 dB / ±2° | pass in double (C++ 65k-point IR; Python 172 cases vs scipy, double path). Float coefficients at 20 Hz / Q 10 / 192 k deviate up to ~4 dB (recorded): EQ filters run in double (ADR-0003) | 2026-11-01 |
+| Matched biquads vs own transfer; DC/Nyquist/f0 equal analog; f0 sweep continuity | ±0.1 dB / ±2°; 1e-6 dB; < 0.5 dB per 1 % step | pass; matched < 0.5 dB vs analog at 10 kHz/44.1 k where RBJ > 0.5 dB; high shelf +12 dB continuous to 20 kHz | 2026-11-01 |
 | SVF 8 modes vs analytic; 10 s Q 10 cutoff modulation | ±0.1 dB / ±2°; finite | pass | 2026-11-01 |
 | One-pole / all-pass vs analytic | ±0.1 dB / ±2°; all-pass flat ±0.01 dB | pass (48 Python cases) | 2026-11-01 |
 | FIR: Kaiser 255 taps, DC 1.0, −80 dB stopband, 0.01 dB ripple; vs scipy firwin | pass | pass; float path null < −120 dBFS | 2026-11-01 |
 | Linkwitz–Riley LR2/4/8 vs Butterworth² reference; low+high all-pass | ±0.1 dB / ±2°; ±0.01 dB | pass (double crossovers) | 2026-11-01 |
 | Envelope attack/release 10–90 % (0.1–100 ms / 10–2000 ms), 4 rates | within 10 % | pass; DC-step compressor chain 1/10/100 ms and 50/300/1000 ms within 10 % | 2026-11-01 |
-| Static ratio 2/4/8/20/∞ (RMS detector) | within 0.1 | pass; 1:1 null < −90 dBFS | 2026-11-01 |
+| Static ratio 2/4/8/20/∞ (RMS detector) | within 0.1 | pass, tolerance 0.1 absolute at every ratio (∞: slope < 0.005); 1:1 null < −90 dBFS | 2026-11-01 |
 | Lookahead latency reported == measured; no overshoot above threshold + 0.5 dB | pass | pass (240 samples at 5 ms / 48 k) | 2026-11-01 |
 | Fractional delay echo time, 4 rates | ±0.05 ms | pass (Lagrange3 and Thiran1) | 2026-11-01 |
 | Oversampler latency exact; passthrough flat to 0.4 fs | ±0; ±0.01 dB | pass for 1/2/4/8× at 4 rates | 2026-11-01 |
-| Alias gate 19 kHz, 4× + ADAA1, tanh +6 dB | < −80 dBFS | −82.5 (44.1 k), −82.5 (48 k), −112 (96 k), −141 (192 k) | 2026-11-01 |
+| Alias gate 19 kHz, tanh +6 dB, ADAA1 (double antiderivatives) | < −80 dBFS | 8×: −121 / −102 / −109 / −141 at 44.1/48/96/192 k (gated); 4×: −79.7 / −82.5 / −113 / −142 (recorded; 44.1 k sits at the gate) | 2026-11-01 |
 | Alias at +18 dB (full drive), 4× + ADAA1, tanh | < −80 dBFS (spec) | **not met**: −67 / −44 / −68 / −105 at 44.1/48/96/192 k (spec question for M3) | 2026-11-01 |
 | Tube alias 4× (drive 1, bias 0.5) | < −80 dBFS | −92 / −98 / −136 | 2026-11-01 |
 | Tape alias (drive/sat/width 0.5) | < −80 dBFS | 8×: −89 / −90 / −91; 4×: −68 / −80 / −90 | 2026-11-01 |

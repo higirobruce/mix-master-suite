@@ -55,8 +55,10 @@ inline double mag2(FilterType t, double f0, double g, double q, double hz) noexc
 }
 inline double clampFreq(double f, double sr) noexcept { return std::clamp(f, 1.0, 0.499 * sr); }
 
-// Shelves and peak: match |H|^2 to the analog prototype at DC, Nyquist and f0. When the scaled pole frequency
-// passes Nyquist (shelves far above ~0.45 fs) the match has no real solution; fall back to the bilinear design.
+// Shelves and peak: match |H|^2 to the analog prototype at DC, Nyquist and f0. The scaled pole frequency of a
+// shelf (w0*sqrt(A)) can pass Nyquist; it is clamped to 0.9 pi so the response stays continuous while the
+// three-point numerator still pins DC, Nyquist and f0 exactly. The bilinear design is only a last resort when the
+// match has no real solution.
 inline BiquadCoeffs<double> bilinearFallback(FilterType t, double sr, double f0, double g, double q) noexcept
 {
     switch (t)
@@ -69,8 +71,7 @@ inline BiquadCoeffs<double> bilinearFallback(FilterType t, double sr, double f0,
 
 inline BiquadCoeffs<double> threePoint(FilterType t, double sr, double f0, double g, double q, double wp, double zeta) noexcept
 {
-    if (wp >= 0.98 * std::numbers::pi)
-        return bilinearFallback(t, sr, f0, g, q);
+    wp = std::min(wp, 0.9 * std::numbers::pi);
     const double w0 = 2.0 * std::numbers::pi * f0 / sr;
     const Poles p = poles(wp, zeta);
     const double phi1 = std::sin(0.5 * w0) * std::sin(0.5 * w0);
@@ -79,11 +80,15 @@ inline BiquadCoeffs<double> threePoint(FilterType t, double sr, double f0, doubl
     const double D0 = p.A0 * phi0 + p.A1 * phi1 + p.A2 * phi2; // |D|^2 at w0
     const double B0 = p.A0 * mag2(t, f0, g, q, 0.0);
     const double B1 = p.A1 * mag2(t, f0, g, q, 0.5 * sr);
-    const double B2 = (mag2(t, f0, g, q, f0) * D0 - B0 * phi0 - B1 * phi1) / phi2;
-    const double W = 0.5 * (std::sqrt(B0) + std::sqrt(B1));
-    if (!(W * W + B2 >= 0.0) || !(B0 >= 0.0) || !(B1 >= 0.0))
+    double B2 = (mag2(t, f0, g, q, f0) * D0 - B0 * phi0 - B1 * phi1) / phi2;
+    if (!(B0 >= 0.0) || !(B1 >= 0.0))
         return bilinearFallback(t, sr, f0, g, q);
-    const double b0 = 0.5 * (W + std::sqrt(W * W + B2));
+    const double W = 0.5 * (std::sqrt(B0) + std::sqrt(B1));
+    // Above ~0.35 fs a +12 dB shelf's f0 match has no real root: clamp B2 so DC and Nyquist stay exact and the f0
+    // match degrades continuously instead of switching designs (a 2 dB step in the response otherwise).
+    B2 = std::max(B2, -W * W);
+    const double disc = std::max(0.0, W * W + B2); // the clamp can leave W*W + B2 a rounding error below zero
+    const double b0 = 0.5 * (W + std::sqrt(disc));
     if (!(b0 > 0.0) || !std::isfinite(b0))
         return bilinearFallback(t, sr, f0, g, q);
     const double b1 = 0.5 * (std::sqrt(B0) - std::sqrt(B1));

@@ -92,16 +92,18 @@ def matched(kind: str, sr: float, f0: float, gain_db: float = 0.0, q: float = 0.
         b0 = q * np.sqrt(D0) / (4 * phi1)
         b1, b2 = -2 * b0, b0
     else:
-        if wp >= 0.98 * np.pi:
-            return rbj(kind, sr, f0, gain_db, q)  # no real matched solution: bilinear fallback (as in C++)
+        wp = min(wp, 0.9 * np.pi)  # clamped pole frequency (as in C++): continuous response near Nyquist
+        a2 = np.exp(-2 * zeta * wp)
+        a1 = -2 * np.exp(-zeta * wp) * (np.cos(wp * np.sqrt(1 - zeta * zeta)) if zeta <= 1 else np.cosh(wp * np.sqrt(zeta * zeta - 1)))
+        A0, A1, A2 = (1 + a1 + a2) ** 2, (1 - a1 + a2) ** 2, -4 * a2
+        D0 = A0 * phi0 + A1 * phi1 + A2 * phi2
         T0 = analog_prototype(kind, f0, gain_db, q, 0.0)
         Tn = analog_prototype(kind, f0, gain_db, q, sr / 2)
         Tw = analog_prototype(kind, f0, gain_db, q, f0)
         B0, B1 = A0 * T0, A1 * Tn
         B2 = (Tw * D0 - B0 * phi0 - B1 * phi1) / phi2
         W = 0.5 * (np.sqrt(B0) + np.sqrt(B1))
-        if W * W + B2 < 0:
-            return rbj(kind, sr, f0, gain_db, q)
+        B2 = max(B2, -W * W)  # continuous degradation of the f0 match (as in C++)
         b0 = 0.5 * (W + np.sqrt(W * W + B2))
         b1 = 0.5 * (np.sqrt(B0) - np.sqrt(B1))
         b2 = -B2 / (4 * b0)

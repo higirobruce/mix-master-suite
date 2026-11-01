@@ -114,3 +114,25 @@ TEST_CASE("biquad stays stable while coefficients sweep every sample")
     }
     REQUIRE(peak < 16.0f); // < +24 dB
 }
+
+TEST_CASE("float biquad at 20 Hz / high Q / 192 kHz: double meets the spec, float deviation is recorded")
+{
+    const double sr = 192000.0;
+    const auto c = mm::rbj::peak(sr, 20.0, 6.0, 10.0);
+    mm::Biquad<double> bd;
+    bd.setCoeffs(c);
+    mm::Biquad<float> bf;
+    bf.setCoeffs(mm::BiquadCoeffs<float>::fromDouble(c));
+    const auto irD = mm::test::impulseResponse([&](double x) { return bd.process(x); }, 1 << 20);
+    const auto irF = mm::test::impulseResponse([&](double x) { return static_cast<double>(bf.process(static_cast<float>(x))); }, 1 << 20);
+    double worstD = 0.0, worstF = 0.0;
+    for (double f : {15.0, 20.0, 25.0, 40.0, 100.0})
+    {
+        const auto e = mm::evaluate(c, sr, f);
+        worstD = std::max(worstD, std::abs(mm::test::magDb(mm::test::responseAt(irD, sr, f)) - mm::test::magDb(e)));
+        worstF = std::max(worstF, std::abs(mm::test::magDb(mm::test::responseAt(irF, sr, f)) - mm::test::magDb(e)));
+    }
+    INFO("double worst " << worstD << " dB, float worst " << worstF << " dB");
+    REQUIRE(worstD < 0.1);
+    REQUIRE(worstF < 6.0); // characterisation: float coefficients at 20 Hz / 192 k are not EQ-grade (ADR-0003: EQ runs double)
+}

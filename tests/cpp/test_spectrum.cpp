@@ -18,7 +18,7 @@ TEST_CASE("spectrum analyser reads a 0 dBFS sine at the right bin and level")
     bool got = false;
     for (size_t i = 0; i + 64 <= x.size(); i += 64)
     {
-        sa.push(x.data() + i, 64, 0);
+        { const float* ch[1] = {x.data() + i}; sa.push(ch, 1, 64); }
         if (sa.nextFrame(mag))
             got = true;
     }
@@ -53,10 +53,30 @@ TEST_CASE("spectrum analyser push/nextFrame from two threads loses nothing")
     const int blocks = 4096 * 50 / 64; // 50 full windows
     for (int b = 0; b < blocks; ++b)
     {
-        while (!sa.push(block.data(), 64, 0))
+        const float* ch[1] = {block.data()};
+        while (!sa.push(ch, 1, 64))
             std::this_thread::yield();
     }
     done = true;
     consumer.join();
     REQUIRE(frames.load() >= 49); // 50 % overlap gives ~2 frames per window; at least one per window
+}
+
+TEST_CASE("spectrum analyser pushes all channels atomically")
+{
+    mm::SpectrumAnalyser sa;
+    sa.prepare(48000.0, 10, 2); // 1024-point, capacity 4096 per channel
+    std::vector<float> l(64, 0.5f), r(64, -0.5f);
+    const float* chans[2] = {l.data(), r.data()};
+    // fill the ring nearly full, then a push that cannot fit must be rejected for BOTH channels (nothing committed)
+    int accepted = 0;
+    for (int i = 0; i < 200; ++i)
+        if (sa.push(chans, 2, 64))
+            ++accepted;
+    REQUIRE(accepted == 63); // (capacity - 1) / 64
+    std::vector<float> mag;
+    REQUIRE(sa.nextFrame(mag));
+    // L + R average is zero for this signal: a desynchronised ring would leave non-zero bins
+    for (float v : mag)
+        REQUIRE(v < -100.0f);
 }

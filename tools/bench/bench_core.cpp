@@ -102,7 +102,7 @@ int main()
     dl.prepare(kSr, 1.0, 1);
     dl.setDelaySamples(1234.5f, 0);
     rows.push_back({"fractional_delay_lagrange3", nsPerSample([&](float v) { dl.push(v, 0); return dl.read(0); }, x)});
-    rows.push_back({"tanh_adaa", nsPerSample([&, adaa = mm::ADAA1<mm::shape::tanhS, mm::shape::tanhAD1>()](float v) mutable { return adaa.process(v * 4.0f); }, x)});
+    rows.push_back({"tanh_adaa", nsPerSample([&, adaa = mm::ADAA1<mm::shape::tanhS, mm::shape::tanhAD1D>()](float v) mutable { return adaa.process(v * 4.0f); }, x)});
     mm::TapeHysteresis tape;
     tape.prepare(kSr * 4);
     tape.set(0.5, 0.5, 0.5);

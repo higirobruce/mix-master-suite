@@ -34,7 +34,7 @@ def test_static_ratio_within_0p1(sr, ratio, record_property):
         if ratio >= 1000:
             assert slope < 0.005
         else:
-            assert abs(measured_ratio - ratio) < 0.1 * (1 if ratio <= 8 else ratio / 8)  # 0.1 absolute up to 8:1
+            assert abs(measured_ratio - ratio) < 0.1
 
 
 @pytest.mark.parametrize("sr", SAMPLE_RATES)

@@ -16,6 +16,7 @@ enum class DelayInterp
 template <typename T> class FractionalDelayLine
 {
 public:
+    using Interp = DelayInterp;
     void prepare(double sampleRate, double maxSeconds, int channels)
     {
         sr = sampleRate;

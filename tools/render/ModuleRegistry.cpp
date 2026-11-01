@@ -678,7 +678,7 @@ public:
         for (size_t c = 0; c < up.getNumChannels() && c < 2; ++c)
         {
             float* p = up.getChannelPointer(c);
-            float& x1 = state[c];
+            double& x1 = state[c];
             for (size_t i = 0; i < up.getNumSamples(); ++i)
                 p[i] = shapeSample(p[i] * drive, x1);
         }
@@ -688,25 +688,25 @@ public:
     void reset() override
     {
         os.reset();
-        state[0] = state[1] = 0.0f;
+        state[0] = state[1] = 0.0;
     }
 
 private:
-    float shapeSample(float x, float& x1) noexcept
+    float shapeSample(float x, double& x1) noexcept
     {
         using namespace mm::shape;
         const float b = bias, k = knee;
         switch (shape)
         {
-        case 0: return adaa ? mm::adaa1Step(tanhS, tanhAD1, x, x1) : tanhS(x);
-        case 1: return adaa ? mm::adaa1Step(atanS, atanAD1, x, x1) : atanS(x);
+        case 0: return adaa ? mm::adaa1Step(tanhS, tanhAD1D, x, x1) : tanhS(x);
+        case 1: return adaa ? mm::adaa1Step(atanS, atanAD1D, x, x1) : atanS(x);
         case 2:
-            return adaa ? mm::adaa1Step([b](float v) { return asym(v, b); }, [b](float v) { return asymAD1(v, b); }, x, x1)
+            return adaa ? mm::adaa1Step([b](float v) { return asym(v, b); }, [b](double v) { return asymAD1D(v, b); }, x, x1)
                         : asym(x, b);
         case 3:
-            return adaa ? mm::adaa1Step([k](float v) { return softClip(v, k); }, [k](float v) { return softClipAD1(v, k); }, x, x1)
+            return adaa ? mm::adaa1Step([k](float v) { return softClip(v, k); }, [k](double v) { return softClipAD1D(v, k); }, x, x1)
                         : softClip(x, k);
-        default: return adaa ? mm::adaa1Step(hardClip, hardClipAD1, x, x1) : hardClip(x);
+        default: return adaa ? mm::adaa1Step(hardClip, hardClipAD1D, x, x1) : hardClip(x);
         }
     }
     mm::Oversampler os;
@@ -714,7 +714,7 @@ private:
     int block = 0, ch = 2, factor = 4, shape = 0;
     float drive = 1.0f, bias = 0.0f, knee = 0.5f;
     bool adaa = true;
-    float state[2] = {0.0f, 0.0f};
+    double state[2] = {0.0, 0.0};
 };
 // Tape hysteresis through the oversampler. params: drive, saturation, width (0..1), oversample
 class TapeModule : public Module

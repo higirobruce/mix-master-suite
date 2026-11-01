@@ -33,21 +33,23 @@ public:
         decayPerFrame = 20.0f * static_cast<float>(hop) / static_cast<float>(sr);
     }
 
-    // Audio thread. Returns false (and drops the block) if the ring is full.
-    bool push(const float* x, int n, int ch) noexcept
+    // Audio thread: all channels of one block in a single call, one free-space check, one commit, so the channels
+    // can never desynchronise. Returns false (and drops the whole block) if the ring is full.
+    bool push(const float* const* channels, int numChannelsIn, int n) noexcept
     {
-        if (ch >= numChannels)
-            return false;
         const int w = write.load(std::memory_order_relaxed);
         const int r = read.load(std::memory_order_acquire);
         const int free = capacity - 1 - ((w - r + capacity) % capacity);
         if (n > free)
             return false;
-        float* base = ring.data() + static_cast<size_t>(ch) * static_cast<size_t>(capacity);
-        for (int i = 0; i < n; ++i)
-            base[(w + i) % capacity] = x[i];
-        if (ch == numChannels - 1) // the last channel's push commits the block
-            write.store((w + n) % capacity, std::memory_order_release);
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            const float* x = channels[std::min(ch, numChannelsIn - 1)];
+            float* base = ring.data() + static_cast<size_t>(ch) * static_cast<size_t>(capacity);
+            for (int i = 0; i < n; ++i)
+                base[(w + i) % capacity] = x[i];
+        }
+        write.store((w + n) % capacity, std::memory_order_release);
         return true;
     }
 

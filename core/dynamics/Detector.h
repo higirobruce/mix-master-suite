@@ -15,6 +15,7 @@ enum class DetectorMode
 template <typename T> class Detector
 {
 public:
+    using Mode = DetectorMode;
     void prepare(double sampleRate) noexcept
     {
         sr = sampleRate;
