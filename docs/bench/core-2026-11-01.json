@@ -1,0 +1,16 @@
+{
+  "biquad_float": 7.62,
+  "biquad_double": 7.62,
+  "svf_float": 7.04,
+  "lr4_double": 13.86,
+  "fir_255_float": 388.19,
+  "smoother": 1.52,
+  "compressor_chain": 13.74,
+  "lookahead_5ms": 20.49,
+  "fractional_delay_lagrange3": 5.85,
+  "tanh_adaa": 13.33,
+  "tape_hysteresis": 310.92,
+  "tube": 3.58,
+  "rms_meter": 2.14,
+  "correlation": 1.52
+}
