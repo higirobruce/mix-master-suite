@@ -1,0 +1,17 @@
+# MM_SANITIZE=ON adds AddressSanitizer + UndefinedBehaviorSanitizer to Debug builds of our targets.
+function(mm_enable_sanitizers target)
+    if(NOT MM_SANITIZE)
+        return()
+    endif()
+    get_target_property(type ${target} TYPE)
+    if(type STREQUAL "INTERFACE_LIBRARY")
+        return()
+    endif()
+    if(MSVC)
+        target_compile_options(${target} PRIVATE $<$<CONFIG:Debug>:/fsanitize=address>)
+    else()
+        target_compile_options(${target} PRIVATE
+            $<$<CONFIG:Debug>:-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined>)
+        target_link_options(${target} PRIVATE $<$<CONFIG:Debug>:-fsanitize=address,undefined>)
+    endif()
+endfunction()

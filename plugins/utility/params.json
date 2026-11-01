@@ -1,0 +1,14 @@
+{
+  "plugin": {"id": "utility", "name": "Utility", "family": "utility", "version": "0.1.0", "code": "Util", "accent": "#D8DDE4"},
+  "params": [
+    {"id": "gain_db", "name": "Gain", "type": "float", "unit": "dB", "min": -24, "max": 24, "default": 0, "skew": 1.0, "smoothing_ms": 20},
+    {"id": "polarity_l", "name": "Polarity L", "type": "bool", "default": false},
+    {"id": "polarity_r", "name": "Polarity R", "type": "bool", "default": false},
+    {"id": "swap_lr", "name": "Swap L/R", "type": "bool", "default": false},
+    {"id": "mono_sum", "name": "Mono sum", "type": "bool", "default": false},
+    {"id": "dc_block", "name": "DC block", "type": "bool", "default": false},
+    {"id": "phase_rotation_deg", "name": "Phase rotation", "type": "float", "unit": "°", "min": 0, "max": 179, "default": 0, "skew": 1.0, "smoothing_ms": 20},
+    {"id": "mute_l", "name": "Mute L", "type": "bool", "default": false, "ai": false},
+    {"id": "mute_r", "name": "Mute R", "type": "bool", "default": false, "ai": false}
+  ]
+}
