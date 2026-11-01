@@ -3,6 +3,7 @@ include(Catch)
 add_executable(mm_core_tests
     test_smoke.cpp
     test_math.cpp
+    test_math_m1.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp
