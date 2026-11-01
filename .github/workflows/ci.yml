@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build-test:
+    name: build-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, windows-2022, ubuntu-22.04]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v3
+
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev ladspa-sdk libcurl4-openssl-dev \
+            libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Windows dependencies
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      - name: Python dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }} .venv
+          uv pip install --python .venv/bin/python -r tests/requirements.txt || uv pip install --python .venv/Scripts/python.exe -r tests/requirements.txt
+        shell: bash
+
+      - name: Cache fetched dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMM_UNIVERSAL_BINARY=ON
+        shell: bash
+      - name: Build
+        run: cmake --build build -j
+        shell: bash
+
+      - name: C++ tests
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a ctest --test-dir build --output-on-failure; else ctest --test-dir build --output-on-failure; fi
+        shell: bash
+
+      - name: Measurement suite
+        run: |
+          PY=.venv/bin/python; [ -f .venv/Scripts/python.exe ] && PY=.venv/Scripts/python.exe
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a $PY -m pytest tests -q -n auto; else $PY -m pytest tests -q -n auto; fi
+        shell: bash
+
+      - name: pluginval + clap-validator
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a tools/run_pluginval.sh utility; else tools/run_pluginval.sh utility; fi
+        shell: bash
+
+      - name: CPU benchmark
+        run: |
+          PY=.venv/bin/python; [ -f .venv/Scripts/python.exe ] && PY=.venv/Scripts/python.exe
+          $PY tools/bench_cpu.py --all --instances 100
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.os }}-artefacts
+          path: |
+            build/pluginval
+            build/plugins/*/*_artefacts/Release/VST3
+          if-no-files-found: ignore
+
+  sanitizers:
+    name: sanitizers (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-22.04]
+    env:
+      ASAN_OPTIONS: detect_leaks=0:halt_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      MM_PLUGIN_CONFIG: Debug
+      MM_BUILD_DIR: build-asan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v3
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev ladspa-sdk libcurl4-openssl-dev \
+            libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb
+      - name: macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Python dependencies
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }} .venv
+          uv pip install --python .venv/bin/python -r tests/requirements.txt
+      - name: Cache fetched dependencies
+        uses: actions/cache@v4
+        with:
+          path: build-asan/_deps
+          key: deps-asan-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+      - name: Configure (Debug + sanitizers)
+        run: cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMM_SANITIZE=ON
+      - name: Build
+        run: cmake --build build-asan -j
+      - name: C++ tests
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a ctest --test-dir build-asan --output-on-failure; else ctest --test-dir build-asan --output-on-failure; fi
+      - name: Plugin measurement tests under sanitizers
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a .venv/bin/python -m pytest tests/plugins -q; else .venv/bin/python -m pytest tests/plugins -q; fi

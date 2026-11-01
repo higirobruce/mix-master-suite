@@ -308,5 +308,7 @@ void PluginProcessorBase::setStateInformation(const void* data, int sizeInBytes)
         restoreExtraState(extra.getChild(0));
     if (auto preset = root.getChildWithName("PRESET_NAME"); preset.isValid())
         presetManager->setCurrentName(preset.getProperty("name", "Default").toString());
+    // Tell the host every parameter may have changed (CLAP hosts require a rescan request after a state load).
+    updateHostDisplay(juce::AudioProcessorListener::ChangeDetails().withProgramChanged(true).withNonParameterStateChanged(true));
 }
 } // namespace mm

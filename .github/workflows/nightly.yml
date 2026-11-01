@@ -1,0 +1,14 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  long-fuzz:
+    # Placeholder until M2 adds tests/plugins/test_stability.py (1 h parameter fuzz).
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "long fuzz lands in M2"
