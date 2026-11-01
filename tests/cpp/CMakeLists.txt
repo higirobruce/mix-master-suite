@@ -15,6 +15,7 @@ add_executable(mm_core_tests
     test_gain_computer.cpp
     test_lookahead.cpp
     test_sidechain_filter.cpp
+    test_fractional_delay.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp

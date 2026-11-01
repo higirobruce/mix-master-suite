@@ -5,6 +5,7 @@
 #include "core/filters/FIRDesign.h"
 #include "core/filters/FIRFilter.h"
 #include "core/filters/LinkwitzRiley.h"
+#include "core/delay/FractionalDelayLine.h"
 #include "core/dynamics/Detector.h"
 #include "core/dynamics/EnvelopeFollower.h"
 #include "core/dynamics/GainComputer.h"
@@ -546,6 +547,54 @@ private:
     bool rms = false, lookaheadOn = false, prepared = false;
     int numCh = 2;
 };
+// Delay line with feedback (wet only: first echo at unity). params: delay_ms, interp {0 lagrange3, 1 thiran}, feedback, slew_ms
+class DelayModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int channels) override
+    {
+        sr = sampleRate;
+        numCh = channels > 2 ? 2 : channels;
+        line.prepare(sr, 5.0, 2);
+        prepared = true;
+        apply();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "delay_ms") delayMs = v;
+        else if (id == "interp") interp = v >= 0.5 ? mm::DelayInterp::Thiran1 : mm::DelayInterp::Lagrange3;
+        else if (id == "feedback") feedback = static_cast<float>(v);
+        else if (id == "slew_ms") slewMs = v;
+        if (prepared)
+            apply();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+            {
+                const float out = line.read(ch);
+                line.push(buf[ch][i] + feedback * out, ch);
+                buf[ch][i] = out;
+            }
+    }
+    void reset() override { line.reset(); }
+
+private:
+    void apply()
+    {
+        line.setInterp(interp);
+        line.setSlewMs(slewMs);
+        for (int ch = 0; ch < 2; ++ch)
+            line.setDelaySamples(static_cast<float>(delayMs * 1e-3 * sr), ch);
+    }
+    mm::FractionalDelayLine<float> line;
+    mm::DelayInterp interp = mm::DelayInterp::Lagrange3;
+    double sr = 48000.0, delayMs = 100.0, slewMs = 20.0;
+    float feedback = 0.0f;
+    int numCh = 2;
+    bool prepared = false;
+};
 } // namespace
 
 void registerCoreModules()
@@ -562,5 +611,6 @@ void registerCoreModules()
     r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
     r.add("envelope", [] { return std::make_unique<EnvelopeModule>(); });
     r.add("compressor_core", [] { return std::make_unique<CompressorCoreModule>(); });
+    r.add("delay", [] { return std::make_unique<DelayModule>(); });
 }
 } // namespace mmr
