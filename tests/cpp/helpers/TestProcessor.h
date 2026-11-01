@@ -22,13 +22,13 @@ class TestProcessor : public mm::PluginProcessorBase
 {
 public:
     // latency: DSP latency in samples (0 = the common zero-latency case; 10 = the alignment case).
-    explicit TestProcessor(int latencySamples = 10)
+    explicit TestProcessor(int latencyIn = 10)
         : mm::PluginProcessorBase(testTable(), "test_plugin",
                                   BusesProperties()
                                       .withInput("Input", juce::AudioChannelSet::stereo(), true)
                                       .withInput("Sidechain", juce::AudioChannelSet::mono(), false)
                                       .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-          latency(latencySamples)
+          latency(latencyIn)
     {
     }
 

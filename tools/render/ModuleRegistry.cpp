@@ -1,6 +1,7 @@
 #include "tools/render/ModuleRegistry.h"
 #include "core/filters/Biquad.h"
 #include "core/filters/BiquadDesign.h"
+#include "core/filters/MatchedBiquad.h"
 #include "core/smoothing/Smoother.h"
 
 namespace mmr
@@ -96,8 +97,8 @@ private:
     mm::SmoothMode mode = mm::SmoothMode::Linear;
     double sr = 48000.0, rampMs = 20.0;
 };
-// RBJ biquad. params: type {0 peak,1 lowshelf,2 highshelf,3 lowpass,4 highpass,5 notch,6 allpass}, freq_hz, gain_db, q,
-// precision {0 float, 1 double}
+// Biquad. params: type {0 peak,1 lowshelf,2 highshelf,3 lowpass,4 highpass,5 notch,6 allpass}, freq_hz, gain_db, q,
+// precision {0 float, 1 double}, design {0 rbj, 1 matched (notch/allpass fall back to rbj)}
 class BiquadModule : public Module
 {
 public:
@@ -115,6 +116,7 @@ public:
         else if (id == "gain_db") gain = v;
         else if (id == "q") q = v;
         else if (id == "precision") useDouble = v >= 0.5;
+        else if (id == "design") matched = v >= 0.5;
         update();
     }
     void process(float* const* buf, int channels, int n) override
@@ -134,6 +136,20 @@ private:
     void update()
     {
         mm::BiquadCoeffs<double> c;
+        if (matched && type <= 4)
+        {
+            switch (type)
+            {
+            case 0: c = mm::matched::peak(sr, freq, gain, q); break;
+            case 1: c = mm::matched::lowShelf(sr, freq, gain, q); break;
+            case 2: c = mm::matched::highShelf(sr, freq, gain, q); break;
+            case 3: c = mm::matched::lowPass(sr, freq, q); break;
+            default: c = mm::matched::highPass(sr, freq, q); break;
+            }
+            for (auto& b : bd) b.setCoeffs(c);
+            for (auto& b : bf) b.setCoeffs(mm::BiquadCoeffs<float>::fromDouble(c));
+            return;
+        }
         switch (type)
         {
         case 0: c = mm::rbj::peak(sr, freq, gain, q); break;
@@ -152,6 +168,7 @@ private:
     double sr = 48000.0, freq = 1000.0, gain = 0.0, q = 0.707;
     int type = 0, numCh = 2;
     bool useDouble = true;
+    bool matched = false;
 };
 } // namespace
 
