@@ -53,7 +53,7 @@ function(mm_add_plugin)
         CLAP_FEATURES audio-effect)
 
     file(GLOB presets CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/presets/*.mmpreset)
-    juce_add_binary_data(${MM_NAME}_data SOURCES ${gen_dir}/tool_schema.json ${presets})
+    juce_add_binary_data(${MM_NAME}_data NAMESPACE ${MM_NAME}_data HEADER_NAME ${MM_NAME}_data.h SOURCES ${gen_dir}/tool_schema.json ${presets})
     add_dependencies(${MM_NAME}_data ${MM_NAME}_params)
     add_dependencies(${MM_NAME} ${MM_NAME}_params)
 
@@ -62,8 +62,11 @@ function(mm_add_plugin)
         JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_MODAL_LOOPS_PERMITTED=0)
     target_link_libraries(${MM_NAME}
-        PRIVATE mm_core mm_plugin_base mm_gui ${MM_NAME}_data juce::juce_audio_utils juce::juce_dsp
-        PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags juce::juce_recommended_warning_flags)
+        PRIVATE mm_core mm_plugin_base ${MM_NAME}_data juce::juce_audio_utils juce::juce_dsp
+        PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)
+    if(TARGET mm_gui)
+        target_link_libraries(${MM_NAME} PRIVATE mm_gui)
+    endif()
     mm_set_warnings(${MM_NAME})
     mm_enable_sanitizers(${MM_NAME})
 endfunction()

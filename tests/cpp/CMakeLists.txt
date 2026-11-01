@@ -26,3 +26,12 @@ target_compile_definitions(mm_plugin_base_tests PRIVATE JUCE_STANDALONE_APPLICAT
 mm_set_warnings(mm_plugin_base_tests)
 mm_enable_sanitizers(mm_plugin_base_tests)
 catch_discover_tests(mm_plugin_base_tests)
+
+# ---- utility plugin tests (link the plugin's static sources via the shared-code target JUCE creates)
+add_executable(mm_utility_tests
+    test_utility_params.cpp)
+target_include_directories(mm_utility_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/utility)
+target_link_libraries(mm_utility_tests PRIVATE utility mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_utility_tests)
+mm_enable_sanitizers(mm_utility_tests)
+catch_discover_tests(mm_utility_tests)

@@ -45,6 +45,7 @@ include(MMPlugin)
 
 add_subdirectory(core)
 add_subdirectory(plugin_base)
+add_subdirectory(plugins)
 
 if(MM_BUILD_TESTS)
     enable_testing()
