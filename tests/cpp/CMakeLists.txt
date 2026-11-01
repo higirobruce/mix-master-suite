@@ -3,6 +3,26 @@ include(Catch)
 add_executable(mm_core_tests
     test_smoke.cpp
     test_math.cpp
+    test_math_m1.cpp
+    test_biquad.cpp
+    test_matched.cpp
+    test_svf.cpp
+    test_onepole_allpass_m1.cpp
+    test_fir.cpp
+    test_linkwitz_riley.cpp
+    test_detector.cpp
+    test_envelope.cpp
+    test_gain_computer.cpp
+    test_lookahead.cpp
+    test_sidechain_filter.cpp
+    test_fractional_delay.cpp
+    test_oversampler.cpp
+    test_waveshapers.cpp
+    test_adaa.cpp
+    test_tape.cpp
+    test_tube.cpp
+    test_correlation.cpp
+    test_spectrum.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp
@@ -11,6 +31,7 @@ add_executable(mm_core_tests
     test_meters.cpp)
 target_include_directories(mm_core_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(mm_core_tests PRIVATE mm_core Catch2::Catch2WithMain)
+target_compile_definitions(mm_core_tests PRIVATE JUCE_STANDALONE_APPLICATION=1)
 mm_set_warnings(mm_core_tests)
 mm_enable_sanitizers(mm_core_tests)
 catch_discover_tests(mm_core_tests)

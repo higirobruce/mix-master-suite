@@ -44,6 +44,25 @@ inline double levelDb(const std::vector<float>& x, double sr, double freqHz, siz
     return 20.0 * std::log10(std::abs(goertzel(x, sr, freqHz, start, end)));
 }
 
+// Level at freqHz with a 4-term Blackman-Harris window (sidelobes < -92 dB): for measuring weak components next to
+// a strong tone, where the rectangular window's leakage would dominate.
+inline double levelDbWindowed(const std::vector<float>& x, double sr, double freqHz, size_t start, size_t end)
+{
+    const size_t n = end - start;
+    const double w = 2.0 * std::numbers::pi * freqHz / sr;
+    std::complex<double> acc = 0.0;
+    double wsum = 0.0;
+    for (size_t i = 0; i < n; ++i)
+    {
+        const double t = static_cast<double>(i) / static_cast<double>(n - 1);
+        const double win = 0.35875 - 0.48829 * std::cos(2.0 * std::numbers::pi * t) + 0.14128 * std::cos(4.0 * std::numbers::pi * t) -
+                           0.01168 * std::cos(6.0 * std::numbers::pi * t);
+        acc += x[start + i] * win * std::polar(1.0, -w * static_cast<double>(i));
+        wsum += win;
+    }
+    return 20.0 * std::log10(std::abs(acc) * 2.0 / wsum + 1e-300);
+}
+
 // Phase of y relative to x at freqHz, degrees in (-180, 180].
 inline double phaseDeg(const std::vector<float>& y, const std::vector<float>& x, double sr, double freqHz, size_t start,
                        size_t end)

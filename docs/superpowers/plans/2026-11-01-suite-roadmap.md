@@ -101,7 +101,8 @@ template<typename T> class Smoother {            // M0 linear, M1 adds exponenti
 template<typename T> class IntegerDelay { void prepare(int maxSamples, int channels); void setDelay(int); T process(T in, int ch); };
 
 // delay/FractionalDelayLine.h                        M1
-template<typename T> class FractionalDelayLine { enum class Interp { Lagrange3, Thiran1 }; void prepare(double sr, double maxSeconds, int channels);
+enum class DelayInterp { Lagrange3, Thiran1 };   // nested aliases: FractionalDelayLine<T>::Interp
+template<typename T> class FractionalDelayLine { using Interp = DelayInterp; void prepare(double sr, double maxSeconds, int channels); void setInterp(Interp); void setSlewMs(double);
   void setDelaySamples(float d, int ch); void push(T in, int ch); T read(int ch); T readAt(float delaySamples, int ch); };
 double TempoSync::noteSeconds(double bpm, int division /*1,2,4,8,16,32*/, bool dotted, bool triplet);
 
@@ -113,8 +114,8 @@ namespace matched { BiquadCoeffs<double> peak(sr,f,gainDb,q); lowShelf(...); hig
 std::complex<double> evaluate(const BiquadCoeffs<double>&, double sr, double freqHz);   // analytic H(e^jw) for tests
 
 // filters/SVF.h                                      M1  (Zavalishin TPT)
-template<typename T> class SVF { enum class Mode { LowPass, HighPass, BandPass, Notch, Peak, LowShelf, HighShelf, AllPass };
-  void setMode(Mode); void setParams(double freq, double q, double gainDb); T process(T x); };
+enum class SvfMode { LowPass, HighPass, BandPass, Notch, Peak, LowShelf, HighShelf, AllPass };
+template<typename T> class SVF { using Mode = SvfMode; void prepare(double sr); void setMode(Mode); void setParams(double freq, double q, double gainDb); T process(T x); std::complex<double> evaluate(double hz) const; };
 
 // filters/OnePole.h                                  M0 (DC block), M1 (tests)
 template<typename T> class OnePoleHP { void setCutoff(double hz); T process(T x); };
@@ -123,27 +124,29 @@ template<typename T> class OnePoleHP { void setCutoff(double hz); T process(T x)
 template<typename T> class FirstOrderAllPass { void setCorner(double hz); T process(T x); };
 
 // filters/FIRFilter.h + FIRDesign.h                  M1
-template<typename T> class FIRFilter { void setTaps(const T* taps, int n /*≤ maxTaps from prepare*/); T process(T x); int latencySamples() const; };
+template<typename T> class FIRFilter { void prepare(int maxTaps, int channels); template<class U> void setTaps(const U* taps, int n /*clamped to maxTaps*/); T process(T x, int ch); int latencySamples() const; };
 std::vector<double> fir::windowedSinc(int taps, double cutoffNorm, Window w);  std::vector<double> fir::halfBand(int taps, double transitionNorm);
 
 // filters/LinkwitzRiley.h                            M1
-template<typename T> class LinkwitzRiley { enum class Order { LR2 = 2, LR4 = 4, LR8 = 8 }; void setCrossover(double hz); void setOrder(Order);
-  void process(T x, T& low, T& high); };
+enum class LrOrder { LR2 = 2, LR4 = 4, LR8 = 8 };
+template<typename T> class LinkwitzRiley { using Order = LrOrder; void prepare(double sr); void setCrossover(double hz); void setOrder(Order);
+  void process(T x, T& low, T& high); std::complex<double> evaluateLow(double hz) const; evaluateHigh(double hz) const; };   // plugins use T = double
 
 // dynamics/                                          M1
-template<typename T> class Detector { enum class Mode { Peak, Rms }; void setMode(Mode); void setRmsWindowMs(double); T process(T x); };   // returns linear level
-template<typename T> class EnvelopeFollower { void setAttackMs(double); void setReleaseMs(double); void setAutoRelease(bool); T process(T levelDb); };  // log-domain, program-dependent when auto
+enum class DetectorMode { Peak, Rms };
+template<typename T> class Detector { using Mode = DetectorMode; void prepare(double sr); void setMode(Mode); void setRmsWindowMs(double); T process(T x); };   // returns linear level
+template<typename T> class EnvelopeFollower { void prepare(double sr); void setAttackMs(double); void setReleaseMs(double); void setAutoRelease(bool); T process(T valueDb); void snapTo(T); };  // log-domain 10-90 % times; applied to the gain reduction (Giannoulis), see ADR-0004
 struct GainComputerParams { double thresholdDb, ratio, kneeDb; bool expander; double rangeDb; };
 template<typename T> class GainComputer { void set(const GainComputerParams&); T gainDb(T levelDb) const; };
 template<typename T> class Lookahead { void prepare(double sr, double maxMs, int channels); void setMs(double); T delaySignal(T x, int ch); T maxEnvelope(T levelIn); int latencySamples() const; };
 template<typename T> class SidechainFilter { void setHighPass(double hz); void setLowPass(double hz /*0=off*/); T process(T x); };
 
 // oversampling/Oversampler.h                         M1  (wraps juce::dsp::Oversampling, FIR equiripple half-band)
-class Oversampler { void prepare(double sr, int maxBlock, int channels, int factor /*1,2,4,8*/); juce::dsp::AudioBlock<float> up(juce::dsp::AudioBlock<float>); void down(juce::dsp::AudioBlock<float>); int latencySamples() const; double oversampledRate() const; };
+class Oversampler { void prepare(double sr, int maxBlock, int channels, int factor /*1,2,4,8*/); juce::dsp::AudioBlock<float> up(juce::dsp::AudioBlock<float>); void down(juce::dsp::AudioBlock<float>); int latencySamples() const; double oversampledRate() const; int factor() const; };   // header-only; mm_core is INTERFACE and links juce::juce_dsp
 
 // nonlinear/                                         M1
 namespace shape { float tanhS(float x); float atanS(float x); float asym(float x, float bias); float softClip(float x, float knee); float hardClip(float x); }
-template<float (*Fn)(float), float (*Ad1)(float)> class ADAA1 { float process(float x); void reset(); };   // first-order ADAA with |x-x1|<1e-5 fallback to Fn(midpoint)
+template<float (*Fn)(float), double (*Ad1)(double)> class ADAA1 { float process(float x); void reset(); };   // first-order ADAA, antiderivative difference in double; midpoint fallback when |x-x1|<1e-6
 class TapeHysteresis { void prepare(double sr); void set(double drive, double saturation, double width); float process(float x); };   // Jiles-Atherton, RK4
 class TubeTransfer  { void set(double drive, double bias); float process(float x); };
 
