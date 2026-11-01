@@ -7,8 +7,8 @@ Updated: 2026-11-01
 | Milestone | Status | Branch | Review tag |
 | --- | --- | --- | --- |
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
-| M1 Core DSP | built; review fix pass done; CI re-running (repo public) | milestone/m1-core-dsp | review/m1-core-dsp (after CI) |
-| M2 Channel essentials | planned (roadmap) | — | — |
+| M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
+| M2 Channel essentials | in progress (docs/superpowers/plans/2026-11-01-m2-channel-essentials.md) | milestone/m2-channel-essentials | — |
 | M3 Colour and space | planned (roadmap) | — | — |
 | M4 Stereo and vocal | planned (roadmap) | — | — |
 | M5 Mastering | planned (roadmap) | — | — |

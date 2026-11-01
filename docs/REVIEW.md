@@ -1,5 +1,5 @@
 # Review: M1 Core DSP
-Commit: 221f451   Branch: milestone/m1-core-dsp
+Commit: 15370ef   Branch: milestone/m1-core-dsp
 
 ## What was built
 Every shared DSP module the plugins compose, in `core/` (namespace `mm`, header-only, 64-bit coefficient design, float or double processing), each with Catch2 unit tests, Python measurement tests through `mm_render --module`, and the 44.1/48/96/192 kHz matrix:
@@ -24,7 +24,7 @@ See the "M1 measurements" table in docs/STATE.md for every number. Summary:
 | Latency reported (oversampler, lookahead) | exact | exact at every factor and rate | ✓ |
 | Sample-rate matrix on every module | 4 rates | every module and every test | ✓ |
 | Sanitizers | clean | ASan/UBSan: all C++ tests and the core/plugin Python suites clean (local Debug tree) | ✓ |
-| CI | green | **BLOCKED by GitHub Actions billing**: run 41349203968 refused every job ("recent account payments have failed or your spending limit needs to be increased"). The previous run (41342517280) was green on macOS and only failed on a GCC warning fixed in 3cfba90. Local: ctest 88/88, pytest ~900 cases, ASan clean. | blocked |
+| CI | green | run https://github.com/higirobruce/mix-master-suite/actions/runs/41351360069: build-test macos-15 / windows-2022 / ubuntu-22.04 success, sanitizers macos-15 / ubuntu-22.04 success | ✓ |
 
 ## Decisions made without asking (link ADRs)
 Recorded as rulings in the execution ledger; the architectural ones:
@@ -58,7 +58,7 @@ No new plugin in this milestone; the Utility plugin from M0 is unchanged.
 A fresh reviewer (whole branch) confirmed every closed form against its source and found 1 Critical / 7 Important / 8 Minor. Fixed on the branch with a failing test first: first-order ADAA now computes its antiderivative difference in double (float left a −46 dBFS peak error on bass; now < −100 dBFS vs an all-double reference); the matched shelf no longer switches to the bilinear design near Nyquist (clamped pole frequency and a continuous knee-coefficient clamp; +12 dB high shelf sweeps to 20 kHz with < 0.5 dB per 1 % step); the spectrum analyser pushes all channels atomically; float-biquad low-frequency deviation is measured and recorded (EQ runs double, ADR-0003); the ratio gate is 0.1 absolute at every ratio; `FractionalDelayLine::Interp` and `Detector::Mode` aliases added and the roadmap signatures updated; tape cost and the 44.1 k alias number corrected here. Minors deferred to the ledger.
 
 ## Blocker (resolved 2026-11-01)
-The repository is now public, so Actions minutes are free again; CI re-ran on the branch. Original note: GitHub Actions on the private repo `higirobruce/mix-master-suite` stopped accepting jobs on 2026-11-01 20:54 UTC (spending limit / payment). Until the limit is raised or the repository is made public, the "CI green on three OSes" gate cannot be demonstrated; the loop continues locally (ctest, pytest, ASan, pluginval on macOS) and pushes commits so CI picks them up when restored. macOS runners bill at 10× and Windows at 2×; a cheaper matrix (Linux on every push, macOS/Windows on `main` and `review/*` tags) is an option if you prefer.
+The repository was made public, so Actions minutes are free again; CI run 41351360069 is green on every job. Original note: GitHub Actions on the private repo `higirobruce/mix-master-suite` stopped accepting jobs on 2026-11-01 20:54 UTC (spending limit / payment). Until the limit is raised or the repository is made public, the "CI green on three OSes" gate cannot be demonstrated; the loop continues locally (ctest, pytest, ASan, pluginval on macOS) and pushes commits so CI picks them up when restored. macOS runners bill at 10× and Windows at 2×; a cheaper matrix (Linux on every push, macOS/Windows on `main` and `review/*` tags) is an option if you prefer.
 
 ## Questions for the reviewer (only if any)
 1. Aliasing gate at full drive (see Known gaps): which of the three resolutions do you want for M3?
