@@ -21,6 +21,8 @@ add_executable(mm_core_tests
     test_adaa.cpp
     test_tape.cpp
     test_tube.cpp
+    test_correlation.cpp
+    test_spectrum.cpp
     test_smoother.cpp
     test_integer_delay.cpp
     test_onepole.cpp

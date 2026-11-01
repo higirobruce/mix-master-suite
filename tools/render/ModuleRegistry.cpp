@@ -6,6 +6,7 @@
 #include "core/filters/FIRFilter.h"
 #include "core/filters/LinkwitzRiley.h"
 #include "core/delay/FractionalDelayLine.h"
+#include "core/metering/Correlation.h"
 #include "core/dynamics/Detector.h"
 #include "core/nonlinear/ADAA.h"
 #include "core/nonlinear/TapeHysteresis.h"
@@ -793,6 +794,29 @@ private:
     double sr = 48000.0, drive = 1.0, bias = 0.0;
     int block = 0, ch = 2, factor = 4;
 };
+// Running stereo correlation written to every channel as a signal.
+class CorrelationModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override { meter.prepare(sampleRate, 300.0); }
+    void setParam(const std::string&, double) override {}
+    void process(float* const* buf, int channels, int n) override
+    {
+        const float* l = buf[0];
+        const float* r = channels > 1 ? buf[1] : buf[0];
+        for (int i = 0; i < n; ++i)
+        {
+            meter.process(l + i, r + i, 1);
+            const float v = meter.value();
+            for (int ch = 0; ch < channels; ++ch)
+                buf[ch][i] = v;
+        }
+    }
+    void reset() override { meter.reset(); }
+
+private:
+    mm::CorrelationMeter meter;
+};
 } // namespace
 
 void registerCoreModules()
@@ -814,5 +838,6 @@ void registerCoreModules()
     r.add("waveshaper", [] { return std::make_unique<WaveshaperModule>(); });
     r.add("tape", [] { return std::make_unique<TapeModule>(); });
     r.add("tube", [] { return std::make_unique<TubeModule>(); });
+    r.add("correlation", [] { return std::make_unique<CorrelationModule>(); });
 }
 } // namespace mmr
