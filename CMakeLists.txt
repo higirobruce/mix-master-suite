@@ -14,6 +14,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Hidden visibility everywhere: a plugin bundle must not export (weak) JUCE symbols that dyld would coalesce with a
+# host's own JUCE copy (seen as "free on address not malloc()-ed" when mm_render hosts a Debug bundle).
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(MM_BUILD_TESTS "Build C++ unit tests" ON)
@@ -47,6 +52,7 @@ add_subdirectory(core)
 add_subdirectory(plugin_base)
 add_subdirectory(plugins)
 add_subdirectory(tools/render)
+add_subdirectory(tools/bench)
 
 if(MM_BUILD_TESTS)
     enable_testing()

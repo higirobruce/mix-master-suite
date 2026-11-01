@@ -19,6 +19,10 @@ protected:
 
 private:
     static constexpr int kMaxChannels = 2;
+    ParamRef polarityL, polarityR, swapLR, monoSum, dcBlockOn, muteL, muteR;
+    mm::Smoother<float>* gainSmoother = nullptr;
+    mm::Smoother<float>* rotationSmoother = nullptr;
+    mm::DbGainCache gainCache;
     mm::OnePoleHP<float> dcBlock[kMaxChannels];
     mm::FirstOrderAllPass<float> phaseRot[kMaxChannels];
     bool dcWasOn = false;

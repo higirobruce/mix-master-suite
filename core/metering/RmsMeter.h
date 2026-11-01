@@ -6,49 +6,74 @@
 
 namespace mm
 {
-// RMS over a sliding window (default 300 ms) using a running sum of squares. Sized in prepare().
+// RMS over a sliding window (default 300 ms). Per-call sums of squares are kept in a ring (one entry per call), so
+// the per-sample cost is one multiply-add and the window granularity is the block size.
 class RmsMeter
 {
 public:
     void prepare(double sampleRate, double windowMs = 300.0)
     {
         window = std::max(1, static_cast<int>(std::lround(windowMs * 1e-3 * sampleRate)));
-        squares.assign(static_cast<size_t>(window), 0.0);
+        entries.assign(static_cast<size_t>(window) + 1, {});
         reset();
     }
     void process(const float* x, int n) noexcept
     {
+        double sq = 0.0;
         for (int i = 0; i < n; ++i)
+            sq += static_cast<double>(x[i]) * x[i];
+        processSumSquares(sq, n);
+    }
+    void processSumSquares(double sumSquares, int n) noexcept
+    {
+        if (n <= 0)
+            return;
+        entries[static_cast<size_t>(head)] = {sumSquares, n};
+        head = (head + 1) % static_cast<int>(entries.size());
+        sum += sumSquares;
+        count += n;
+        while (count > window && tail != head)
         {
-            const double sq = static_cast<double>(x[i]) * x[i];
-            sum += sq - squares[static_cast<size_t>(pos)];
-            squares[static_cast<size_t>(pos)] = sq;
-            if (++pos == window)
-            {
-                pos = 0;
-                // periodic exact re-sum to stop drift
-                double s = 0.0;
-                for (double v : squares)
-                    s += v;
-                sum = s;
-            }
+            const auto& e = entries[static_cast<size_t>(tail)];
+            if (count - e.n < window)
+                break;
+            sum -= e.sum;
+            count -= e.n;
+            tail = (tail + 1) % static_cast<int>(entries.size());
+        }
+        if (head == tail) // ring full (tiny blocks): drop the oldest
+        {
+            const auto& e = entries[static_cast<size_t>(tail)];
+            sum -= e.sum;
+            count -= e.n;
+            tail = (tail + 1) % static_cast<int>(entries.size());
         }
         if (sum < 0.0)
             sum = 0.0;
     }
-    float levelDb() const noexcept { return gainToDb(static_cast<float>(std::sqrt(sum / window))); }
-    float levelLinear() const noexcept { return static_cast<float>(std::sqrt(sum / window)); }
+    float levelLinear() const noexcept
+    {
+        return count > 0 ? static_cast<float>(std::sqrt(sum / static_cast<double>(std::max(count, window)))) : 0.0f;
+    }
+    float levelDb() const noexcept { return gainToDb(levelLinear()); }
     void reset() noexcept
     {
-        std::fill(squares.begin(), squares.end(), 0.0);
+        std::fill(entries.begin(), entries.end(), Entry{});
         sum = 0.0;
-        pos = 0;
+        count = 0;
+        head = tail = 0;
     }
 
 private:
-    std::vector<double> squares;
+    struct Entry
+    {
+        double sum = 0.0;
+        int n = 0;
+    };
+    std::vector<Entry> entries;
     double sum = 0.0;
+    int count = 0;
     int window = 1;
-    int pos = 0;
+    int head = 0, tail = 0;
 };
 } // namespace mm

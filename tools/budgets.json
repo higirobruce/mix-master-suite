@@ -1,0 +1,19 @@
+{
+  "_comment": "CPU budget, percent per instance at 48 kHz / 64 samples, 100 instances (spec: Technical requirements per plugin)",
+  "gate": 0.3,
+  "channel_eq": 0.5,
+  "channel_comp": 0.4,
+  "deesser": 0.4,
+  "saturation": 1.0,
+  "delay": 0.5,
+  "reverb": 2.0,
+  "imager": 0.4,
+  "utility": 0.1,
+  "lp_eq": 2.5,
+  "multiband_comp": 1.5,
+  "bus_comp": 0.5,
+  "ms_processor": 0.5,
+  "soft_clipper": 1.5,
+  "limiter": 2.5,
+  "loudness_meter": 0.5
+}

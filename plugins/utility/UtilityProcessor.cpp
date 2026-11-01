@@ -23,6 +23,15 @@ UtilityProcessor::UtilityProcessor()
                                   .withOutput("Output", juce::AudioChannelSet::stereo(), true),
                               utilityFactory())
 {
+    polarityL = paramRef(up::id::polarity_l);
+    polarityR = paramRef(up::id::polarity_r);
+    swapLR = paramRef(up::id::swap_lr);
+    monoSum = paramRef(up::id::mono_sum);
+    dcBlockOn = paramRef(up::id::dc_block);
+    muteL = paramRef(up::id::mute_l);
+    muteR = paramRef(up::id::mute_r);
+    gainSmoother = &smoothed(up::id::gain_db);
+    rotationSmoother = &smoothed(up::id::phase_rotation_deg);
 }
 
 void UtilityProcessor::prepareDsp(double sr, int, int)
@@ -53,28 +62,27 @@ void UtilityProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const int numCh = juce::jmin(buffer.getNumChannels(), kMaxChannels);
     const bool stereo = numCh == 2;
 
-    // 1. gain (smoothed in dB) + polarity
-    auto& gain = smoothed(up::id::gain_db);
-    const float pol[2] = {param(up::id::polarity_l) >= 0.5f ? -1.0f : 1.0f,
-                          param(up::id::polarity_r) >= 0.5f ? -1.0f : 1.0f};
-    for (int n = 0; n < numSamples; ++n)
-    {
-        const float g = mm::dbToGain(gain.next());
-        for (int ch = 0; ch < numCh; ++ch)
-            buffer.setSample(ch, n, buffer.getSample(ch, n) * g * pol[ch]);
-    }
+    // 1. gain (smoothed in dB, ramped linearly across the block) + polarity
+    auto& gain = *gainSmoother;
+    const float g0 = gainCache.get(gain.current());
+    gain.skip(numSamples);
+    const float g1 = gainCache.get(gain.current());
+    const float pol[2] = {polarityL.on() ? -1.0f : 1.0f, polarityR.on() ? -1.0f : 1.0f};
+    for (int ch = 0; ch < numCh; ++ch)
+        if (g0 != 1.0f || g1 != 1.0f || pol[ch] != 1.0f)
+            buffer.applyGainRamp(ch, 0, numSamples, g0 * pol[ch], g1 * pol[ch]);
 
     // 2. swap, 3. mono sum (stereo only)
     if (stereo)
     {
-        if (param(up::id::swap_lr) >= 0.5f)
+        if (swapLR.on())
         {
             float* l = buffer.getWritePointer(0);
             float* r = buffer.getWritePointer(1);
             for (int n = 0; n < numSamples; ++n)
                 std::swap(l[n], r[n]);
         }
-        if (param(up::id::mono_sum) >= 0.5f)
+        if (monoSum.on())
         {
             float* l = buffer.getWritePointer(0);
             float* r = buffer.getWritePointer(1);
@@ -84,7 +92,7 @@ void UtilityProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     }
 
     // 4. DC block (stage bypassed exactly when off; filters reset on enable)
-    const bool dcOn = param(up::id::dc_block) >= 0.5f;
+    const bool dcOn = dcBlockOn.on();
     if (dcOn)
     {
         if (!dcWasOn)
@@ -100,7 +108,7 @@ void UtilityProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     dcWasOn = dcOn;
 
     // 5. phase rotation: first-order all-pass whose corner puts -deg of phase at 100 Hz
-    auto& rot = smoothed(up::id::phase_rotation_deg);
+    auto& rot = *rotationSmoother;
     const float degNow = rot.current();
     rot.skip(numSamples);
     const float deg = 0.5f * (degNow + rot.current()); // block-rate update of the corner
@@ -122,9 +130,9 @@ void UtilityProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     phaseWasOn = phaseOn;
 
     // 6. mutes
-    if (param(up::id::mute_l) >= 0.5f)
+    if (muteL.on())
         buffer.clear(0, 0, numSamples);
-    if (stereo && param(up::id::mute_r) >= 0.5f)
+    if (stereo && muteR.on())
         buffer.clear(1, 0, numSamples);
 }
 

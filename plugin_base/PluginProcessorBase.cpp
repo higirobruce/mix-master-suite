@@ -34,6 +34,12 @@ PluginProcessorBase::PluginProcessorBase(const ParamTable& t, const juce::String
             trimIndex = static_cast<int>(i);
     }
     jassert(bypassRaw != nullptr && trimIndex >= 0 && "every plugin has the reserved bypass/trim_db params");
+    trimSmoother = &smoothers[static_cast<size_t>(smoothedIndexByParam[static_cast<size_t>(trimIndex)])].smoother;
+}
+
+PluginProcessorBase::ParamRef PluginProcessorBase::paramRef(ParamId id) const noexcept
+{
+    return ParamRef{state.getRawParameterValue(id)};
 }
 
 PluginProcessorBase::~PluginProcessorBase() = default;
@@ -55,8 +61,28 @@ Smoother<float>& PluginProcessorBase::smoothed(ParamId id) noexcept
 void PluginProcessorBase::updateSmoothers() noexcept
 {
     for (auto& sp : smoothers)
-        sp.smoother.setTarget(sp.raw->load());
+        sp.smoother.setTarget(sp.raw->load(std::memory_order_relaxed));
 }
+
+namespace
+{
+// Sum of squares with four accumulators (vectorises); returns a float so a NaN/Inf poisons the result.
+inline float sumSquares(const float* p, int n) noexcept
+{
+    float a0 = 0.0f, a1 = 0.0f, a2 = 0.0f, a3 = 0.0f;
+    int i = 0;
+    for (; i + 4 <= n; i += 4)
+    {
+        a0 += p[i] * p[i];
+        a1 += p[i + 1] * p[i + 1];
+        a2 += p[i + 2] * p[i + 2];
+        a3 += p[i + 3] * p[i + 3];
+    }
+    for (; i < n; ++i)
+        a0 += p[i] * p[i];
+    return (a0 + a1) + (a2 + a3);
+}
+} // namespace
 
 bool PluginProcessorBase::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
@@ -139,82 +165,92 @@ void PluginProcessorBase::processInternal(juce::AudioBuffer<float>& buffer, juce
 
     updateSmoothers();
 
-    // input metering (pre)
-    for (int ch = 0; ch < juce::jmin(numOut, 2); ++ch)
+    // input metering (pre): vectorised peak, one sum of squares per channel
+    const int meterCh = juce::jmin(numOut, 2);
+    for (int ch = 0; ch < meterCh; ++ch)
     {
-        peakIn[ch].process(buffer.getReadPointer(ch), numSamples);
-        rmsIn[ch].process(buffer.getReadPointer(ch), numSamples);
-    }
-    matchIn.process(buffer.getReadPointer(0), numSamples);
-
-    // dry copy for bypass / delta
-    for (int ch = 0; ch < numOut; ++ch)
-        dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
-
-    processDsp(buffer, midi);
-
-    // align the dry path with the reported DSP latency
-    const int latency = dspLatencySamples();
-    if (dryDelay.getDelay() != latency)
-        dryDelay.setDelay(latency);
-    for (int ch = 0; ch < numOut; ++ch)
-    {
-        float* d = dryBuffer.getWritePointer(ch);
-        for (int n = 0; n < numSamples; ++n)
-            d[n] = dryDelay.process(d[n], ch);
+        peakIn[ch].processPeak(buffer.getMagnitude(ch, 0, numSamples), numSamples);
+        const double sq = sumSquares(buffer.getReadPointer(ch), numSamples);
+        rmsIn[ch].processSumSquares(sq, numSamples);
+        if (ch == 0)
+            matchIn.processSumSquares(sq, numSamples);
     }
 
     const bool bypassed = hostBypass || bypassRaw->load() >= 0.5f;
-    bypassMix.setTarget(bypassed ? 1.0f : 0.0f);
-    if (!bypassed)
-    {
-        matchOut.process(buffer.getReadPointer(0), numSamples);
-        const float inLin = matchIn.levelLinear(), outLin = matchOut.levelLinear();
-        if (inLin > 1e-6f && outLin > 1e-6f)
-            matchGain = juce::jlimit(dbToGain(-24.0f), dbToGain(24.0f), outLin / inLin);
-    }
-
     const bool deltaOn = delta.load();
-    auto& trim = smoothers[static_cast<size_t>(smoothedIndexByParam[static_cast<size_t>(trimIndex)])].smoother;
-    for (int n = 0; n < numSamples; ++n)
-    {
-        const float b = bypassMix.next();
-        const float trimGain = dbToGain(trim.next());
+    const int latency = dspLatencySamples();
+    if (dryDelay.getDelay() != latency)
+        dryDelay.setDelay(latency);
+    const bool needDry = bypassed || deltaOn || bypassMix.isSmoothing() || latency > 0;
+    if (needDry)
+        for (int ch = 0; ch < numOut; ++ch)
+            dryBuffer.copyFrom(ch, 0, buffer, ch, 0, numSamples);
+
+    processDsp(buffer, midi);
+
+    if (latency > 0) // keep the dry path aligned with the reported DSP latency
         for (int ch = 0; ch < numOut; ++ch)
         {
-            const float wet = buffer.getSample(ch, n);
-            const float dry = dryBuffer.getSample(ch, n);
-            float out = deltaOn ? (wet - dry) : (wet * (1.0f - b) + dry * matchGain * b);
-            out *= trimGain;
-            buffer.setSample(ch, n, out);
+            float* d = dryBuffer.getWritePointer(ch);
+            for (int n = 0; n < numSamples; ++n)
+                d[n] = dryDelay.process(d[n], ch);
         }
+
+    bypassMix.setTarget(bypassed ? 1.0f : 0.0f);
+    if (!bypassed) // wet level (pre-trim) for gain matching; measured on channel 0 like matchIn
+    {
+        matchOut.processSumSquares(sumSquares(buffer.getReadPointer(0), numSamples), numSamples);
+        const float inLin = matchIn.levelLinear(), outLin = matchOut.levelLinear();
+        if (inLin > 1e-6f && outLin > 1e-6f)
+            matchGain = juce::jlimit(0.0630957f /* -24 dB */, 15.8489f /* +24 dB */, outLin / inLin);
     }
 
-    // NaN/Inf guard: never let a non-finite sample reach the host
-    bool bad = false;
-    for (int ch = 0; ch < numOut && !bad; ++ch)
+    // output stage: bypass crossfade / delta, then trim (block-rate ramps of the dB smoothers)
+    auto& trim = *trimSmoother;
+    const float trimStart = trimGain.get(trim.current());
+    trim.skip(numSamples);
+    const float trimEnd = trimGain.get(trim.current());
+    const bool mixing = deltaOn || bypassMix.isSmoothing() || bypassMix.current() > 0.0f;
+    if (mixing)
     {
-        const float* p = buffer.getReadPointer(ch);
         for (int n = 0; n < numSamples; ++n)
-            if (!std::isfinite(p[n]))
+        {
+            const float b = bypassMix.next();
+            for (int ch = 0; ch < numOut; ++ch)
             {
-                bad = true;
-                break;
+                const float wet = buffer.getSample(ch, n);
+                const float dry = dryBuffer.getSample(ch, n);
+                buffer.setSample(ch, n, deltaOn ? (wet - dry) : (wet * (1.0f - b) + dry * matchGain * b));
             }
+        }
+    }
+    if (trimStart != 1.0f || trimEnd != 1.0f)
+        buffer.applyGainRamp(0, numSamples, trimStart, trimEnd);
+
+    // NaN/Inf guard (a non-finite sample poisons the sum of squares) and output metering in one pass per channel
+    float outSq[2] = {0.0f, 0.0f};
+    bool bad = false;
+    for (int ch = 0; ch < numOut; ++ch)
+    {
+        const float sq = sumSquares(buffer.getReadPointer(ch), numSamples);
+        if (!std::isfinite(sq))
+            bad = true;
+        if (ch < 2)
+            outSq[ch] = sq;
     }
     if (bad)
     {
         buffer.clear();
         nanCount.fetch_add(1);
         resetDsp();
+        outSq[0] = outSq[1] = 0.0f;
     }
 
-    // output metering (post trim) and FIFO publish
     MeterFrame frame;
-    for (int ch = 0; ch < juce::jmin(numOut, 2); ++ch)
+    for (int ch = 0; ch < meterCh; ++ch)
     {
-        peakOut[ch].process(buffer.getReadPointer(ch), numSamples);
-        rmsOut[ch].process(buffer.getReadPointer(ch), numSamples);
+        peakOut[ch].processPeak(bad ? 0.0f : buffer.getMagnitude(ch, 0, numSamples), numSamples);
+        rmsOut[ch].processSumSquares(outSq[ch], numSamples);
         frame.peakInDb[ch] = peakIn[ch].levelDb();
         frame.peakOutDb[ch] = peakOut[ch].levelDb();
         frame.rmsInDb[ch] = rmsIn[ch].levelDb();

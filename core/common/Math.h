@@ -23,4 +23,20 @@ inline double gainToDb(double gain, double floorDb = -120.0) noexcept
 }
 
 template <typename T> inline bool isFiniteSample(T v) noexcept { return std::isfinite(v); }
+
+// Caches the last dB -> linear conversion so a static parameter costs one compare per block instead of a pow().
+struct DbGainCache
+{
+    float get(float db) noexcept
+    {
+        if (db != lastDb)
+        {
+            lastDb = db;
+            lastGain = dbToGain(db);
+        }
+        return lastGain;
+    }
+    float lastDb = 0.0f;
+    float lastGain = 1.0f;
+};
 } // namespace mm

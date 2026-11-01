@@ -66,8 +66,16 @@ protected:
     virtual juce::ValueTree extraState() { return {}; }
     virtual void restoreExtraState(const juce::ValueTree&) {}
 
-    float param(ParamId id) const noexcept; // raw current value (not smoothed)
-    Smoother<float>& smoothed(ParamId id) noexcept;
+    // Parameter access. Resolve once (constructor or prepareDsp) and keep the reference: both lookups scan the table.
+    struct ParamRef
+    {
+        std::atomic<float>* raw = nullptr;
+        float get() const noexcept { return raw != nullptr ? raw->load(std::memory_order_relaxed) : 0.0f; }
+        bool on() const noexcept { return get() >= 0.5f; }
+    };
+    ParamRef paramRef(ParamId id) const noexcept;
+    float param(ParamId id) const noexcept; // convenience: table scan + atomic load
+    Smoother<float>& smoothed(ParamId id) noexcept; // table scan; cache the reference
     void updateSmoothers() noexcept; // called by the base at the start of each block
 
 private:
@@ -98,6 +106,8 @@ private:
     juce::AudioBuffer<float> dryBuffer;
     IntegerDelay<float> dryDelay;
     Smoother<float> bypassMix;
+    Smoother<float>* trimSmoother = nullptr;
+    DbGainCache trimGain;
     float matchGain = 1.0f;
     PeakMeter peakIn[2], peakOut[2];
     RmsMeter rmsIn[2], rmsOut[2];
