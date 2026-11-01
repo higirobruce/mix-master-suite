@@ -36,12 +36,12 @@ inline double phaseDiffDeg(double a, double b)
     return d <= -180.0 ? d + 360.0 : d;
 }
 
-// Impulse response of a per-sample processor: fn(float) -> float, length samples.
+// Impulse response of a per-sample processor: fn(double) -> double (or float), length samples.
 template <typename Fn> std::vector<double> impulseResponse(Fn&& fn, int length)
 {
     std::vector<double> ir(static_cast<size_t>(length));
     for (int n = 0; n < length; ++n)
-        ir[static_cast<size_t>(n)] = static_cast<double>(fn(n == 0 ? 1.0f : 0.0f));
+        ir[static_cast<size_t>(n)] = static_cast<double>(fn(n == 0 ? 1.0 : 0.0));
     return ir;
 }
 } // namespace mm::test

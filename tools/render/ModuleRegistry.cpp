@@ -1,4 +1,6 @@
 #include "tools/render/ModuleRegistry.h"
+#include "core/filters/Biquad.h"
+#include "core/filters/BiquadDesign.h"
 #include "core/smoothing/Smoother.h"
 
 namespace mmr
@@ -94,6 +96,63 @@ private:
     mm::SmoothMode mode = mm::SmoothMode::Linear;
     double sr = 48000.0, rampMs = 20.0;
 };
+// RBJ biquad. params: type {0 peak,1 lowshelf,2 highshelf,3 lowpass,4 highpass,5 notch,6 allpass}, freq_hz, gain_db, q,
+// precision {0 float, 1 double}
+class BiquadModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int channels) override
+    {
+        sr = sampleRate;
+        numCh = channels > 2 ? 2 : channels;
+        update();
+        reset();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "type") type = static_cast<int>(v);
+        else if (id == "freq_hz") freq = v;
+        else if (id == "gain_db") gain = v;
+        else if (id == "q") q = v;
+        else if (id == "precision") useDouble = v >= 0.5;
+        update();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels && ch < 2; ++ch)
+            for (int i = 0; i < n; ++i)
+                buf[ch][i] = useDouble ? static_cast<float>(bd[ch].process(static_cast<double>(buf[ch][i])))
+                                       : bf[ch].process(buf[ch][i]);
+    }
+    void reset() override
+    {
+        for (auto& b : bf) b.reset();
+        for (auto& b : bd) b.reset();
+    }
+
+private:
+    void update()
+    {
+        mm::BiquadCoeffs<double> c;
+        switch (type)
+        {
+        case 0: c = mm::rbj::peak(sr, freq, gain, q); break;
+        case 1: c = mm::rbj::lowShelf(sr, freq, gain, q); break;
+        case 2: c = mm::rbj::highShelf(sr, freq, gain, q); break;
+        case 3: c = mm::rbj::lowPass(sr, freq, q); break;
+        case 4: c = mm::rbj::highPass(sr, freq, q); break;
+        case 5: c = mm::rbj::notch(sr, freq, q); break;
+        default: c = mm::rbj::allPass(sr, freq, q); break;
+        }
+        for (auto& b : bd) b.setCoeffs(c);
+        for (auto& b : bf) b.setCoeffs(mm::BiquadCoeffs<float>::fromDouble(c));
+    }
+    mm::Biquad<float> bf[2];
+    mm::Biquad<double> bd[2];
+    double sr = 48000.0, freq = 1000.0, gain = 0.0, q = 0.707;
+    int type = 0, numCh = 2;
+    bool useDouble = true;
+};
 } // namespace
 
 void registerCoreModules()
@@ -101,5 +160,6 @@ void registerCoreModules()
     auto& r = ModuleRegistry::instance();
     r.add("identity", [] { return std::make_unique<IdentityModule>(); });
     r.add("smoother", [] { return std::make_unique<SmootherModule>(); });
+    r.add("biquad", [] { return std::make_unique<BiquadModule>(); });
 }
 } // namespace mmr
