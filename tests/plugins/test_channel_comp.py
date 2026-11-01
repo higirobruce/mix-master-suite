@@ -137,7 +137,8 @@ def test_comp_auto_makeup():
 def test_comp_extremes_and_base_checks(record_property):
     base_checks.check_param_extremes(PLUGIN, max_peak_db=30.0, ramp_params={"makeup_db": 0.1})
     record_property("variable_block_residual_dbfs", base_checks.check_variable_block_sizes(PLUGIN, params=BASE, tol_dbfs=-100.0))
-    record_property("sr_change_residual_dbfs", base_checks.check_sr_change_mid_stream(PLUGIN, params=BASE, tol_dbfs=-60.0))
+    # 0.6 s after the switch: > 10 RMS windows and > 5 release times, so only the re-prepared state differs
+    record_property("sr_change_residual_dbfs", base_checks.check_sr_change_mid_stream(PLUGIN, params=BASE, tol_dbfs=-60.0, settle_s=0.6))
     base_checks.check_state_roundtrip(PLUGIN)
     base_checks.check_denormal_tail(PLUGIN, params=BASE)
     base_checks.check_channel_configs(PLUGIN, params=BASE)

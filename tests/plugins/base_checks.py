@@ -27,14 +27,16 @@ def check_variable_block_sizes(name: str, params: dict | None = None, tol_dbfs: 
     return res
 
 
-def check_sr_change_mid_stream(name: str, params: dict | None = None, tol_dbfs: float = -120.0) -> float:
-    """Schedule 48k -> 96k at 1 s; the post-change audio must match a fresh 96k render of the same material."""
+def check_sr_change_mid_stream(name: str, params: dict | None = None, tol_dbfs: float = -120.0,
+                               settle_s: float = 0.1) -> float:
+    """Schedule 48k -> 96k at 1 s; the post-change audio (after settle_s, so detectors and envelopes re-settle)
+    must match a fresh 96k render of the same material."""
     x = signals.noise(96000, 2.0, seed=12)
     y, rep = render_plugin(name, sr=96000, params=params, input=x, schedule=[{"t_s": 0.0, "sample_rate": 48000},
                                                                              {"t_s": 1.0, "sample_rate": 96000}])
     assert rep["nan_count"] == 0
     ref, _ = render_plugin(name, sr=96000, params=params, input=x)
-    start = int(1.1 * 96000)
+    start = int((1.0 + settle_s) * 96000)
     res = measure.residual_dbfs(y[start:], ref[start:])
     assert res < tol_dbfs, f"sample-rate change residual {res:.1f} dBFS"
     return res
