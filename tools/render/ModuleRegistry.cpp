@@ -54,14 +54,14 @@ public:
     void process(float* const*, int, int) override {}
 };
 
-// Outputs the smoother's value per sample (input ignored). params: target, ramp_ms, mode (0 linear)
+// Outputs the smoother's value per sample (input ignored). params: target, ramp_ms, mode (0 linear, 1 exponential)
 class SmootherModule : public Module
 {
 public:
     void prepare(double sampleRate, int, int) override
     {
         sr = sampleRate;
-        s.prepare(sr, rampMs);
+        s.prepare(sr, rampMs, mode);
         s.snap(0.0f);
     }
     void setParam(const std::string& id, double v) override
@@ -71,7 +71,12 @@ public:
         else if (id == "ramp_ms")
         {
             rampMs = v;
-            s.prepare(sr, rampMs);
+            s.prepare(sr, rampMs, mode);
+        }
+        else if (id == "mode")
+        {
+            mode = v >= 0.5 ? mm::SmoothMode::Exponential : mm::SmoothMode::Linear;
+            s.prepare(sr, rampMs, mode);
         }
     }
     void process(float* const* buf, int channels, int n) override
@@ -86,6 +91,7 @@ public:
 
 private:
     mm::Smoother<float> s;
+    mm::SmoothMode mode = mm::SmoothMode::Linear;
     double sr = 48000.0, rampMs = 20.0;
 };
 } // namespace
