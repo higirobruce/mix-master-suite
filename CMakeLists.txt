@@ -50,9 +50,11 @@ include(MMPlugin)
 
 add_subdirectory(core)
 add_subdirectory(plugin_base)
+add_subdirectory(gui)
 add_subdirectory(plugins)
 add_subdirectory(tools/render)
 add_subdirectory(tools/bench)
+add_subdirectory(tools/snapshot)
 
 if(MM_BUILD_TESTS)
     enable_testing()

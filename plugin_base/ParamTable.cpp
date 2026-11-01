@@ -21,7 +21,7 @@ int ParamTable::index(std::string_view id) const noexcept
 
 static juce::String formatValue(const ParamSpec& s, float v)
 {
-    const juce::String unit(s.unit);
+    const juce::String unit = juce::String::fromUTF8(s.unit);
     const float a = std::abs(v);
     const int decimals = a >= 1000.0f ? 0 : (a >= 100.0f ? 1 : 2);
     return juce::String(v, decimals) + (unit.isEmpty() ? juce::String() : (" " + unit));
@@ -39,7 +39,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ParamTable::makeLayout() con
         {
             juce::NormalisableRange<float> range(s.min, s.max, 0.0f, s.skew);
             auto attrs = juce::AudioParameterFloatAttributes()
-                             .withLabel(s.unit)
+                             .withLabel(juce::String::fromUTF8(s.unit))
                              .withStringFromValueFunction([spec = s](float v, int) { return formatValue(spec, v); })
                              .withValueFromStringFunction([](const juce::String& t) { return t.getFloatValue(); });
             layout.add(std::make_unique<juce::AudioParameterFloat>(pid, s.name, range, s.def, attrs));
@@ -47,7 +47,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout ParamTable::makeLayout() con
         }
         case ParamType::Int:
         {
-            auto attrs = juce::AudioParameterIntAttributes().withLabel(s.unit);
+            auto attrs = juce::AudioParameterIntAttributes().withLabel(juce::String::fromUTF8(s.unit));
             layout.add(std::make_unique<juce::AudioParameterInt>(pid, s.name, static_cast<int>(s.min),
                                                                  static_cast<int>(s.max), static_cast<int>(s.def), attrs));
             break;
