@@ -47,7 +47,7 @@ def test_delay_time_accuracy(sr, time_ms, record_property):
 @pytest.mark.parametrize("sync,bpm,expected_ms", [(4, 120.0, 250.0), (7, 120.0, 750.0), (11, 120.0, 166.667), (3, 90.0, 666.667)])
 def test_delay_tempo_sync(sync, bpm, expected_ms):
     sr = 48000
-    taps, _ = impulse_taps(sr, dict(BASE, sync=sync), dur=1.5, bpm=bpm)
+    taps, _ = impulse_taps(sr, dict(BASE, sync=sync, link_lr=1), dur=1.5, bpm=bpm)  # mono out sums L and R: link R to L
     assert abs(taps[0][0] * 1000 - expected_ms) < 0.1
 
 

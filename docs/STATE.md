@@ -1,6 +1,6 @@
 # Project state
 
-Updated: 2026-11-02
+Updated: 2026-11-03
 
 ## Milestones
 
@@ -9,7 +9,7 @@ Updated: 2026-11-02
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
-| M3 Colour and space | next (plan to write) | milestone/m3-colour-and-space | — |
+| M3 Colour and space | built; fresh review in progress; CI pending | milestone/m3-colour-and-space | review/m3-colour-and-space (after CI) |
 | M4 Stereo and vocal | planned (roadmap) | — | — |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
@@ -156,13 +156,40 @@ Plan: docs/superpowers/plans/2026-11-02-m3-colour-and-space.md
 
 Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kHz, 4× OS), Delay, Reverb (FDN + Dattorro plate). Reverb decay time measured within 10% of labelled RT60."
 
-- [ ] Task 1 ADR-0006 saturation stages, ADR-0007 delay topology, ADR-0008 reverb design
-- [ ] Task 2 Saturation params and processor
-- [ ] Task 3 Saturation editor (harmonic display, character tabs)
-- [ ] Task 4 Delay params and processor (+ render host BPM)
-- [ ] Task 5 Delay editor (tap display with tempo grid)
-- [ ] Task 6 Reverb core modules (FDN-16, Dattorro plate, early reflections)
-- [ ] Task 7 Reverb params and processor
-- [ ] Task 8 Reverb editor (decay display)
-- [ ] Task 9 Presets, fuzz, listening sheet
+- [x] Task 1 ADR-0006 saturation stages, ADR-0007 delay topology, ADR-0008 reverb design
+- [x] Task 2 Saturation params and processor
+- [x] Task 3 Saturation editor (harmonic display, character tabs)
+- [x] Task 4 Delay params and processor (+ render host BPM)
+- [x] Task 5 Delay editor (tap display with tempo grid)
+- [x] Task 6 Reverb core modules (FDN-16, Dattorro plate, early reflections)
+- [x] Task 7 Reverb params and processor
+- [x] Task 8 Reverb editor (decay display)
+- [x] Task 9 Presets, fuzz, listening sheet
 - [ ] Task 10 STATE, REVIEW, review, CI, tag
+
+## M3 measurements
+
+| Criterion | Target | Measured | Date |
+| --- | --- | --- | --- |
+| Saturation alias floor below 19 kHz, 19 kHz tone at −12 dBFS, 4× + ADAA, **reference drive** (1 % THD: Tape 0 dB, Tube/Transistor 2.96 dB, Clip 8.79 dB), 4 rates × 4 characters | < −80 dBFS (ADR-0006 ruling; spec says "full drive") | worst −96.3 dBFS (16 cases; best −141.6) | 2026-11-02 |
+| Saturation alias floor at +12 dB drive (recorded) | — | −93.8 … −145.2 dBFS | 2026-11-02 |
+| Saturation alias floor at maximum drive 36 dB (recorded, not gated) | spec: < −80 | −54.1 (Tube, 44.1 k) … −119.1 dBFS; Tape/Clip/Transistor at 96/192 k pass, 44.1/48 k fail (see REVIEW question 1) | 2026-11-02 |
+| Saturation THD at the reference drive | 1.0 ± 0.25 % | 1.01–1.18 % | 2026-11-02 |
+| Saturation even/odd balance vs bias (even−odd energy, dB) at bias −1/−0.5/0/0.5/1 | monotonic, none at 0 | Tube 20.5 / 13.3 / −151 / 13.3 / 20.5; Transistor 5.5 / −1.6 / −152 / −1.6 / 5.5; Clip 5.6 / 0 / −152 / 0 / 5.6; Tape 5.7 / −2.3 / −156 / −2.3 / 5.7 | 2026-11-02 |
+| Saturation latency reported == measured (4× oversampler), 4 rates | exact | pass (40 samples at 48 k = 0.83 ms) | 2026-11-02 |
+| Saturation unity small-signal gain (−60 dBFS tone, drive 0–36) / mix 0 null / bounded + DC-free at max drive | ±0.5 dB / < −90 dBFS / < +6 dBFS, DC < −60 | pass / pass / pass (5 Hz DC blocker) | 2026-11-02 |
+| Oversampler (rewritten): latency exact and passthrough flat for 1/2/4/8× at 4 rates; 8× alias ≥ 50 dB over 1× and < −80 | M1 gates | pass (C++ 128 assertions, Python); 4× stereo frame 55 ns (was ~300) | 2026-11-02 |
+| Tabulated ADAA vs analytic antiderivative / output | 1e-9 / 1e-6 | pass | 2026-11-02 |
+| Delay echo time 1 / 37.5 / 375 / 4000 ms, 4 rates | ±0.05 ms | error −0.011 … +0.006 ms (16 cases) | 2026-11-02 |
+| Delay tempo sync (1/8, 1/4 dotted, 1/8 triplet at 120 BPM; 1/4 at 90) | ±0.1 ms | pass | 2026-11-02 |
+| Delay feedback decay fb^n over 6 taps / soft limit at 120 % / ping-pong alternation / filter in loop / modulation ±5 ms / ducking −12 dB | ±0.2 dB / < +6.1 dBFS / alternates / ≥ 20 dB / ±10 % / ±1 dB | 0.026 dB / pass / pass / pass / pass / pass | 2026-11-02 |
+| Delay time jump 1 → 4000 → 1 ms while a tone runs | no sample jump > 2× input's | pass (20 ms equal-power tap crossfade) | 2026-11-02 |
+| Reverb RT60 (Schroeder, −5…−35 dB) at 0.5 / 2 / 8 s, Room / Hall / Plate / Chamber, 4 rates, damping 0 | within 10 % | worst Room 3.5 %, Hall 3.2 %, Chamber 3.2 %, Plate 0.5 % (48 cases; core modules 52 cases same) | 2026-11-02 |
+| Reverb damping: T60 at 8 kHz vs 500 Hz at damping 100 % | ≥ 2× shorter | FDN 0.25 vs 1.28 s; plate 0.82 vs 1.91 s | 2026-11-02 |
+| Reverb 20 s decay, size 100, diffusion 100: 1 s-window energy strictly decreasing / pre-delay 0–250 ms / mono→stereo decorrelation / width 0 identical / algorithm switch | pass / ±1 ms / |corr| < 0.5 / exact / 10 ms-envelope step < 3 dB | pass / pass / pass / pass / 1.48 dB (200 ms morph) | 2026-11-02 |
+| Base checks ×3 (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass; SR-change residuals: saturation −89.5, delay −200, reverb −96.3 dBFS | 2026-11-02 |
+| Stability fuzz 120 s per plugin (7 plugins) | no NaN, bounded | pass for all 7 plugins (120 s each, 4 workers) | 2026-11-03 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3) | Saturation < 1.0 %, Delay < 0.5 %, Reverb < 2.0 % | local M2 Max: saturation 0.840 %, delay 0.283 %, reverb 0.799 % (after the review fix pass); CI: {{CPU_CI}} | 2026-11-03 |
+| pluginval strictness 10, auval, clap-validator (macOS local) | pass | saturation, delay, reverb: VST3, AU, CLAP PASS | 2026-11-03 |
+| Factory presets | ≥ 8 per plugin | saturation 10, delay 9, reverb 10 (loaded by the C++ checks) | 2026-11-03 |
+| CI matrix + sanitizers | green | {{CI}} | 2026-11-03 |
