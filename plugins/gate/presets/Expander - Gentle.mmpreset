@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Expander · Gentle" plugin="gate" version="1" meta="{&quot;tags&quot;:[&quot;dynamics&quot;,&quot;cleanup&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;1.5:1 downward expansion for subtle tightening.&quot;}">
+  <PARAMS>
+    <PARAM id="threshold_db" value="-40"/>
+    <PARAM id="range_db" value="-30"/>
+    <PARAM id="attack_ms" value="5"/>
+    <PARAM id="hold_ms" value="50"/>
+    <PARAM id="release_ms" value="200"/>
+    <PARAM id="mode" value="1"/>
+    <PARAM id="ratio" value="1.5"/>
+    <PARAM id="hysteresis_db" value="3"/>
+    <PARAM id="lookahead_ms" value="0"/>
+    <PARAM id="sc_hp_enabled" value="0"/>
+    <PARAM id="sc_hp_hz" value="80"/>
+    <PARAM id="sc_lp_enabled" value="0"/>
+    <PARAM id="sc_lp_hz" value="8000"/>
+    <PARAM id="ext_key" value="0"/>
+    <PARAM id="listen_sc" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

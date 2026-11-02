@@ -35,7 +35,7 @@ public:
     T process(T levelDb) noexcept
     {
         const double x = static_cast<double>(levelDb);
-        if (x > env)
+        if (x >= env) // a level sitting exactly on the envelope still counts as "above" for the auto-release timer
         {
             env = x + (env - x) * attackCoeff;
             aboveSamples = std::min(aboveSamples + 1, autoWindow);
@@ -52,6 +52,8 @@ public:
             if (aboveSamples > 0)
                 --aboveSamples;
         }
+        if (std::abs(env - x) < 1e-4) // settled: land exactly on the target so callers can take exact-value shortcuts
+            env = x;
         return static_cast<T>(env);
     }
     void reset() noexcept
@@ -60,6 +62,7 @@ public:
         aboveSamples = 0;
     }
     T current() const noexcept { return static_cast<T>(env); }
+    double attackCoefficient() const noexcept { return attackCoeff; } // per-sample pole of the attack one-pole
     void snapTo(T value) noexcept
     {
         env = static_cast<double>(value);

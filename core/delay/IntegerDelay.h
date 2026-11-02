@@ -23,14 +23,25 @@ public:
 
     T process(T in, int ch) noexcept
     {
+        write(in, ch);
+        return read(delay, ch);
+    }
+
+    // write then read at any delay (0 = the sample just written) so a changing delay can crossfade two taps
+    void write(T in, int ch) noexcept
+    {
         T* buf = buffer.data() + static_cast<size_t>(ch) * static_cast<size_t>(length);
         int& w = writePos[static_cast<size_t>(ch)];
         buf[w] = in;
-        int r = w - delay;
-        if (r < 0)
-            r += length;
         if (++w == length)
             w = 0;
+    }
+    T read(int delaySamples, int ch) const noexcept
+    {
+        const T* buf = buffer.data() + static_cast<size_t>(ch) * static_cast<size_t>(length);
+        int r = writePos[static_cast<size_t>(ch)] - 1 - std::clamp(delaySamples, 0, maxDelay);
+        if (r < 0)
+            r += length;
         return buf[r];
     }
 

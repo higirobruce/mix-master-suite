@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Flip Both" plugin="utility" version="1" meta="{&quot;tags&quot;:[&quot;utility&quot;,&quot;polarity&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Invert polarity on both channels.&quot;}">
+  <PARAMS>
+    <PARAM id="gain_db" value="0"/>
+    <PARAM id="polarity_l" value="1"/>
+    <PARAM id="polarity_r" value="1"/>
+    <PARAM id="swap_lr" value="0"/>
+    <PARAM id="mono_sum" value="0"/>
+    <PARAM id="dc_block" value="0"/>
+    <PARAM id="phase_rotation_deg" value="0"/>
+    <PARAM id="mute_l" value="0"/>
+    <PARAM id="mute_r" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

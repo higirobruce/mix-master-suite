@@ -16,11 +16,13 @@ public:
     void paint(juce::Graphics&) override;
     void update(const MeterFrame& frame);
     void setStatusText(const juce::String& text) { status.setText(text, juce::dontSendNotification); }
+    void setStatusSuffix(const juce::String& text) { suffix = text; }
 
 private:
     Theme theme = Theme::dark(accents::utility);
     MeterBar inL, inR, outL, outR;
     juce::Label inLabel{{}, "IN"}, outLabel{{}, "OUT"}, inValue, outValue, status;
     Knob trim;
+    juce::String suffix;
 };
 } // namespace mm::gui

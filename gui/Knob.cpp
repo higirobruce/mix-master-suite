@@ -30,6 +30,8 @@ void Knob::resized()
 {
     auto area = getLocalBounds();
     caption.setBounds(area.removeFromTop(14));
+    const int boxW = juce::jlimit(36, 80, area.getWidth());
+    rotary.setTextBoxStyle(juce::Slider::TextBoxBelow, false, boxW, 16);
     rotary.setBounds(area);
 }
 

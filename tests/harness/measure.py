@@ -67,3 +67,19 @@ def max_gain_step_db(y: np.ndarray, x: np.ndarray, min_level: float = 0.02) -> f
         return 0.0
     r = np.abs(g[1:][valid] / g[:-1][valid])
     return float(np.max(np.abs(20 * np.log10(r + 1e-30))))
+
+
+def envelope_step_db(y: np.ndarray, x: np.ndarray, sr: float, win_ms: float = 1.0, start_s: float = 0.0,
+                     min_level_db: float = -90.0) -> float:
+    """Largest window-to-window change (dB) of the RMS gain envelope y/x over win_ms windows (sine-safe click
+    detector: a smooth parameter ramp moves a fraction of a dB per ms, a click moves many dB)."""
+    y = np.asarray(y, dtype=np.float64)[int(start_s * sr):]
+    x = np.asarray(x, dtype=np.float64)[int(start_s * sr):]
+    w = max(1, int(sr * win_ms / 1000))
+    n = (len(y) // w) * w
+    ry = np.sqrt(np.mean(y[:n].reshape(-1, w) ** 2, axis=1))
+    rx = np.sqrt(np.mean(x[:n].reshape(-1, w) ** 2, axis=1))
+    g = 20 * np.log10(ry / (rx + 1e-20) + 1e-20)
+    keep = (20 * np.log10(ry + 1e-20) > min_level_db)[1:] & (20 * np.log10(ry + 1e-20) > min_level_db)[:-1]
+    d = np.abs(np.diff(g))[keep]
+    return float(d.max()) if d.size else 0.0

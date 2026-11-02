@@ -5,8 +5,8 @@
 namespace mm
 {
 PluginProcessorBase::PluginProcessorBase(const ParamTable& t, const juce::String& id, BusesProperties buses,
-                                         PresetManager::FactorySource factory)
-    : juce::AudioProcessor(buses), paramTable(t), pluginId(id),
+                                         PresetManager::FactorySource factory, const juce::String& displayName)
+    : juce::AudioProcessor(buses), paramTable(t), pluginId(id), pluginName(displayName.isEmpty() ? id : displayName),
       state(*this, &undoManager, juce::Identifier(id), t.makeLayout())
 {
     abcd = std::make_unique<AbcdSlots>(state, paramTable, &undoManager);
@@ -64,6 +64,12 @@ void PluginProcessorBase::updateSmoothers() noexcept
         sp.smoother.setTarget(sp.raw->load(std::memory_order_relaxed));
 }
 
+void PluginProcessorBase::snapSmoothersToTargets() noexcept
+{
+    for (auto& sp : smoothers)
+        sp.smoother.snap(sp.raw->load(std::memory_order_relaxed));
+}
+
 namespace
 {
 // Sum of squares with four accumulators (vectorises); returns a float so a NaN/Inf poisons the result.
@@ -105,12 +111,13 @@ void PluginProcessorBase::prepareToPlay(double sampleRate, int maxBlock)
 {
     currentSampleRate = sampleRate;
     preparedChannels = juce::jmax(1, getTotalNumOutputChannels());
-    prepareDsp(sampleRate, maxBlock, preparedChannels);
+    // smoothers first, so prepareDsp() designs from the current parameter values (no ramp in the first block)
     for (auto& sp : smoothers)
     {
         sp.smoother.prepare(sampleRate, sp.rampMs);
         sp.smoother.snap(sp.raw->load());
     }
+    prepareDsp(sampleRate, maxBlock, preparedChannels);
     dryBuffer.setSize(preparedChannels, maxBlock, false, false, true);
     dryDelay.prepare(juce::jmax(0, maxDspLatencySamples()), preparedChannels);
     reportedLatency = dspLatencySamples();
@@ -188,6 +195,7 @@ void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce
     jassert(numSamples <= dryBuffer.getNumSamples());
 
     updateSmoothers();
+    beginBlock(numSamples);
 
     // input metering (pre) on the main input channels; a non-finite host block is silenced before it reaches the DSP
     const int meterIn = juce::jmin(numIn, 2);
@@ -318,6 +326,7 @@ void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce
         frame.rmsOutDb[1] = frame.rmsOutDb[0];
     }
     frame.latencyMs = static_cast<float>(1000.0 * latency / currentSampleRate);
+    frame.gainReductionDb = gainReduction.load(std::memory_order_relaxed);
     meters.push(frame);
 }
 

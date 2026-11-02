@@ -33,6 +33,7 @@ struct Job
     double sampleRate = 48000.0;
     int blockSize = 64;
     int inChannels = 2, outChannels = 2, sidechainChannels = 0;
+    double sidechainDb = 0.0; // sidechain channels = input channel 0 scaled by this
     juce::var params;         // object id -> real value
     juce::var paramRanges;    // object id -> {min,max,skew,type}
     std::vector<AutomationPoint> automation;

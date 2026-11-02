@@ -27,14 +27,16 @@ def check_variable_block_sizes(name: str, params: dict | None = None, tol_dbfs: 
     return res
 
 
-def check_sr_change_mid_stream(name: str, params: dict | None = None, tol_dbfs: float = -120.0) -> float:
-    """Schedule 48k -> 96k at 1 s; the post-change audio must match a fresh 96k render of the same material."""
+def check_sr_change_mid_stream(name: str, params: dict | None = None, tol_dbfs: float = -120.0,
+                               settle_s: float = 0.1) -> float:
+    """Schedule 48k -> 96k at 1 s; the post-change audio (after settle_s, so detectors and envelopes re-settle)
+    must match a fresh 96k render of the same material."""
     x = signals.noise(96000, 2.0, seed=12)
     y, rep = render_plugin(name, sr=96000, params=params, input=x, schedule=[{"t_s": 0.0, "sample_rate": 48000},
                                                                              {"t_s": 1.0, "sample_rate": 96000}])
     assert rep["nan_count"] == 0
     ref, _ = render_plugin(name, sr=96000, params=params, input=x)
-    start = int(1.1 * 96000)
+    start = int((1.0 + settle_s) * 96000)
     res = measure.residual_dbfs(y[start:], ref[start:])
     assert res < tol_dbfs, f"sample-rate change residual {res:.1f} dBFS"
     return res
@@ -58,9 +60,11 @@ def check_state_roundtrip(name: str, params: dict | None = None) -> None:
     assert res < -120, f"state round trip changed the output: {res:.1f} dBFS"
 
 
-def check_param_extremes(name: str, max_peak_db: float = 24.5, ramp_params: dict[str, float] | None = None) -> None:
+def check_param_extremes(name: str, max_peak_db: float = 24.5, ramp_params: dict[str, float] | None = None,
+                         ramp_window_ms: float | None = None) -> None:
     """Every parameter jumped to min/max/default (each choice, both bools) mid-signal: finite, bounded, and for the
-    pure-gain parameters listed in ramp_params the gain envelope never steps more than the given dB per sample."""
+    parameters listed in ramp_params the gain envelope never steps more than the given dB per sample (pure-gain
+    parameters) or per ramp_window_ms RMS window (filters, where a per-sample y/x ratio is meaningless)."""
     spec = load_spec(name)
     sr = 48000
     x = signals.sine(1000, sr, 1.0, amp_db=-12)
@@ -72,8 +76,15 @@ def check_param_extremes(name: str, max_peak_db: float = 24.5, ramp_params: dict
         assert rep["peak_db"] < max_peak_db, f"{pid}={value} peak {rep['peak_db']:.1f} dB"
         if pid in ramp_params:
             assert pid in smoothed, f"{pid} is not a smoothed parameter"
-            step = measure.max_gain_step_db(y[:, 0], x[:, 0])
-            assert step < ramp_params[pid], f"{pid}={value} click: gain step {step:.3f} dB/sample"
+            if ramp_window_ms is None:
+                step = measure.max_gain_step_db(y[:, 0], x[:, 0])
+                assert step < ramp_params[pid], f"{pid}={value} click: gain step {step:.3f} dB/sample"
+            else:
+                w = int(ramp_window_ms * 1e-3 * sr)
+                env = np.sqrt(np.convolve(y[:, 0].astype(np.float64) ** 2, np.ones(w) / w, "valid"))[::w]
+                env_db = 20 * np.log10(env[int(0.1 * sr / w):] + 1e-12)
+                step = float(np.max(np.abs(np.diff(env_db))))
+                assert step < ramp_params[pid], f"{pid}={value} click: envelope step {step:.3f} dB per {ramp_window_ms} ms"
 
 
 def check_denormal_tail(name: str, params: dict | None = None) -> None:

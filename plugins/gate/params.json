@@ -1,0 +1,27 @@
+{
+  "plugin": {
+    "id": "gate",
+    "name": "Gate",
+    "family": "dynamics",
+    "version": "0.1.0",
+    "code": "Gate",
+    "accent": "#E0B45C"
+  },
+  "params": [
+    { "id": "threshold_db", "name": "Threshold", "type": "float", "unit": "dB", "min": -80, "max": 0, "default": -40, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "range_db", "name": "Range", "type": "float", "unit": "dB", "min": -80, "max": 0, "default": -80, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "attack_ms", "name": "Attack", "type": "float", "unit": "ms", "min": 0.01, "max": 100, "default": 1, "skew": 0.3, "smoothing_ms": 20 },
+    { "id": "hold_ms", "name": "Hold", "type": "float", "unit": "ms", "min": 0, "max": 2000, "default": 50, "skew": 0.4, "smoothing_ms": 20 },
+    { "id": "release_ms", "name": "Release", "type": "float", "unit": "ms", "min": 1, "max": 5000, "default": 100, "skew": 0.3, "smoothing_ms": 20 },
+    { "id": "mode", "name": "Mode", "type": "choice", "choices": ["Gate", "Expander"], "default": 0 },
+    { "id": "ratio", "name": "Ratio", "type": "float", "unit": ":1", "min": 1, "max": 100, "default": 4, "skew": 0.3, "smoothing_ms": 20 },
+    { "id": "hysteresis_db", "name": "Hysteresis", "type": "float", "unit": "dB", "min": 0, "max": 12, "default": 3, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "lookahead_ms", "name": "Lookahead", "type": "float", "unit": "ms", "min": 0, "max": 5, "default": 0, "skew": 1.0, "smoothing_ms": 0 },
+    { "id": "sc_hp_enabled", "name": "Sidechain HP on", "type": "bool", "default": false, "group": "advanced" },
+    { "id": "sc_hp_hz", "name": "Sidechain HP", "type": "float", "unit": "Hz", "min": 20, "max": 2000, "default": 80, "skew": 0.3, "smoothing_ms": 20, "group": "advanced" },
+    { "id": "sc_lp_enabled", "name": "Sidechain LP on", "type": "bool", "default": false, "group": "advanced" },
+    { "id": "sc_lp_hz", "name": "Sidechain LP", "type": "float", "unit": "Hz", "min": 200, "max": 20000, "default": 8000, "skew": 0.3, "smoothing_ms": 20, "group": "advanced" },
+    { "id": "ext_key", "name": "External key", "type": "bool", "default": false, "group": "advanced" },
+    { "id": "listen_sc", "name": "Listen to sidechain", "type": "bool", "default": false, "ai": false, "group": "advanced" }
+  ]
+}

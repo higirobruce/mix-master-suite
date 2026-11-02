@@ -1,6 +1,6 @@
-// mm_snapshot <out-dir> [scale]  -> <out-dir>/utility-dark.png, utility-light.png
+// mm_snapshot_<plugin> <out-dir> [scale]  -> <out-dir>/<plugin>-dark.png, <plugin>-light.png
 #include "gui/PluginEditorBase.h"
-#include "plugins/utility/UtilityProcessor.h"
+#include MM_SNAPSHOT_HEADER
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <cstdio>
 
@@ -11,8 +11,9 @@ int main(int argc, char* argv[])
     const juce::File outDir = argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile(argv[1])
                                        : juce::File::getCurrentWorkingDirectory();
     const float scale = argc > 2 ? static_cast<float>(std::atof(argv[2])) : 1.0f;
+    const juce::String pluginName(MM_SNAPSHOT_NAME);
     outDir.createDirectory();
-    UtilityProcessor proc;
+    MM_SNAPSHOT_CLASS proc;
     proc.prepareToPlay(48000.0, 64);
     // some signal so the meters show something
     juce::AudioBuffer<float> buf(2, 64);
@@ -33,12 +34,13 @@ int main(int argc, char* argv[])
     base->setScale(scale);
     for (bool dark : {true, false})
     {
-        base->setTheme(dark ? mm::gui::Theme::dark(mm::gui::accents::utility) : mm::gui::Theme::light(mm::gui::accents::utility));
+        const auto accent = base->theme().accent;
+        base->setTheme(dark ? mm::gui::Theme::dark(accent) : mm::gui::Theme::light(accent));
         // pump the meter timer once
         juce::Timer::callPendingTimersSynchronously();
         auto img = editor->createComponentSnapshot(editor->getLocalBounds(), true, 1.0f);
         juce::PNGImageFormat png;
-        auto file = outDir.getChildFile(juce::String("utility-") + (dark ? "dark" : "light") + ".png");
+        auto file = outDir.getChildFile(pluginName + "-" + (dark ? "dark" : "light") + ".png");
         file.deleteFile();
         juce::FileOutputStream os(file);
         if (!png.writeImageToStream(img, os))

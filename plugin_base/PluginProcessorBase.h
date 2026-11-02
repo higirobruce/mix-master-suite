@@ -22,7 +22,8 @@ class PluginProcessorBase : public juce::AudioProcessor
 {
 public:
     PluginProcessorBase(const ParamTable& table, const juce::String& pluginId, BusesProperties buses,
-                        PresetManager::FactorySource factory = PresetManager::FactorySource());
+                        PresetManager::FactorySource factory = PresetManager::FactorySource(),
+                        const juce::String& displayName = {});
     ~PluginProcessorBase() override;
 
     // ---- host interface (final: the base owns the block structure)
@@ -33,7 +34,7 @@ public:
     bool isBusesLayoutSupported(const BusesLayout&) const override;
     void getStateInformation(juce::MemoryBlock&) final;
     void setStateInformation(const void*, int) final;
-    const juce::String getName() const override { return pluginId; }
+    const juce::String getName() const override { return pluginName; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
@@ -54,6 +55,7 @@ public:
     void setDeltaListen(bool on) noexcept { delta.store(on); }
     bool deltaListen() const noexcept { return delta.load(); }
     std::atomic<int>& nanCounter() noexcept { return nanCount; }
+    float currentGainReductionDb() const noexcept { return gainReduction.load(std::memory_order_relaxed); }
     juce::ValueTree& uiState() noexcept { return ui; } // scale, theme, drawer; saved with the plugin state
     const juce::String& id() const noexcept { return pluginId; }
 
@@ -61,6 +63,9 @@ protected:
     virtual void prepareDsp(double sampleRate, int maxBlock, int channels) = 0;
     virtual void processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) = 0;
     virtual void resetDsp() = 0;
+    // Called first in every (sub)block, before the dry copy and the latency read: decide anything that changes the
+    // reported latency here (lookahead, oversampling) so the dry/bypass path is aligned for this very block.
+    virtual void beginBlock(int /*numSamples*/) {}
     virtual int dspLatencySamples() const { return 0; }
     virtual int maxDspLatencySamples() const { return dspLatencySamples(); }
     virtual juce::ValueTree extraState() { return {}; }
@@ -77,6 +82,8 @@ protected:
     float param(ParamId id) const noexcept; // convenience: table scan + atomic load
     Smoother<float>& smoothed(ParamId id) noexcept; // table scan; cache the reference
     void updateSmoothers() noexcept; // called by the base at the start of each block
+    void snapSmoothersToTargets() noexcept; // jump every smoother to its parameter value (preset load, tests)
+    void reportGainReduction(float db) noexcept { gainReduction.store(db, std::memory_order_relaxed); } // -> MeterFrame
 
     // Subclass contract:
     //  - processDsp() sees any block size <= the prepareToPlay maximum (the base splits larger host blocks);
@@ -90,7 +97,7 @@ private:
     void resetMeters() noexcept;
 
     const ParamTable& paramTable;
-    juce::String pluginId;
+    juce::String pluginId, pluginName;
     juce::UndoManager undoManager;
     juce::AudioProcessorValueTreeState state;
     std::unique_ptr<AbcdSlots> abcd;
@@ -110,6 +117,7 @@ private:
 
     std::atomic<bool> delta{false};
     std::atomic<int> nanCount{0};
+    std::atomic<float> gainReduction{0.0f};
 
     juce::AudioBuffer<float> dryBuffer;
     IntegerDelay<float> dryDelay;

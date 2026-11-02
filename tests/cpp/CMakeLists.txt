@@ -79,3 +79,51 @@ target_link_libraries(mm_gui_tests PRIVATE utility mm_gui mm_plugin_base Catch2:
 mm_set_warnings(mm_gui_tests)
 mm_enable_sanitizers(mm_gui_tests)
 catch_discover_tests(mm_gui_tests)
+
+# ---- channel EQ tests
+add_executable(mm_channel_eq_tests test_channel_eq.cpp)
+target_include_directories(mm_channel_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_eq)
+target_link_libraries(mm_channel_eq_tests PRIVATE channel_eq mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_channel_eq_tests)
+mm_enable_sanitizers(mm_channel_eq_tests)
+catch_discover_tests(mm_channel_eq_tests)
+
+# ---- channel EQ GUI tests
+add_executable(mm_gui_channel_eq_tests test_gui_channel_eq.cpp)
+target_include_directories(mm_gui_channel_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_eq)
+target_link_libraries(mm_gui_channel_eq_tests PRIVATE channel_eq mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_channel_eq_tests)
+mm_enable_sanitizers(mm_gui_channel_eq_tests)
+catch_discover_tests(mm_gui_channel_eq_tests)
+
+# ---- channel compressor tests
+add_executable(mm_channel_comp_tests test_channel_comp.cpp)
+target_include_directories(mm_channel_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_comp)
+target_link_libraries(mm_channel_comp_tests PRIVATE channel_comp mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_channel_comp_tests)
+mm_enable_sanitizers(mm_channel_comp_tests)
+catch_discover_tests(mm_channel_comp_tests)
+
+# ---- channel compressor GUI tests
+add_executable(mm_gui_channel_comp_tests test_gui_channel_comp.cpp)
+target_include_directories(mm_gui_channel_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/channel_comp)
+target_link_libraries(mm_gui_channel_comp_tests PRIVATE channel_comp mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_channel_comp_tests)
+mm_enable_sanitizers(mm_gui_channel_comp_tests)
+catch_discover_tests(mm_gui_channel_comp_tests)
+
+# ---- gate
+add_executable(mm_gate_tests test_gate.cpp)
+target_include_directories(mm_gate_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/gate)
+target_link_libraries(mm_gate_tests PRIVATE gate mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gate_tests)
+mm_enable_sanitizers(mm_gate_tests)
+catch_discover_tests(mm_gate_tests)
+
+# ---- gate GUI tests
+add_executable(mm_gui_gate_tests test_gui_gate.cpp)
+target_include_directories(mm_gui_gate_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/gate)
+target_link_libraries(mm_gui_gate_tests PRIVATE gate mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_gate_tests)
+mm_enable_sanitizers(mm_gui_gate_tests)
+catch_discover_tests(mm_gui_gate_tests)

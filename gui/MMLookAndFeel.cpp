@@ -138,7 +138,16 @@ void MMLookAndFeel::drawComboBox(juce::Graphics& g, int width, int height, bool,
     g.fillPath(arrow);
 }
 
-juce::Font MMLookAndFeel::getLabelFont(juce::Label& l) { return regular(l.getFont().getHeight()); }
+juce::Font MMLookAndFeel::getLabelFont(juce::Label& l)
+{
+    // slider readouts shrink with their box so values never truncate in narrow columns
+    if (auto* slider = dynamic_cast<juce::Slider*>(l.getParentComponent()))
+    {
+        const float h = juce::jlimit(9.0f, 13.0f, static_cast<float>(slider->getTextBoxWidth()) / 5.0f);
+        return regular(h);
+    }
+    return regular(l.getFont().getHeight());
+}
 
 void MMLookAndFeel::fillTextEditorBackground(juce::Graphics& g, int width, int height, juce::TextEditor&)
 {

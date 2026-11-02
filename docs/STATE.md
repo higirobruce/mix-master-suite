@@ -1,6 +1,6 @@
 # Project state
 
-Updated: 2026-11-01
+Updated: 2026-11-02
 
 ## Milestones
 
@@ -8,8 +8,8 @@ Updated: 2026-11-01
 | --- | --- | --- | --- |
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
-| M2 Channel essentials | in progress (docs/superpowers/plans/2026-11-01-m2-channel-essentials.md) | milestone/m2-channel-essentials | — |
-| M3 Colour and space | planned (roadmap) | — | — |
+| M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
+| M3 Colour and space | next (plan to write) | milestone/m3-colour-and-space | — |
 | M4 Stereo and vocal | planned (roadmap) | — | — |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
@@ -101,3 +101,51 @@ Exit criteria (CLAUDE.md, verbatim): "filters (biquad, matched, FIR, Linkwitz–
 | Linear modules block-size independent (schedule 16/4096/1/500/63) | < −120 dBFS | pass (9 modules × 2 rates) | 2026-11-01 |
 | Every module: silence→silence, noise→finite, 4 rates | pass | pass (17 modules) | 2026-11-01 |
 | Core cost ns/sample @48 k (Release, M2 Max) | — | biquad_float 7.6, biquad_double 7.6, svf_float 7.0, lr4_double 13.9, fir_255_float 388.2, smoother 1.5, compressor_chain 13.7, lookahead_5ms 20.5, fractional_delay_lagrange3 5.8, tanh_adaa 13.3, tape_hysteresis 310.9, tube 3.6, rms_meter 2.1, correlation 1.5 | 2026-11-01 |
+
+## M2 Channel essentials — tasks
+
+Plan: docs/superpowers/plans/2026-11-01-m2-channel-essentials.md
+
+Exit criteria (CLAUDE.md, verbatim): "Channel EQ, Channel Compressor, Gate. Frequency response within ±0.1 dB / ±2°; attack/release within 10%; ratio within 0.1; CPU within budget table." Spec phase 2 exit: "null tests against reference transfer curves within 0.1 dB."
+
+- [x] Task 1 ADR-0003 EQ bands and analog Q, ADR-0004 compressor topology, ADR-0005 gate hysteresis/hold/lookahead
+- [x] Task 2 Channel EQ params and processor
+- [x] Task 3 Channel EQ editor (curve, spectrum, drawer, snapshot tool)
+- [x] Task 4 Channel Compressor params and processor
+- [x] Task 5 Channel Compressor editor (transfer curve, GR history, GR meter)
+- [x] Task 6 Gate params and processor
+- [x] Task 7 Gate editor (history with open/closed shading)
+- [x] Task 8 Stability fuzz, factory presets, nightly workflow
+- [x] Task 9 STATE, REVIEW, pluginval, bench, CI, tag
+
+## M2 measurements
+
+| Criterion | Target | Measured | Date |
+| --- | --- | --- | --- |
+| Channel EQ: every band type and slope vs its design (independent Python mirror), 20 Hz–0.45 fs, 44.1/48/96/192 k | ±0.1 dB / ±2° | 120 cases: max deviation 0.000 dB / 0.000° (double-precision biquads, designs mirrored in `tests/harness/designs.py`) | 2026-11-02 |
+| Channel EQ: composed 7-band response vs independent `eq_ref.py` | ±0.1 dB / ±2° | pass (ADR-0003 slopes: 6/12/18/24/36/48 dB/oct Butterworth; −3 dB at fc checked) | 2026-11-02 |
+| Channel EQ null at flat settings, 4 rates | < −120 dBFS | −200 dBFS (exact) | 2026-11-02 |
+| Channel EQ 2× oversampling vs analog prototype to 0.4 fs | ±0.1 dB | pass; 1× vs 2× difference 0.11 dB at 0.28 fs @ 44.1 k (recorded) | 2026-11-01 |
+| Channel EQ band sweep (+12 dB bell, 20 Hz–20 kHz in 2 s across a 1 kHz tone) | 1 ms envelope step < 0.5 dB | 0.11 dB | 2026-11-02 |
+| Channel EQ HP/LP cutoff sweeps (a decade in 2 s, every slope, block 512) | step < 0.5 dB | ≤ 0.002 dB (was a −31 dBFS burst at 6/18 dB/oct: the one-pole was reset on every redesign) | 2026-11-02 |
+| Channel EQ band gain → 0 dB and band on/off (blocks 64/512/2048) | glide, never a step (< 1.5 dB/ms) | 0.34–0.62 dB per ms (20 ms glide; was a −24 dBFS click) | 2026-11-02 |
+| Channel EQ HP on/off and slope change while running (12/24/48 dB/oct at fc on a tone at fc) | glide (< 2 dB/ms) | 0.52–0.84 dB per ms; worst resonant release +1.0 dB at 48 dB/oct (was +5.5 dB) | 2026-11-02 |
+| Channel Compressor feedback topology ratio 2/4/8; makeup independence | within 0.3; 12 dB makeup = +12 dB out | 2.000 / 4.000 / 8.000 (FB out == FF out at 0 dB in); +12.000 dB | 2026-11-02 |
+| Channel Compressor mix 100→0 and auto-makeup on (blocks 64/2048) | per-sample ramps (< 2.5 / < 1 dB per ms) | mix 0.63–1.24 dB/ms (linear crossfade of a 15 dB difference over 20 ms); auto makeup 0.27–0.38 dB/ms | 2026-11-02 |
+| Gate lookahead 0→5 ms while a tone runs | no sample jump (< 1.5× the tone's own) | pass (5 ms tap crossfade); latency 240 reported | 2026-11-02 |
+| Channel Compressor static ratio 2/4/8/20 (RMS detector) and ∞ | within 0.1 | 2.000 / 4.000 / 8.000 / 20.000; ∞ slope < 0.05 dB over 6 dB | 2026-11-02 |
+| Channel Compressor attack 1/10/100 ms, release 50/300/1000 ms on DC steps, 4 rates | within 10 % | attack 0.998–98.9 ms (worst −1.1 %), release 50.0 / 300 / 1000.0 ms | 2026-11-02 |
+| Channel Compressor knee (12 dB, 4:1), null at 1:1, mix, auto makeup, link, feedback | per test | knee −1.125 dB at threshold; 1:1 null < −90 dBFS; mix linear ±2e-4; auto makeup +7.5 dB; FB compresses less (−7.3 vs −12.7 dB out at 0 dB in) | 2026-11-02 |
+| Gate attack 0.1/1/10 ms, release 10/100/1000 ms on DC steps, 4 rates | within 10 % | attack 0.091–0.104 / 0.998–1.0 / 10.0 ms; release 10.0 / 100.0 / 1000.0 ms | 2026-11-02 |
+| Gate hold 50/200/1000 ms (burst shorter than hold) | within 10 % | 51 / 201 / 1001 ms (+1 ms: 2 ms key peak hold, ADR-0005) | 2026-11-02 |
+| Gate range floor −20/−40/−80 dB | ±0.1 dB | pass (output = input + range) | 2026-11-02 |
+| Gate hysteresis: 1 kHz tone ±1 dB AM at 5 Hz around the threshold, 3 s | ≤ 1 open→close per cycle at 3 dB | 0 transitions at 3 dB; 15 at 0 dB (recorded) | 2026-11-02 |
+| Gate lookahead 5 ms: reported == measured; onset preserved | exact; ≥ 0.9 | 240 samples both; first-ms onset ratio 1.00 (0.30 without lookahead) | 2026-11-02 |
+| Gate expander ratio 2/4 below threshold | within 0.1 | 2.000 / 4.000 | 2026-11-02 |
+| Sidechain HP/LP, external key with silent fallback, listen (comp + gate) | pass | pass | 2026-11-02 |
+| Base checks per plugin: variable blocks, SR change mid-stream, state round trip, param extremes, denormal tail, channel configs | < −100 / −60 dBFS; pass | EQ −200 / −200; comp −200 / −126; gate −200 / −200; all others pass | 2026-11-02 |
+| Stability fuzz, every parameter every 50 ms, SR 44.1→96→48 k and block 1…4096 mid-stream, 120 s per plugin | no NaN, peak < input + max static gain + 24 dB | pass ×4; peaks: utility +24.9, EQ +49.6 (bound 114: five +18 dB bells), comp +19.7, gate +11.3 dBFS; pure-gain steps ≤ 0.06 dB/sample | 2026-11-02 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3, M2 Max) | EQ < 0.5 %, comp < 0.4 %, gate < 0.3 % | local M2 Max: EQ 0.122 %, comp 0.260 %, gate 0.167 %; CI runners (run 41386855649) macOS 0.090 / 0.192 / 0.121, Linux 0.129 / 0.288 / 0.164, Windows 0.138 / 0.249 / 0.168 (utility 0.041–0.061). Per-sample pow/log10 replaced by tested fast conversions after Windows measured comp 0.50 / gate 0.31 | 2026-11-02 |
+| pluginval strictness 10, auval, clap-validator (macOS local) | pass | EQ, comp, gate: VST3 PASS, AU PASS, CLAP PASS | 2026-11-02 |
+| Factory presets | ≥ 8 per plugin | EQ 10, comp 10, gate 9, utility 8; every preset loads (C++ check per plugin) | 2026-11-02 |
+| CI matrix macOS/Windows/Linux + sanitizers | green | run 41386855649: all five jobs green (build-test ×3 incl. pluginval/clap-validator for every plugin and the CPU benchmark; sanitizers ×2) | 2026-11-02 |

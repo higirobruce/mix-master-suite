@@ -21,7 +21,7 @@ UtilityProcessor::UtilityProcessor()
                               BusesProperties()
                                   .withInput("Input", juce::AudioChannelSet::stereo(), true)
                                   .withOutput("Output", juce::AudioChannelSet::stereo(), true),
-                              utilityFactory())
+                              utilityFactory(), up::kPluginName)
 {
     polarityL = paramRef(up::id::polarity_l);
     polarityR = paramRef(up::id::polarity_r);
