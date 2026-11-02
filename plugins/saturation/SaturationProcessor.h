@@ -1,5 +1,4 @@
 #pragma once
-#include "core/delay/IntegerDelay.h"
 #include "core/filters/Biquad.h"
 #include "core/filters/OnePole.h"
 #include "core/nonlinear/ADAA.h"
@@ -67,8 +66,7 @@ private:
     std::array<ChannelDsp, kMaxChannels> dsp;
     mm::TubeTransfer tube;
     mm::Oversampler oversampler;
-    mm::IntegerDelay<float> dryDelay;
-    std::array<std::vector<float>, kMaxChannels> dryBuf; // sized in prepareDsp
+    std::array<std::vector<float>, kMaxChannels> dryBuf, dryCarry; // sized in prepareDsp
     double hostRate = 48000.0;
     int lastCharacter = -1;
     float lastRolloff = -1.0f;

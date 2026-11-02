@@ -4,6 +4,7 @@
 #include "plugins/saturation/SaturationEditor.h"
 #include "saturation_data.h"
 #include <cmath>
+#include <cstring>
 #include <numbers>
 
 namespace sp = mm::plugins::saturation;
@@ -132,10 +133,10 @@ void SaturationProcessor::prepareDsp(double sampleRate, int maxBlock, int channe
 {
     hostRate = sampleRate;
     oversampler.prepare(sampleRate, maxBlock, juce::jmin(channels, kMaxChannels), 4);
-    dryDelay.prepare(oversampler.latencySamples(), kMaxChannels);
-    dryDelay.setDelay(oversampler.latencySamples());
     for (auto& d : dryBuf)
         d.assign(static_cast<size_t>(maxBlock), 0.0f);
+    for (auto& c : dryCarry)
+        c.assign(static_cast<size_t>(oversampler.latencySamples()), 0.0f);
     designFilters(oversampler.oversampledRate(), sampleRate);
     lastRolloff = -1.0f;
     resetDsp();
@@ -146,7 +147,8 @@ void SaturationProcessor::resetDsp()
     for (auto& ch : dsp)
         ch.reset();
     oversampler.reset();
-    dryDelay.reset();
+    for (auto& c : dryCarry)
+        std::fill(c.begin(), c.end(), 0.0f);
     lastCharacter = -1;
 }
 
@@ -176,13 +178,26 @@ void SaturationProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mid
     const bool tape = chr == 0;
     tube.set(static_cast<double>(mm::dbToGain(drive->current())), static_cast<double>(bias->current()));
 
-    // dry copy delayed by the oversampler latency for the mix; tape pre-emphasis at the host rate
+    // dry copy delayed by the oversampler latency for the mix (block shift with a carried tail: no per-sample ring
+    // arithmetic); tape pre-emphasis at the host rate
+    const int lat = oversampler.latencySamples();
     for (int ch = 0; ch < channels; ++ch)
     {
         float* src = buffer.getWritePointer(ch);
         float* d = dryBuf[static_cast<size_t>(ch)].data();
-        for (int i = 0; i < n; ++i)
-            d[i] = dryDelay.process(src[i], ch);
+        float* carry = dryCarry[static_cast<size_t>(ch)].data(); // the last `lat` input samples
+        if (n >= lat)
+        {
+            std::copy(carry, carry + lat, d);
+            std::copy(src, src + (n - lat), d + lat);
+            std::copy(src + (n - lat), src + n, carry);
+        }
+        else // a block shorter than the latency: shift the carry
+        {
+            std::copy(carry, carry + n, d);
+            std::memmove(carry, carry + n, static_cast<size_t>(lat - n) * sizeof(float));
+            std::copy(src, src + n, carry + (lat - n));
+        }
         if (tape)
             for (int i = 0; i < n; ++i)
                 src[i] = dsp[static_cast<size_t>(ch)].preEmphasis.process(src[i]);
@@ -201,12 +216,16 @@ void SaturationProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mid
         auto& d = dsp[static_cast<size_t>(ch)];
         float* p = up.getChannelPointer(static_cast<size_t>(ch));
         auto stageLoop = [&](auto&& shaper) {
-            for (int i = 0; i < m; ++i)
+            // drive and its compensation ramp per 8-sample chunk (0.04 ms at 4x / 48 k): inaudible steps, no
+            // per-sample interpolation in the hot loop
+            for (int i0 = 0; i0 < m; i0 += 8)
             {
-                const float t = static_cast<float>(i + 1) * invM;
+                const int i1 = juce::jmin(m, i0 + 8);
+                const float t = static_cast<float>(i1) * invM;
                 const float g = gStart + (gEnd - gStart) * t;
                 const float comp = compStart + (compEnd - compStart) * t;
-                p[i] = (shaper(p[i] * g + b) - offset) * comp;
+                for (int i = i0; i < i1; ++i)
+                    p[i] = (shaper(p[i] * g + b) - offset) * comp;
             }
         };
         switch (chr)
