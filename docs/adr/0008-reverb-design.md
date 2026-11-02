@@ -21,3 +21,10 @@ Spec: Reverb with algorithm (room / hall / plate / chamber), pre-delay, decay 0.
 - RT60 within 10 % at 0.5/2/8 s for all four algorithms at four rates at damping 0; damped behaviour recorded.
 - 16 lines × (delay read/write + one-pole + butterfly) ≈ 16 × 8 ns + 64 adds per frame ≈ 0.6–0.9 % per instance: within the 2 % budget with the plate's ~30 % extra.
 - A 20 s decay at size 100 % needs ~5 s of total delay memory per instance (16 × 137 ms × 2 … well under 1 MB at 192 k).
+
+## Amendments (2026-11-02, implementation)
+
+- The plate's RT60 label is calibrated by measurement (`tools/calibrate_plate.py`, Schroeder T60 at 48 kHz, table in `DattorroPlate::correctedSeconds`) on top of the loop formula: the tank's onset (~0.36 s per half loop) makes short labels read long. The plate cannot decay faster than ~0.5 s at its fixed (Dattorro) size, so labels below 0.5 s reach that floor; `size_pct` scales the FDN algorithms and the early reflections only.
+- The tank's modulated all-passes read with 4-point Lagrange interpolation: linear interpolation low-passed the broadband tank and shortened long decays by ~10 %.
+- Algorithm and size changes crossfade between two FDN instances (or FDN and plate) over 200 ms, not 50: the incoming engine starts empty and needs ~0.3 s to fill, so a 50 ms fade dipped 10 dB.
+- Measured: RT60 within 3.5 % (FDN) / 0.5 % (plate) of the label at 0.5 / 2 / 8 s and four sample rates.
