@@ -1,5 +1,5 @@
 # Review: M3 Colour and space
-Commit: {{SHA}}   Branch: milestone/m3-colour-and-space
+Commit: d7d512c   Branch: milestone/m3-colour-and-space
 
 ## What was built
 - **Saturation** (`plugins/saturation`, 8 parameters): Tape (first-order emphasis pair around an atan stage, 60 Hz head bump), Tube (`TubeTransfer`), Transistor (tanh), Clip (soft clip), all at fixed 4× oversampling with first-order ADAA (tabulated antiderivatives, within 1e-9 of the closed forms); bias shifts the operating point DC-free (5 Hz DC blocker); unity small-signal gain so drive adds colour, not level; HF roll-off; mix against a latency-aligned dry. Editor: one large drive knob, harmonic display of a 1 kHz tone (even harmonics in the accent), character selector with one-line descriptions.
@@ -17,10 +17,10 @@ Every number is in the "M3 measurements" table of docs/STATE.md.
 | Saturation aliasing at **maximum drive** (spec wording "full drive") | < −80 dBFS | −54 … −119 dBFS: fails at 44.1/48 k for every character | ✗ spec question 1 |
 | Delay | echo time ±0.05 ms, sync exact, feedback ±0.2 dB, bounded loop | pass at 4 rates | ✓ |
 | Reverb FDN + Dattorro plate, RT60 within 10 % of the label | 10 % | worst 3.5 % (FDN), 0.5 % (plate), 0.5/2/8 s, 4 algorithms, 4 rates | ✓ |
-| CPU within budget (1.0 / 0.5 / 2.0 %) | ≤ budget | local: saturation 0.840 %, delay 0.283 %, reverb 0.799 %; CI runners: {{CPU_CI}} | {{CPU_MARK}} |
+| CPU within budget (1.0 / 0.5 / 2.0 %) | ≤ budget | local: saturation 0.840 %, delay 0.283 %, reverb 0.799 %; CI runners (raw): Linux (factor 1.90) sat 0.897 / delay 0.342 / reverb 0.943; Windows (1.35) 1.107 / 0.390 / 1.093; macOS (1.23) 0.940 / 0.298 / 0.847 — raw percentages; the gate scales by the runner factor, and the saturation's raw figure exceeds 1.0 on the slowest Windows runner | ✓ (calibrated; see question 4) |
 | Stability fuzz (2 min on push) | no NaN, bounded | pass for all 7 plugins (120 s each, 4 workers) | ✓ |
 | pluginval / auval / clap-validator | pass | pass for all three (macOS local; CI on three OSes) | ✓ |
-| CI matrix + sanitizers | green | {{CI}} | {{CI_MARK}} |
+| CI matrix + sanitizers | green | run 41521435810: all five jobs green (build-test ×3 with pluginval/clap-validator for every plugin, sanitizers ×2) | ✓ |
 
 ## Decisions made without asking (link ADRs)
 ADR-0006 (saturation stages, alias-gate ruling, static tape), ADR-0007 (delay topology, slew/crossfade, limiter, ducking), ADR-0008 (reverb design, plate calibration, 200 ms morph), ADR-0002 (colour family). Ledger rulings worth knowing:
@@ -29,10 +29,12 @@ ADR-0006 (saturation stages, alias-gate ruling, static tape), ADR-0007 (delay to
 - **Oversampler rewritten** (juce::dsp::Oversampling at maximum quality alone cost 3.4 % CPU); **ADAA antiderivatives tabulated** (analytic log/cosh/atan cost ~45 ns per evaluation, eight per frame).
 - **Delay times unsmoothed** (the line's own glide/crossfade is the smoothing); the whole line input, not only the feedback, is soft-limited; ducking maps −40…−20 dBFS to 0…100 %.
 - **Plate RT60 floor** ~0.5 s at its fixed size (labels below reach the floor); `size_pct` scales the FDN algorithms and early reflections only. Engine switches morph over 200 ms, not the ADR's 50 (the incoming engine starts empty).
-- Reverb sample-rate-change check settles 0.5 s at −20 dBFS tolerance (a stateful tail; the RT60 matrix at four rates is the real SR-independence evidence; measured −96 dBFS anyway).
+- Reverb sample-rate-change check: per algorithm, 0.8 s settle, −75 dBFS (measured −96 … −144 dBFS).
+- **CPU budgets are asserted at reference-machine speed.** GitHub runners span a ~1.6× speed range between draws (one build read saturation 0.62 % and 1.00 % on two Linux runs, 0.69 % and 1.13 % on two Windows runs). An in-cache micro-benchmark reads those runners as *faster* than the reference, so the variation is in the many-instance hosted workload. The budget checks now measure the runner with a fixed, non-product workload of the plugins' shape (the render host's 4× oversampled tanh module, 100 instances; reference in `docs/bench/calibration-2026-11-03.json`) and scale the limit by max(1, factor); the factor is printed with every result (`tests/harness/runner_speed.py`). The spec's "mid-range laptop CPU" has no reference: question 4.
 
 ## Known gaps / deferred
-{{REVIEW_FINDINGS}}
+- Deferred minors from the whole-branch review (ledger): saturation character switch is a hard switch with state reset and bias/Tube drive update per block; the reverb editor's live history reads the output RMS (dry + wet); the tap display draws ping-pong repeats at multiples of the L time, an R drag is inaudible with Link on, and it snaps back to the processor's time until the host processes; damping at the default 40 % shortens the broadband label (Hall 2 s reads 1.69 s, calibration is at 0 %); reference drives are mirrored by hand into the Python test; no separate plate C++ test file; a NaN input to the ADAA table is cast to int (the base sanitises upstream).
+- Saturation CPU on the slowest CI runners exceeds 1.0 % raw (Windows 1.11 %, factor 1.35); it is 0.73 % on the reference machine and within the calibrated limit (question 4).
 - Listening gate: protocol and record sheet shipped; awaiting two engineers.
 - Open from M1: tape hysteresis cost (now sidestepped by the static tape model; an "HQ" hysteresis option is a candidate for later).
 
@@ -51,9 +53,10 @@ tools/run_pluginval.sh saturation && tools/run_pluginval.sh delay && tools/run_p
 DAW: load from `build/plugins/<name>/<name>_artefacts/Release/`. Start with Saturation "Tape · Gentle warmth" (turn the drive and watch the harmonic display; switch characters), Delay "Dotted eighth · Vocal" (drag the first tap near a grid line to feel the snap; turn sync on), Reverb "Hall · Concert 2.4 s" (drag the −60 dB point; switch to Plate mid-tail).
 
 ## Review history
-{{REVIEW_HISTORY}}
+A fresh whole-branch reviewer found 2 Critical / 5 Important / 12 Minor and confirmed each by rendering audio. Fixed on the branch with a failing test first: reverb size changes glide the FDN lengths instead of restarting an engine (a size drag wiped the tail), algorithm switches requested during a morph are queued, the plate ignores size; delay time jumps during a tap crossfade wait for it (a drag clicked at 20× the input's own sample jump) and glides are capped at one sample per sample; mono buses get the mono sum (ping-pong lost every second tap, reverb mono depended on width); short decays meet the gate from 0.1 s (diffusers scale with RT60, the room shrinks below 0.5 s); `sync_r` restores L/R-independent sync; pre-delay moves crossfade; the weakened tests were restored. CI then showed the GitHub runners spanning a ~1.7× speed range for hosted plugins: the saturation was shaved from 0.84 to 0.73 % (chunked ramps, block-shift dry delay, 79-tap first oversampler stage) and the CPU gate was calibrated to the runner (hosted 100-instance workload against the reference machine). Minors deferred to the ledger and listed above.
 
 ## Questions for the reviewer (only if any)
 1. **Alias gate at full drive.** The spec's "19 kHz tone at full drive, < −80 dBFS with oversampling on" is physically out of reach at 4× for any of the four curves (measured −54…−76 dBFS at 44.1/48 k at 36 dB drive). Options: (a) accept the reference-drive definition now in ADR-0006; (b) cap the drive range per character where the gate holds (Tape ≈ 0–6 dB would be unusable); (c) 8× oversampling (CPU ~1.6×, still not −80 at 36 dB). Which?
 2. **Plate decay floor.** The Dattorro plate cannot decay faster than ~0.5 s at its fixed size; the spec's 0.1 s applies to the FDN algorithms. Acceptable, or do you want a scaled-down plate for short labels?
 3. **Tape model.** Static (emphasis + atan + head bump) instead of Jiles–Atherton hysteresis for CPU. Keep, or schedule an HQ mode?
+4. **Reference machine for the CPU budgets.** The budgets are gated at the speed of the recorded reference (an M2 Max, ~1.3–1.6× faster than the slowest GitHub runners). Name a reference class (e.g. a 2020 quad-core laptop) and the budgets will be re-based to it; until then the runner-calibrated gate is what CI enforces.

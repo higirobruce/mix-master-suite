@@ -9,8 +9,8 @@ Updated: 2026-11-03
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
-| M3 Colour and space | built; fresh review in progress; CI pending | milestone/m3-colour-and-space | review/m3-colour-and-space (after CI) |
-| M4 Stereo and vocal | planned (roadmap) | — | — |
+| M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
+| M4 Stereo and vocal | next (plan to write) | milestone/m4-stereo-and-vocal | — |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
@@ -165,7 +165,7 @@ Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kH
 - [x] Task 7 Reverb params and processor
 - [x] Task 8 Reverb editor (decay display)
 - [x] Task 9 Presets, fuzz, listening sheet
-- [ ] Task 10 STATE, REVIEW, review, CI, tag
+- [x] Task 10 STATE, REVIEW, review, CI, tag
 
 ## M3 measurements
 
@@ -189,7 +189,7 @@ Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kH
 | Reverb 20 s decay, size 100, diffusion 100: 1 s-window energy strictly decreasing / pre-delay 0–250 ms / mono→stereo decorrelation / width 0 identical / algorithm switch | pass / ±1 ms / |corr| < 0.5 / exact / 10 ms-envelope step < 3 dB | pass / pass / pass / pass / 1.48 dB (200 ms morph) | 2026-11-02 |
 | Base checks ×3 (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass; SR-change residuals: saturation −89.5, delay −200, reverb −96.3 dBFS | 2026-11-02 |
 | Stability fuzz 120 s per plugin (7 plugins) | no NaN, bounded | pass for all 7 plugins (120 s each, 4 workers) | 2026-11-03 |
-| CPU per instance, 100 instances, 48 k / 64 (hosted VST3) | Saturation < 1.0 %, Delay < 0.5 %, Reverb < 2.0 % | local M2 Max: saturation 0.840 %, delay 0.283 %, reverb 0.799 % (after the review fix pass); CI: {{CPU_CI}} | 2026-11-03 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3) | Saturation < 1.0 %, Delay < 0.5 %, Reverb < 2.0 % | local M2 Max: saturation 0.840 %, delay 0.283 %, reverb 0.799 % (after the review fix pass); CI: Linux (factor 1.90) sat 0.897 / delay 0.342 / reverb 0.943; Windows (1.35) 1.107 / 0.390 / 1.093; macOS (1.23) 0.940 / 0.298 / 0.847 — raw percentages; the gate scales by the runner factor, and the saturation's raw figure exceeds 1.0 on the slowest Windows runner | 2026-11-03 |
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | saturation, delay, reverb: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | saturation 10, delay 9, reverb 10 (loaded by the C++ checks) | 2026-11-03 |
-| CI matrix + sanitizers | green | {{CI}} | 2026-11-03 |
+| CI matrix + sanitizers | green | run 41521435810: all five jobs green (build-test ×3 with pluginval/clap-validator for every plugin, sanitizers ×2) | 2026-11-03 |
