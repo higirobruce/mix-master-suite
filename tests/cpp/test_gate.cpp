@@ -37,7 +37,7 @@ TEST_CASE("gate table, lookahead latency, open state and gain-reduction readout"
     REQUIRE(p.currentGainReductionDb() > 60.0f);
     auto* la = p.apvts().getParameter(id::lookahead_ms);
     la->setValueNotifyingHost(la->convertTo0to1(5.0f));
-    run(p, 0.0f, 20); // smoother settles (20 ms)
+    run(p, 0.0f, 1); // unsmoothed: applied at the next block
     REQUIRE(p.getLatencySamples() == 240);
     p.prepareToPlay(96000.0, 64);
     REQUIRE(p.getLatencySamples() == 480);

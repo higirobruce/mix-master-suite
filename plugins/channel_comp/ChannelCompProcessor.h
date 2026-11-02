@@ -18,6 +18,8 @@ public:
 
     // transfer curve for the editor: static gain at a level from the current (unsmoothed) parameter values
     float staticGainDb(float levelDb) noexcept;
+    // feedback topology: the ratio the loop can realise at the current attack (ADR-0004); equals the label otherwise
+    float effectiveRatio() const noexcept { return effRatio.load(std::memory_order_relaxed); }
 
 protected:
     void prepareDsp(double sampleRate, int maxBlock, int channels) override;
@@ -35,4 +37,9 @@ private:
     std::array<float, kMaxChannels> lastOut{};
     mm::DbGainCache makeupGain;
     double sr = 48000.0;
+    float lastMix = 1.0f; // block-to-block mix ramp (the parameter itself is smoothed)
+    mm::Smoother<float> makeupTotal; // manual + capped auto makeup in dB, 20 ms (auto makeup switches are not parameters)
+    bool rampsValid = false;
+    std::atomic<float> effRatio{4.0f};
+    static constexpr float kAutoMakeupMaxDb = 24.0f;
 };

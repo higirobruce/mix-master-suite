@@ -33,6 +33,10 @@ public:
     int latencySamples() const noexcept { return window; }
 
     T delaySignal(T x, int ch) noexcept { return delay.process(x, ch); }
+    void writeSignal(T x, int ch) noexcept { delay.write(x, ch); }
+    T readDelayed(int samples, int ch) const noexcept { return delay.read(samples, ch); }
+    void setSamples(int samples) noexcept { setMs(1000.0 * samples / sr); }
+    int maxWindowSamples() const noexcept { return maxSamples; }
 
     // Push the current detector level; returns max over the last window+1 levels (this one included).
     T maxEnvelope(T level) noexcept

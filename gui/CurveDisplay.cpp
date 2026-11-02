@@ -107,7 +107,11 @@ void CurveDisplay::mouseDown(const juce::MouseEvent& e)
 {
     dragging = nodeAt(e.position);
     if (dragging >= 0)
+    {
+        if (onGesture)
+            onGesture(dragging, true);
         startTimer(400); // hold = solo
+    }
 }
 void CurveDisplay::mouseDrag(const juce::MouseEvent& e)
 {
@@ -123,6 +127,8 @@ void CurveDisplay::mouseUp(const juce::MouseEvent&)
     if (soloing >= 0 && onNodeSolo)
         onNodeSolo(soloing, false);
     soloing = -1;
+    if (dragging >= 0 && onGesture)
+        onGesture(dragging, false);
     dragging = -1;
 }
 void CurveDisplay::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& w)

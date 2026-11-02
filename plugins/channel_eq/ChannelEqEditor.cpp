@@ -38,22 +38,29 @@ ChannelEqEditor::ChannelEqEditor(ChannelEqProcessor& p)
                 }
                 return nodes;
             },
-            [this](double hz) { return eq.evaluateAt(hz); }),
+            [this](double hz) { return eq.staticResponseAt(hz); }),
       drawer("Advanced"), qMode(p.apvts(), ep::id::q_mode, "Q MODE"), oversample(p.apvts(), ep::id::oversample, "OVERSAMPLING"),
       analyser(p.apvts(), ep::id::analyser, "ANALYSER")
 {
     auto& c = content();
     c.addAndMakeVisible(spectrum);
     c.addAndMakeVisible(curve);
+    // the editor only writes parameter values; the audio thread designs from them on its next block
+    curve.onGesture = [this](int band, bool starting) {
+        for (int k : {2, 3})
+            if (auto* p = eq.apvts().getParameter(kBandIds[band][k]))
+                starting ? p->beginChangeGesture() : p->endChangeGesture();
+    };
     curve.onNodeMove = [this](int band, double freq, double gainDb) {
         setReal(eq.apvts(), kBandIds[band][2], freq);
         setReal(eq.apvts(), kBandIds[band][3], gainDb);
-        eq.updateDesignForTests();
     };
     curve.onNodeQ = [this](int band, double factor) {
+        auto* p = eq.apvts().getParameter(kBandIds[band][4]);
         const float q = eq.apvts().getRawParameterValue(kBandIds[band][4])->load();
+        if (p != nullptr) p->beginChangeGesture();
         setReal(eq.apvts(), kBandIds[band][4], q * factor);
-        eq.updateDesignForTests();
+        if (p != nullptr) p->endChangeGesture();
     };
     curve.onNodeSolo = [this](int band, bool solo) {
         if (solo)

@@ -21,6 +21,7 @@ public:
     void setThresholdDb(float db); // from the parameter
     float thresholdDb() const noexcept { return threshold; }
     std::function<void(float thresholdDb)> onThresholdChange; // user dragged the line
+    std::function<void(bool starting)> onGesture;              // drag start / end (host automation gestures)
     void setShadeClosed(bool shade) noexcept { shadeClosed = shade; }
     bool shadesClosed() const noexcept { return shadeClosed; }
 
@@ -32,6 +33,7 @@ public:
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
 
     static constexpr float kMinDb = -60.0f, kMaxDb = 0.0f, kGrRangeDb = 30.0f;

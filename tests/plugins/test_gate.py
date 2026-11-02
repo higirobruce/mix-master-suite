@@ -154,6 +154,25 @@ def test_gate_ext_key():
     assert abs(measure.level_at_db(no_bus[:, 0], sr, 1000, start_s=0.6)) < 0.1  # falls back to the internal key
 
 
+def test_gate_lookahead_change_no_click():
+    # lookahead 0 -> 5 ms while a 1.1 kHz tone passes: the delay tap moves under a crossfade, never a jump
+    sr = 48000
+    x = signals.sine(1100, sr, 1.5, amp_db=-12.0, channels=1)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=BASE, input=x, automation=[{"param": "lookahead_ms", "t_s": 0.5, "value": 5.0}])
+    assert rep["nan_count"] == 0
+    assert rep["latency_samples"] == 240
+    seg = slice(int(0.4 * sr), int(1.4 * sr))
+    assert np.max(np.abs(np.diff(y[seg, 0]))) < 1.5 * np.max(np.abs(np.diff(x[seg, 0])))
+
+
+def test_gate_external_key_opens_quiet_main():
+    sr = 48000
+    main = signals.sine(1000, sr, 1.0, amp_db=-50.0, channels=1)  # 20 dB below the threshold on its own
+    y, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, ext_key=1), input=main, layout={"in": 1, "out": 1, "sidechain": 1},
+                         sidechain_db=30.0)
+    assert abs(measure.level_at_db(y[:, 0], sr, 1000, start_s=0.6) - -50.0) < 0.1  # key -20 dB opens the gate
+
+
 def test_gate_listen_sc():
     sr = 48000
     x = signals.sine(100, sr, 1.0, amp_db=-10.0, channels=1)

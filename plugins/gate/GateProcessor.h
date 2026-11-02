@@ -27,6 +27,7 @@ public:
 
 protected:
     void prepareDsp(double sampleRate, int maxBlock, int channels) override;
+    void beginBlock(int numSamples) override; // lookahead (integer latency) changes land here, before the dry copy
     void processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) override;
     void resetDsp() override;
 
@@ -38,8 +39,11 @@ private:
         Hold
     };
     static constexpr int kMaxChannels = 2;
-    ParamRef mode, scHpEnabled, scLpEnabled, extKey, listenSc;
-    mm::Smoother<float>*threshold, *range, *attack, *hold, *release, *ratio, *hysteresis, *lookaheadMs, *scHp, *scLp;
+    ParamRef mode, scHpEnabled, scLpEnabled, extKey, listenSc, lookaheadRaw;
+    mm::Smoother<float>*threshold, *range, *attack, *hold, *release, *ratio, *hysteresis, *scHp, *scLp;
+    // delay-tap crossfade when the lookahead changes (ADR-0005): old tap -> new tap over 5 ms
+    int oldWindow = 0;
+    double tapFade = 1.0, tapFadeStep = 1.0;
     std::array<mm::SidechainFilter<float>, kMaxChannels> scFilter;
     mm::Lookahead<float> lookahead, peakHold;
     mm::EnvelopeFollower<float> env;

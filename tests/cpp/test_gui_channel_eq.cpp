@@ -88,3 +88,40 @@ TEST_CASE("curve display shows one node per enabled band and dragging a node mov
     curve->wheelNode(2, 1.0f);
     REQUIRE(p.apvts().getRawParameterValue("b3_q")->load() != q0);
 }
+
+namespace
+{
+struct GestureCounter : juce::AudioProcessorParameter::Listener
+{
+    int begins = 0, ends = 0;
+    void parameterValueChanged(int, float) override {}
+    void parameterGestureChanged(int, bool starting) override { (starting ? begins : ends)++; }
+};
+} // namespace
+
+TEST_CASE("dragging a curve node edits parameters inside a gesture and leaves the audio-thread design untouched")
+{
+    GuiInit g;
+    ChannelEqProcessor p;
+    p.prepareToPlay(48000.0, 64);
+    std::unique_ptr<juce::AudioProcessorEditor> e(p.createEditor());
+    auto* curve = findCurve(*e);
+    REQUIRE(curve != nullptr);
+    GestureCounter counter;
+    p.apvts().getParameter("b3_gain_db")->addListener(&counter);
+    const auto dspBefore = p.evaluateAt(1000.0);
+    curve->mouseDown(juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), curve->nodePosition(2),
+                                      juce::ModifierKeys::leftButtonModifier, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, curve, curve,
+                                      juce::Time(), curve->nodePosition(2), juce::Time(), 1, false));
+    curve->dragNode(2, curve->nodePosition(2).translated(0.0f, -40.0f));
+    curve->mouseUp(juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), curve->nodePosition(2),
+                                    juce::ModifierKeys::leftButtonModifier, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, curve, curve,
+                                    juce::Time(), curve->nodePosition(2), juce::Time(), 1, false));
+    REQUIRE(p.apvts().getRawParameterValue("b3_gain_db")->load() > 1.0f);
+    REQUIRE(counter.begins == 1);
+    REQUIRE(counter.ends == 1);
+    // the DSP design only changes on the audio thread (next processBlock); the curve shows the new parameters now
+    REQUIRE(std::abs(p.evaluateAt(1000.0) - dspBefore) < 1e-12);
+    REQUIRE(std::abs(p.staticResponseAt(1000.0)) > 1.1);
+    p.apvts().getParameter("b3_gain_db")->removeListener(&counter);
+}

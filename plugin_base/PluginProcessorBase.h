@@ -63,6 +63,9 @@ protected:
     virtual void prepareDsp(double sampleRate, int maxBlock, int channels) = 0;
     virtual void processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi) = 0;
     virtual void resetDsp() = 0;
+    // Called first in every (sub)block, before the dry copy and the latency read: decide anything that changes the
+    // reported latency here (lookahead, oversampling) so the dry/bypass path is aligned for this very block.
+    virtual void beginBlock(int /*numSamples*/) {}
     virtual int dspLatencySamples() const { return 0; }
     virtual int maxDspLatencySamples() const { return dspLatencySamples(); }
     virtual juce::ValueTree extraState() { return {}; }

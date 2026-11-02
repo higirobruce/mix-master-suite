@@ -60,6 +60,7 @@ public:
         aboveSamples = 0;
     }
     T current() const noexcept { return static_cast<T>(env); }
+    double attackCoefficient() const noexcept { return attackCoeff; } // per-sample pole of the attack one-pole
     void snapTo(T value) noexcept
     {
         env = static_cast<double>(value);

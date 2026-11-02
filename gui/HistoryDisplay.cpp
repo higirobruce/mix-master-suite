@@ -60,15 +60,23 @@ void HistoryDisplay::dragThresholdTo(float y)
 
 void HistoryDisplay::mouseDown(const juce::MouseEvent& e)
 {
-    dragging = nearThreshold(e.position.y) || true; // anywhere on the plot moves the threshold to the pointer
-    if (dragging)
-        dragThresholdTo(e.position.y);
+    dragging = true; // a click anywhere on the plot sets the threshold at the pointer (the only editable thing here)
+    if (onGesture)
+        onGesture(true);
+    dragThresholdTo(e.position.y);
 }
 
 void HistoryDisplay::mouseDrag(const juce::MouseEvent& e)
 {
     if (dragging)
         dragThresholdTo(e.position.y);
+}
+
+void HistoryDisplay::mouseUp(const juce::MouseEvent&)
+{
+    if (dragging && onGesture)
+        onGesture(false);
+    dragging = false;
 }
 
 void HistoryDisplay::mouseMove(const juce::MouseEvent& e)

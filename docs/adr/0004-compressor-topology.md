@@ -20,3 +20,8 @@ The spec's Channel Compressor: feed-forward and feedback topologies selectable, 
 
 - One detector chain shared by compressor and gate (ADR-0005) and later by bus/multiband compressors.
 - Measured ratios on sines with the peak detector are below the label at high ratios; the manual notes this and the RMS detector gives textbook static curves.
+
+## Amendments (2026-11-02, M2 review fix pass)
+
+- Feedback topology realises the labelled ratio: the detector sees the compressed, pre-makeup signal, and the static reduction is `(R − 1)·(y − T)` with the knee compressed to `k / R` in the output domain, so the steady-state input/output slope is 1/R like the feed-forward path (measured 2/4/8:1 within 0.3). The one-sample loop through the attack one-pole is stable only while `(1 − a)·R < 1`, so the realisable ratio is capped at `1 / (1 − a)` (about 22:1 at a 1 ms attack, 2.7:1 at 0.1 ms, at 48 kHz); the editor's footer shows the effective ratio whenever it is below the label, which is the disclosure this ADR promised.
+- Mix and the total makeup (manual, or auto capped at +24 dB) ramp per sample (mix from the smoothed parameter, makeup through its own 20 ms smoother, since the auto term is not a parameter).

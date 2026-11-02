@@ -27,6 +27,7 @@ public:
     std::function<void(int bandIndex, double freq, double gainDb)> onNodeMove;
     std::function<void(int bandIndex, double qFactor)> onNodeQ; // multiply the band's Q by qFactor
     std::function<void(int bandIndex, bool solo)> onNodeSolo;
+    std::function<void(int bandIndex, bool starting)> onGesture; // mouse down on a node / mouse up (host automation gestures)
 
     void setTheme(const Theme& t);
     void refreshFromProcessor(); // re-read nodes and the curve (editor timer / tests)

@@ -73,13 +73,69 @@ def test_comp_null_unity(sr):
     assert measure.residual_dbfs(y, x) < -90
 
 
-def test_comp_feedback_topology_compresses_less(record_property):
+def test_comp_feedback_topology_matches_label(record_property):
+    # the feedback loop's slope is mapped so the labelled ratio holds at the output (ADR-0004)
     ff = out_level_db(48000, 0.0, topology=0)
     fb = out_level_db(48000, 0.0, topology=1)
     record_property("ff_out_db", float(ff))
     record_property("fb_out_db", float(fb))
-    assert fb > ff  # feedback detector sees the compressed signal: less reduction at the same ratio
-    assert fb < 0.0 - 1.0  # but still compressing
+    assert abs(fb - ff) < 0.3
+
+
+def test_comp_feedback_ratio_and_makeup_independence(record_property):
+    # feedback topology: the labelled ratio holds at the output (within 0.3) and makeup does not change the reduction
+    sr = 48000
+    for ratio in (2.0, 4.0, 8.0):
+        outs = [out_level_db(sr, L, topology=1, ratio=ratio) for L in (-12.0, -6.0, 0.0)]
+        slope = (outs[2] - outs[0]) / 12.0
+        record_property(f"fb_ratio_{ratio}_measured", float(1 / slope))
+        assert abs(1 / slope - ratio) < 0.3
+    a = out_level_db(sr, 0.0, topology=1, ratio=4.0, makeup_db=0.0)
+    b = out_level_db(sr, 0.0, topology=1, ratio=4.0, makeup_db=12.0)
+    record_property("fb_makeup_delta_db", float(b - a))
+    assert abs((b - a) - 12.0) < 0.1
+
+
+@pytest.mark.parametrize("block", [64, 2048])
+def test_comp_mix_and_auto_makeup_ramp(block, record_property):
+    # mix 100 -> 0 and auto makeup switching on move the 1 ms gain envelope smoothly even at a 43 ms block
+    sr = 48000
+    x = signals.sine(1000, sr, 1.5, amp_db=0.0, channels=1)
+    y, rep = render_plugin(PLUGIN, sr=sr, block=block, params=BASE, input=x, automation=[{"param": "mix_pct", "t_s": 0.6, "value": 0.0}])
+    assert rep["nan_count"] == 0
+    step_mix = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.5)
+    y, rep = render_plugin(PLUGIN, sr=sr, block=block, params=BASE, input=x, automation=[{"param": "auto_makeup", "t_s": 0.6, "value": 1}])
+    assert rep["nan_count"] == 0
+    step_mk = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.5)
+    record_property("mix_step_db", step_mix)
+    record_property("auto_makeup_step_db", step_mk)
+    assert step_mix < 2.5  # a linear wet/dry crossfade of a 15 dB difference over 20 ms peaks near 2 dB/ms
+    assert step_mk < 1.0  # 7.5 dB over >= 20 ms
+
+
+def test_comp_auto_makeup_capped():
+    # infinite ratio at -60 dB would ask for 30 dB of auto makeup; it is capped at the makeup range (+24 dB)
+    sr = 48000
+    out = out_level_db(sr, 0.0, ratio_inf=1, threshold_db=-60.0, auto_makeup=1, knee_db=0.0)
+    assert abs(out - (-60.0 - RMS_OFFSET_DB + 24.0)) < 0.5
+
+
+def test_comp_inf_ratio_low_threshold_finite_no_dc():
+    sr = 48000
+    x = signals.noise(sr, 2.0, seed=5, amp_db=-6.0, channels=1)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, ratio_inf=1, threshold_db=-60.0, attack_ms=0.1), input=x)
+    assert rep["nan_count"] == 0
+    assert rep["peak_db"] < 0.0
+    assert abs(np.mean(y[int(0.5 * sr):, 0])) < 1e-3
+
+
+def test_comp_external_key_drives_reduction():
+    # quiet main (-30 dB) with a loud external key (+20 dB on the sidechain): the main is compressed by the key
+    sr = 48000
+    main = signals.sine(1000, sr, 1.0, amp_db=-30.0, channels=1)
+    y, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, ext_key=1), input=main, layout={"in": 1, "out": 1, "sidechain": 1},
+                         sidechain_db=20.0)
+    assert measure.level_at_db(y[:, 0], sr, 1000, start_s=0.6) < -33.0  # key -10 dB peak (-13 RMS): (−13+20)·0.75 = 5.25 dB GR
 
 
 def test_comp_sidechain_external_key():

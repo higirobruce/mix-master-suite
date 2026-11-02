@@ -38,7 +38,7 @@ GateProcessor::GateProcessor()
     release = &smoothed(gp::id::release_ms);
     ratio = &smoothed(gp::id::ratio);
     hysteresis = &smoothed(gp::id::hysteresis_db);
-    lookaheadMs = &smoothed(gp::id::lookahead_ms);
+    lookaheadRaw = paramRef(gp::id::lookahead_ms); // unsmoothed: an integer latency, applied per block (ADR-0005)
     scHp = &smoothed(gp::id::sc_hp_hz);
     scLp = &smoothed(gp::id::sc_lp_hz);
 }
@@ -55,7 +55,10 @@ void GateProcessor::prepareDsp(double sampleRate, int, int)
     sr = sampleRate;
     maxLookaheadSamples = static_cast<int>(std::lround(kMaxLookaheadMs * 1e-3 * sr));
     lookahead.prepare(sr, kMaxLookaheadMs, kMaxChannels);
-    lookahead.setMs(lookaheadMs->current());
+    lookahead.setMs(lookaheadRaw.get());
+    oldWindow = lookahead.latencySamples();
+    tapFade = 1.0;
+    tapFadeStep = 1.0 / juce::jmax(1.0, 0.005 * sr);
     peakHold.prepare(sr, kPeakHoldMs, 1);
     peakHold.setMs(kPeakHoldMs);
     for (auto& f : scFilter)
@@ -78,6 +81,18 @@ void GateProcessor::resetDsp()
     reportGainReduction(-range->current());
 }
 
+void GateProcessor::beginBlock(int)
+{
+    const int want = juce::jlimit(0, lookahead.maxWindowSamples(), static_cast<int>(std::lround(lookaheadRaw.get() * 1e-3 * sr)));
+    if (want != lookahead.latencySamples())
+    {
+        // keep whatever tap we are currently hearing as the fade source, then fade to the new tap
+        oldWindow = tapFade >= 1.0 ? lookahead.latencySamples() : oldWindow;
+        lookahead.setSamples(want);
+        tapFade = 0.0;
+    }
+}
+
 void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     const int n = buffer.getNumSamples();
@@ -86,7 +101,7 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
     if (numMain <= 0 || numOut <= 0)
         return;
 
-    for (auto* s : {threshold, range, attack, hold, release, ratio, hysteresis, lookaheadMs, scHp, scLp})
+    for (auto* s : {threshold, range, attack, hold, release, ratio, hysteresis, scHp, scLp})
         s->skip(n);
     const float T = threshold->current();
     const float rangeDb = range->current();
@@ -96,7 +111,7 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
     const int holdSamples = static_cast<int>(std::lround(hold->current() * 1e-3 * sr));
     env.setAttackMs(attack->current());
     env.setReleaseMs(release->current());
-    lookahead.setMs(lookaheadMs->current());
+    const int window = lookahead.latencySamples();
     for (auto& f : scFilter)
     {
         f.setHighPass(scHpEnabled.on() ? scHp->current() : 0.0);
@@ -157,9 +172,14 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
         const float gainDb = juce::jlimit(rangeDb, 0.0f, env.process(targetDb));
         maxReduction = juce::jmax(maxReduction, -gainDb);
         const float g = mm::dbToGain(gainDb);
+        if (tapFade < 1.0)
+            tapFade = juce::jmin(1.0, tapFade + tapFadeStep);
         for (int ch = 0; ch < numOut; ++ch)
         {
-            const float delayed = lookahead.delaySignal(buffer.getSample(ch, i), ch);
+            lookahead.writeSignal(buffer.getSample(ch, i), ch);
+            float delayed = lookahead.readDelayed(window, ch);
+            if (tapFade < 1.0)
+                delayed = static_cast<float>(lookahead.readDelayed(oldWindow, ch) * (1.0 - tapFade) + delayed * tapFade);
             buffer.setSample(ch, i, listen ? keySample[juce::jmin(ch, numMain - 1)] : delayed * g);
         }
     }

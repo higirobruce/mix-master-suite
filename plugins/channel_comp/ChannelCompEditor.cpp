@@ -40,6 +40,10 @@ ChannelCompEditor::ChannelCompEditor(ChannelCompProcessor& p)
     grLabel.setFont(juce::Font(juce::FontOptions(11.0f)));
     history.setThresholdDb(p.apvts().getRawParameterValue(cp::id::threshold_db)->load());
     history.onThresholdChange = [this](float db) { setReal(comp.apvts(), cp::id::threshold_db, db); };
+    history.onGesture = [this](bool starting) {
+        if (auto* p = comp.apvts().getParameter(cp::id::threshold_db))
+            starting ? p->beginChangeGesture() : p->endChangeGesture();
+    };
     for (auto* k : {&threshold, &ratio, &attack, &release, &knee, &mix, &makeup})
         c.addAndMakeVisible(*k);
     for (auto* t : {&ratioInf, &autoRelease, &autoMakeup})
@@ -148,5 +152,14 @@ void ChannelCompEditor::meterFrame(const mm::MeterFrame& f)
         curve.refresh();
     const int topo = static_cast<int>(comp.apvts().getRawParameterValue(cp::id::topology)->load());
     const bool ext = comp.apvts().getRawParameterValue(cp::id::ext_key)->load() >= 0.5f;
-    footerBar().setStatusSuffix(juce::String(topo == 0 ? "FF" : "FB") + (ext ? " / ext key" : ""));
+    juce::String status(topo == 0 ? "FF" : "FB");
+    if (topo == 1)
+    {
+        const bool inf = comp.apvts().getRawParameterValue(cp::id::ratio_inf)->load() >= 0.5f;
+        const float label = inf ? 1000.0f : comp.apvts().getRawParameterValue(cp::id::ratio)->load();
+        const float eff = comp.effectiveRatio();
+        if (eff < label - 0.05f)
+            status << juce::String::fromUTF8(" \xc2\xb7 loop limits ratio to ") << juce::String(eff, 1) << ":1";
+    }
+    footerBar().setStatusSuffix(status + (ext ? " / ext key" : ""));
 }

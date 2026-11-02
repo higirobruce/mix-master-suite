@@ -53,7 +53,7 @@ def test_eq_band_response(sr, band_type, f0, gain, record_property):
     record_property("max_dev_deg", d[1])
 
 
-@pytest.mark.parametrize("sr", [48000, 96000])
+@pytest.mark.parametrize("sr", SAMPLE_RATES)
 @pytest.mark.parametrize("slope", range(6))
 def test_eq_hp_lp_slopes(sr, slope):
     for side, fc in (("hp", 200.0), ("lp", 5000.0)):
@@ -68,7 +68,7 @@ def test_eq_hp_lp_slopes(sr, slope):
                         20 * np.log10(np.abs(ref[keep]) + 1e-300), np.degrees(np.angle(ref[keep])), (lo, hi),
                         label=f"{side} slope {eq_ref.SLOPES[slope]} @ {sr}")
         at_fc = 20 * np.log10(abs(spectrum(ir, sr, [fc])[0]))
-        assert abs(at_fc - (-3.01)) < 0.15  # Butterworth cascades are -3 dB at fc
+        assert abs(at_fc - (-3.01)) < 0.1  # Butterworth cascades are -3 dB at fc
 
 
 def test_eq_analog_q_narrows_bell():
@@ -103,13 +103,71 @@ def test_eq_oversample_latency_and_response(sr):
     assert np.max(np.abs(h1 - h2)) < 0.25
 
 
-def test_eq_band_sweep_stability():
+def test_eq_band_sweep_stability(record_property):
+    # a +12 dB bell swept 20 Hz -> 20 kHz in 2 s across a 1 kHz tone (and across band 2 at 250 Hz): finite, bounded,
+    # and the 1 ms gain envelope never steps more than 0.5 dB (the bell's own passage is ~0.2 dB/ms at Q 2)
     sr = 48000
-    x = signals.noise(sr, 2.0, seed=32, amp_db=-12)
+    x = signals.sine(1000, sr, 2.0, amp_db=-12, channels=1)
     auto = [{"param": "b3_freq_hz", "t_s": t, "value": 20.0 * (1000.0 ** (t / 2.0))} for t in np.linspace(0, 2.0, 400)]
-    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(FLAT, b3_gain_db=12.0, b3_q=6.0), input=x, automation=auto)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(FLAT, b3_gain_db=12.0, b3_q=2.0, b2_gain_db=6.0), input=x, automation=auto)
     assert rep["nan_count"] == 0
     assert rep["peak_db"] < 24.0
+    step = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.05)
+    record_property("sweep_envelope_step_db", step)
+    assert step < 0.5
+
+
+@pytest.mark.parametrize("slope", range(6))
+@pytest.mark.parametrize("side", ["hp", "lp"])
+def test_eq_hp_lp_cutoff_sweep_click(side, slope, record_property):
+    # cutoff swept through a decade over 2 s on a 1 kHz tone, at block 512: no click (1 ms envelope step < 0.5 dB)
+    sr = 48000
+    x = signals.sine(1000, sr, 2.0, amp_db=-12, channels=1)
+    lo, hi = (20.0, 400.0) if side == "hp" else (20000.0, 2500.0)
+    auto = [{"param": f"{side}_freq_hz", "t_s": t, "value": lo * ((hi / lo) ** (t / 2.0))} for t in np.linspace(0, 2.0, 400)]
+    params = dict(FLAT, **{f"{side}_enabled": 1, f"{side}_freq_hz": lo, f"{side}_slope": slope})
+    y, rep = render_plugin(PLUGIN, sr=sr, block=512, params=params, input=x, automation=auto)
+    assert rep["nan_count"] == 0
+    step = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.05)
+    record_property(f"{side}_{slope}_step_db", step)
+    assert step < 0.5
+
+
+@pytest.mark.parametrize("block", [64, 512, 2048])
+def test_eq_band_to_zero_and_off_click(block, record_property):
+    # a +12 dB bell on the tone ramped to exactly 0 dB, then switched off: the band must finish its ramp before it
+    # drops out of the chain (the reviewer measured a -24 dBFS click at block 512)
+    sr = 48000
+    x = signals.sine(1000, sr, 1.5, amp_db=-12, channels=1)
+    params = dict(FLAT, b3_freq_hz=1000.0, b3_gain_db=12.0, b3_q=1.0)
+    y, rep = render_plugin(PLUGIN, sr=sr, block=block, params=params, input=x,
+                           automation=[{"param": "b3_gain_db", "t_s": 0.5, "value": 0.0}])
+    assert rep["nan_count"] == 0
+    step_zero = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.05)
+    y, rep = render_plugin(PLUGIN, sr=sr, block=block, params=params, input=x,
+                           automation=[{"param": "b3_enabled", "t_s": 0.5, "value": 0}, {"param": "b3_enabled", "t_s": 1.0, "value": 1}])
+    assert rep["nan_count"] == 0
+    step_off = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.05)
+    record_property("step_to_zero_db", step_zero)
+    record_property("step_off_on_db", step_off)
+    assert step_zero < 1.5  # 12 dB over the 20 ms ramp (~0.6 dB/ms; the matched-design lerp is not linear in dB)
+    assert step_off < 1.5  # enable is a 20 ms gain glide to 0 dB, never a step
+
+
+@pytest.mark.parametrize("slope", [1, 3, 5])
+def test_eq_hp_toggle_and_slope_change_click(slope, record_property):
+    # HP at 1 kHz on a 1 kHz tone (-3 dB, 90+ degrees): enable on -> off -> on and a slope change while running glide
+    # the cutoff to the band edge over 20 ms, never a step (1 ms windows hold whole cycles: the envelope is exact)
+    sr = 48000
+    x = signals.sine(1000, sr, 2.0, amp_db=-12, channels=1)
+    params = dict(FLAT, hp_enabled=1, hp_freq_hz=1000.0, hp_slope=slope)
+    y, rep = render_plugin(PLUGIN, sr=sr, block=512, params=params, input=x,
+                           automation=[{"param": "hp_enabled", "t_s": 0.5, "value": 0}, {"param": "hp_enabled", "t_s": 1.0, "value": 1},
+                                       {"param": "hp_slope", "t_s": 1.5, "value": (slope + 2) % 6}])
+    assert rep["nan_count"] == 0
+    step = measure.envelope_step_db(y[:, 0], x[:, 0], sr, start_s=0.05)
+    record_property(f"hp_toggle_slope_{slope}_step_db", step)
+    assert step < 2.0  # the -3 dB at fc vanishes within the first octave of the 9-octave / 20 ms glide (~2 ms)
 
 
 def test_variable_block_sizes(record_property):

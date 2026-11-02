@@ -20,3 +20,7 @@ The spec's Gate / Expander: threshold, range, attack, hold, release, ratio (expa
 - Chatter is prevented by construction for any hysteresis > 0 on material the peak hold reads flat (tested: 1 kHz tone at the threshold with ±1 dB AM at 5 Hz: 0 open→close transitions at 3 dB hysteresis, 15 at 0 dB).
 - The key is linked (maximum over the main channels); one gain is applied to every channel. The detector is peak only (a gate wants the transient); RMS keying is not offered.
 - Hold restart on retrigger means fast repeated hits keep the gate open (the expected drum behaviour).
+
+## Amendments (2026-11-02, M2 review fix pass)
+
+- `lookahead_ms` is the one continuous parameter that is **not** smoothed (hard rule 2 exception): it is an integer latency. Changes are applied at the start of a block (`beginBlock`, before the dry copy, so the reported latency and the dry/bypass path move together) and the audio crossfades from the old delay tap to the new one over 5 ms, so a lookahead change never jumps the signal (measured: sample-to-sample steps within 1.5× the tone's own).

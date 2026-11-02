@@ -63,6 +63,7 @@ void ChannelCompProcessor::prepareDsp(double sampleRate, int, int)
         env[static_cast<size_t>(ch)].prepare(sr);
         env[static_cast<size_t>(ch)].snapTo(0.0f);
     }
+    makeupTotal.prepare(sr, 20.0);
     resetDsp();
 }
 
@@ -76,8 +77,27 @@ void ChannelCompProcessor::resetDsp()
         env[static_cast<size_t>(ch)].snapTo(0.0f);
         lastOut[static_cast<size_t>(ch)] = 0.0f;
     }
+    rampsValid = false;
     reportGainReduction(0.0f);
 }
+
+namespace
+{
+// Static reduction (dB >= 0) for a feedback detector: the loop sees the output, so a labelled ratio R needs the
+// slope (R - 1) on (y - T) with the knee compressed to k / R in the output domain (ADR-0004).
+inline float feedbackReductionDb(float yDb, float thresholdDb, float ratio, float kneeDb) noexcept
+{
+    const float over = yDb - thresholdDb;
+    const float slope = ratio - 1.0f;
+    const float k = kneeDb / ratio;
+    if (k <= 0.0f || over <= -0.5f * k)
+        return over <= 0.0f ? 0.0f : slope * over;
+    if (over >= 0.5f * k)
+        return slope * over;
+    const float x = over + 0.5f * k;
+    return slope * x * x / (2.0f * k);
+}
+} // namespace
 
 void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
@@ -96,7 +116,6 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
     mix->skip(n);
     scHp->skip(n);
     link->skip(n);
-    const float makeupStartDb = makeup->current();
     makeup->skip(n);
     const bool inf = ratioInf.on();
     const double r = inf ? 1000.0 : static_cast<double>(ratio->current());
@@ -109,12 +128,8 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
     const bool feedback = topology.on();
     const bool scOn = scHpEnabled.on();
     const float linkAmt = link->current() * 0.01f;
-    const float mixAmt = mix->current() * 0.01f;
     const bool listen = listenSc.on();
     const bool autoMk = autoMakeup.on();
-    const float autoMakeupDb = autoMk ? static_cast<float>(std::abs(gp.thresholdDb) * (1.0 - 1.0 / r) * 0.5) : 0.0f;
-    const float mkStart = mm::dbToGain((autoMk ? 0.0f : makeupStartDb) + autoMakeupDb);
-    const float mkEnd = mm::dbToGain((autoMk ? 0.0f : makeup->current()) + autoMakeupDb);
     for (int ch = 0; ch < kMaxChannels; ++ch)
     {
         auto& d = detector[static_cast<size_t>(ch)];
@@ -124,6 +139,29 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
         env[static_cast<size_t>(ch)].setReleaseMs(release->current());
         env[static_cast<size_t>(ch)].setAutoRelease(autoRelease.on());
     }
+    // feedback loop: one-sample feedback through the attack one-pole is stable only while (1 - a) * R < 1, so the
+    // realisable ratio is capped at that bound (shown in the editor when it differs from the label)
+    const double attackCoeff = env[0].attackCoefficient();
+    const double rFb = juce::jmin(r, 1.0 / juce::jmax(1e-6, 1.0 - attackCoeff));
+    effRatio.store(static_cast<float>(feedback ? rFb : r), std::memory_order_relaxed);
+    const float fbThreshold = static_cast<float>(gp.thresholdDb), fbRatio = static_cast<float>(rFb), fbKnee = static_cast<float>(gp.kneeDb);
+    // mix and the total makeup (manual or auto, auto capped at +24 dB) ramp per sample from last block's values
+    const double rUsed = feedback ? rFb : r;
+    const float autoMakeupDb = autoMk ? juce::jmin(kAutoMakeupMaxDb, static_cast<float>(std::abs(gp.thresholdDb) * (1.0 - 1.0 / rUsed) * 0.5)) : 0.0f;
+    const float mixEnd = mix->current() * 0.01f;
+    const float mkEndDb = (autoMk ? 0.0f : makeup->current()) + autoMakeupDb;
+    if (!rampsValid)
+    {
+        lastMix = mixEnd;
+        makeupTotal.snap(mkEndDb);
+        rampsValid = true;
+    }
+    const float mixStart = lastMix;
+    lastMix = mixEnd;
+    const float mkStart = mm::dbToGain(makeupTotal.current());
+    makeupTotal.setTarget(mkEndDb);
+    makeupTotal.skip(n);
+    const float mkEnd = mm::dbToGain(makeupTotal.current());
 
     // external key: the sidechain bus when it is enabled by the host and carries data; otherwise the internal key
     const float* key[kMaxChannels] = {nullptr, nullptr};
@@ -142,6 +180,7 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
     {
         const float t = static_cast<float>(i + 1) / static_cast<float>(n);
         const float mk = mkStart + (mkEnd - mkStart) * t;
+        const float mixAmt = mixStart + (mixEnd - mixStart) * t;
         float level[kMaxChannels] = {0.0f, 0.0f};
         float keySample[kMaxChannels] = {0.0f, 0.0f};
         for (int ch = 0; ch < numMain; ++ch)
@@ -160,13 +199,16 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
         {
             const int src = juce::jmin(ch, numMain - 1);
             const float lvl = numMain > 1 ? level[src] + (maxLevel - level[src]) * linkAmt : level[src];
-            const float reduction = -gc.gainDb(mm::gainToDb(lvl));
+            const float lvlDb = mm::gainToDb(lvl);
+            const float reduction = (feedback && keyChannels == 0) ? feedbackReductionDb(lvlDb, fbThreshold, fbRatio, fbKnee)
+                                                                   : -gc.gainDb(lvlDb);
             const float smoothedRed = env[static_cast<size_t>(ch)].process(reduction);
             maxReduction = juce::jmax(maxReduction, smoothedRed);
             const float dry = buffer.getSample(ch, i);
-            const float wet = dry * mm::dbToGain(-smoothedRed) * mk;
+            const float compressed = dry * mm::dbToGain(-smoothedRed); // pre-makeup: what the feedback detector sees
+            const float wet = compressed * mk;
             const float out = listen ? keySample[src] : (wet * mixAmt + dry * (1.0f - mixAmt));
-            lastOut[static_cast<size_t>(ch)] = wet;
+            lastOut[static_cast<size_t>(ch)] = compressed;
             buffer.setSample(ch, i, out);
         }
     }

@@ -195,6 +195,7 @@ void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce
     jassert(numSamples <= dryBuffer.getNumSamples());
 
     updateSmoothers();
+    beginBlock(numSamples);
 
     // input metering (pre) on the main input channels; a non-finite host block is silenced before it reaches the DSP
     const int meterIn = juce::jmin(numIn, 2);
