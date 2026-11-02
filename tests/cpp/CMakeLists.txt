@@ -143,3 +143,11 @@ target_link_libraries(mm_gui_saturation_tests PRIVATE saturation mm_gui mm_plugi
 mm_set_warnings(mm_gui_saturation_tests)
 mm_enable_sanitizers(mm_gui_saturation_tests)
 catch_discover_tests(mm_gui_saturation_tests)
+
+# ---- delay
+add_executable(mm_delay_tests test_delay.cpp)
+target_include_directories(mm_delay_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/delay)
+target_link_libraries(mm_delay_tests PRIVATE delay mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_delay_tests)
+mm_enable_sanitizers(mm_delay_tests)
+catch_discover_tests(mm_delay_tests)

@@ -4,6 +4,26 @@
 
 namespace mmr
 {
+// Fixed-tempo play head so tempo-synced plugins can be measured (job key "bpm").
+class FixedTempoPlayHead : public juce::AudioPlayHead
+{
+public:
+    void set(double newBpm) noexcept { bpm = newBpm; }
+    void advance(int samples) noexcept { position += samples; }
+    juce::Optional<juce::AudioPlayHead::PositionInfo> getPosition() const override
+    {
+        juce::AudioPlayHead::PositionInfo info;
+        info.setBpm(bpm);
+        info.setIsPlaying(true);
+        info.setTimeInSamples(position);
+        return info;
+    }
+
+private:
+    double bpm = 120.0;
+    juce::int64 position = 0;
+};
+
 // Hosts a VST3 (or AU) bundle through JUCE's plugin format manager.
 class PluginTarget : public Target
 {
@@ -29,5 +49,6 @@ private:
     int preparedBlock = 64;
     Job preparedJob;
     juce::MidiBuffer midi;
+    FixedTempoPlayHead playHead;
 };
 } // namespace mmr

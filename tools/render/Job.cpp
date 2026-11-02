@@ -28,6 +28,7 @@ Job Job::parse(const juce::var& v, juce::String& error)
         j.sidechainChannels = static_cast<int>(layout.getProperty("sidechain", 0));
     }
     j.sidechainDb = static_cast<double>(v.getProperty("sidechain_db", 0.0));
+    j.bpm = static_cast<double>(v.getProperty("bpm", 120.0));
     j.params = v.getProperty("params", juce::var());
     j.paramRanges = v.getProperty("param_ranges", juce::var());
     if (auto* arr = v.getProperty("automation", juce::var()).getArray())
