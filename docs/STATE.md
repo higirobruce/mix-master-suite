@@ -149,3 +149,20 @@ Exit criteria (CLAUDE.md, verbatim): "Channel EQ, Channel Compressor, Gate. Freq
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | EQ, comp, gate: VST3 PASS, AU PASS, CLAP PASS | 2026-11-02 |
 | Factory presets | ≥ 8 per plugin | EQ 10, comp 10, gate 9, utility 8; every preset loads (C++ check per plugin) | 2026-11-02 |
 | CI matrix macOS/Windows/Linux + sanitizers | green | run 41386855649: all five jobs green (build-test ×3 incl. pluginval/clap-validator for every plugin and the CPU benchmark; sanitizers ×2) | 2026-11-02 |
+
+## M3 Colour and space — tasks
+
+Plan: docs/superpowers/plans/2026-11-02-m3-colour-and-space.md
+
+Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kHz, 4× OS), Delay, Reverb (FDN + Dattorro plate). Reverb decay time measured within 10% of labelled RT60."
+
+- [ ] Task 1 ADR-0006 saturation stages, ADR-0007 delay topology, ADR-0008 reverb design
+- [ ] Task 2 Saturation params and processor
+- [ ] Task 3 Saturation editor (harmonic display, character tabs)
+- [ ] Task 4 Delay params and processor (+ render host BPM)
+- [ ] Task 5 Delay editor (tap display with tempo grid)
+- [ ] Task 6 Reverb core modules (FDN-16, Dattorro plate, early reflections)
+- [ ] Task 7 Reverb params and processor
+- [ ] Task 8 Reverb editor (decay display)
+- [ ] Task 9 Presets, fuzz, listening sheet
+- [ ] Task 10 STATE, REVIEW, review, CI, tag
