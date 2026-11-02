@@ -95,7 +95,9 @@ def check_denormal_tail(name: str, params: dict | None = None) -> None:
     y, rep = render_plugin(name, sr=sr, params=params, input=np.concatenate([loud, silent]))
     assert rep["nan_count"] == 0
     tail_ratio = rep["realtime_ratio"]
-    assert tail_ratio < 2.0 * max(rep_loud["realtime_ratio"], 1e-4) + 1e-3, "silence after audio runs slower (denormals?)"
+    # denormals slow a plugin by 10x or more; two sub-millisecond timings on a loaded runner jitter by far less than
+    # the 0.5 % of real time allowed here
+    assert tail_ratio < 4.0 * max(rep_loud["realtime_ratio"], 1e-4) + 5e-3, "silence after audio runs slower (denormals?)"
     assert np.max(np.abs(y[int(3.5 * sr):])) < 1e-6
 
 
