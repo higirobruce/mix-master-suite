@@ -47,6 +47,7 @@ void DeEsserProcessor::prepareDsp(double sampleRate, int maxBlock, int)
     oldWindow = lookahead.latencySamples();
     tapFade = 1.0;
     tapFadeStep = 1.0 / juce::jmax(1.0, 0.005 * sr);
+    switchStep = 1.0 / juce::jmax(1.0, kSwitchMs * 1e-3 * sr);
     for (int ch = 0; ch < kChannels; ++ch)
     {
         detectorBp[static_cast<size_t>(ch)].prepare(sr);
@@ -76,6 +77,9 @@ void DeEsserProcessor::resetDsp()
     lookahead.reset();
     env.reset();
     env.snapTo(0.0f);
+    activeSplit = mode.on();
+    modeFade = 1.0;
+    listenMix = listen.on() ? 1.0 : 0.0;
     sibilant.store(false, std::memory_order_relaxed);
     reportGainReduction(0.0f);
 }
@@ -83,9 +87,11 @@ void DeEsserProcessor::resetDsp()
 void DeEsserProcessor::beginBlock(int)
 {
     const int want = juce::jlimit(0, lookahead.maxWindowSamples(), static_cast<int>(std::lround(lookaheadRaw.get() * 1e-3 * sr)));
-    if (want != lookahead.latencySamples())
+    // a change that lands inside the 5 ms tap crossfade waits for it (M4 review: restarting the fade dropped the
+    // half-faded tap); the reported latency stays on the tap being heard until the next change is taken
+    if (want != lookahead.latencySamples() && tapFade >= 1.0)
     {
-        oldWindow = tapFade >= 1.0 ? lookahead.latencySamples() : oldWindow;
+        oldWindow = lookahead.latencySamples();
         lookahead.setSamples(want);
         tapFade = 0.0;
     }
@@ -100,8 +106,27 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
         return;
     for (auto* s : {freq, threshold, range, width})
         s->skip(n);
-    const bool splitMode = mode.on();
-    const bool lis = listen.on();
+    if (mode.on() != activeSplit && modeFade >= 1.0) // a change during a fade is taken when the fade ends
+    {
+        for (int ch = 0; ch < kChannels; ++ch)
+        {
+            if (mode.on())
+            {
+                splitDet[static_cast<size_t>(ch)].reset();
+                splitOut[static_cast<size_t>(ch)].reset();
+            }
+            else
+            {
+                detectorBp[static_cast<size_t>(ch)].reset();
+                bell[static_cast<size_t>(ch)].reset();
+            }
+        }
+        activeSplit = mode.on();
+        modeFade = 0.0;
+    }
+    const bool splitMode = activeSplit;
+    const bool fading = modeFade < 1.0;
+    const double listenTarget = listen.on() ? 1.0 : 0.0;
     const double fc = juce::jlimit(20.0, 0.45 * sr, static_cast<double>(freq->current()));
     const double q = qForOctaves(width->current());
     const float bpGain = static_cast<float>(1.0 / q); // the SVF band output peaks at Q: unity at fc
@@ -147,22 +172,20 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
         for (int ch = 0; ch < numMain; ++ch)
         {
             const float x = buffer.getSample(ch, i);
-            float band;
-            if (splitMode)
+            if (splitMode || fading)
             {
                 splitDet[static_cast<size_t>(ch)].process(x, lowBand[ch], highBand[ch]);
-                band = highBand[ch];
+                peak = juce::jmax(peak, std::abs(highBand[ch]));
             }
-            else
-                band = detectorBp[static_cast<size_t>(ch)].process(x) * bpGain;
-            peak = juce::jmax(peak, std::abs(band));
+            if (!splitMode || fading)
+                peak = juce::jmax(peak, std::abs(detectorBp[static_cast<size_t>(ch)].process(x) * bpGain));
         }
         const float levelDb = mm::fastGainToDb(lookahead.maxEnvelope(peak));
         const float target = juce::jlimit(0.0f, rng, levelDb - thr);
         const float red = env.process(target);
         maxReduction = juce::jmax(maxReduction, red);
         anySibilant = anySibilant || target > 0.5f;
-        if ((modCounter++ & 7) == 0 && !splitMode)
+        if ((modCounter++ & 7) == 0 && (!splitMode || fading))
         {
             // the bell follows the reduction every 8 samples on a running counter (block-size independent; the SVF
             // is modulation-safe). The TPT peak's bandwidth scales with the cut depth (k = 1 / (Q A)): pass Q / A so
@@ -172,21 +195,37 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
                 bell[static_cast<size_t>(ch)].setParams(fc, q / a, -red);
         }
         const float hiGain = mm::fastDbToGain(-red);
-        for (int ch = 0; ch < numOut; ++ch)
+        const float fade = static_cast<float>(modeFade), lmix = static_cast<float>(listenMix);
+        for (int ch = 0; ch < numMain; ++ch) // each filter once per sample; extra outputs copy channel 0 below
         {
-            const int src = juce::jmin(ch, numMain - 1);
-            const float dry = dryBuf[static_cast<size_t>(src)][static_cast<size_t>(i)];
-            float wet;
-            if (splitMode)
+            const float dry = dryBuf[static_cast<size_t>(ch)][static_cast<size_t>(i)];
+            float wetSplit = 0.0f, remSplit = 0.0f, wetBand = 0.0f, remBand = 0.0f;
+            if (splitMode || fading)
             {
                 float lo, hi;
-                splitOut[static_cast<size_t>(src)].process(dry, lo, hi); // its own state: the detector split saw the undelayed input
-                wet = lo + hi * hiGain;
+                splitOut[static_cast<size_t>(ch)].process(dry, lo, hi); // its own state: the detector split saw the undelayed input
+                wetSplit = lo + hi * hiGain;
+                remSplit = hi * (1.0f - hiGain); // what Split removes (not dry - wet: the split is an all-pass)
             }
-            else
-                wet = bell[static_cast<size_t>(src)].process(dry);
-            buffer.setSample(ch, i, lis ? dry - wet : wet);
+            if (!splitMode || fading)
+            {
+                wetBand = bell[static_cast<size_t>(ch)].process(dry);
+                remBand = dry - wetBand;
+            }
+            float wet = splitMode ? wetSplit : wetBand, removed = splitMode ? remSplit : remBand;
+            if (fading)
+            {
+                const float wetFrom = splitMode ? wetBand : wetSplit, remFrom = splitMode ? remBand : remSplit;
+                wet = wetFrom + (wet - wetFrom) * fade;
+                removed = remFrom + (removed - remFrom) * fade;
+            }
+            buffer.setSample(ch, i, wet + (removed - wet) * lmix);
         }
+        for (int ch = numMain; ch < numOut; ++ch)
+            buffer.setSample(ch, i, buffer.getSample(0, i));
+        if (fading)
+            modeFade = juce::jmin(1.0, modeFade + switchStep);
+        listenMix += juce::jlimit(-switchStep, switchStep, listenTarget - listenMix);
     }
     sibilant.store(anySibilant, std::memory_order_relaxed);
     reportGainReduction(maxReduction);

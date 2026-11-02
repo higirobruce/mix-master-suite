@@ -8,6 +8,10 @@
 #include <numbers>
 
 namespace ip = mm::plugins::imager;
+namespace
+{
+constexpr double kLrQ = 0.70710678118654752; // an LR4's low + high is the all-pass at this Q
+}
 
 namespace
 {
@@ -63,8 +67,16 @@ void ImagerProcessor::resetDsp()
     for (auto* b : {&sLowAp, &mAp1, &mAp2, &mMonoAp})
         b->reset();
     correlation.reset();
-    monoActive = false;
-    monoMix = 0.0;
+    // mono-below stays engaged across a reset (M4 review): no 20 ms side fade-in after a transport reset
+    const double mb = monoBelow.get();
+    monoActive = mb >= kMonoMinHz;
+    monoMix = monoActive ? 1.0 : 0.0;
+    if (monoActive)
+    {
+        monoFc = mb;
+        sMono.setCrossover(monoFc);
+        mMonoAp.setCoeffs(mm::rbj::allPass(sr, monoFc, kLrQ));
+    }
 }
 
 int ImagerProcessor::pullScope(float* l, float* r, int maxSamples) const noexcept
@@ -94,17 +106,18 @@ void ImagerProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
     const float wEnd[3] = {widthLow->current() * 0.01f, widthMid->current() * 0.01f, widthHigh->current() * 0.01f};
     const float panEnd = pan->current() * 0.01f;
     const float oStart = mm::dbToGain(outStartDb), oEnd = mm::dbToGain(output->current());
-    // constant-power pan (centre unity, full pan +3 dB on the kept side) times output: gains ramp over the block
-    auto panGains = [](float p, float gain, float& l, float& r) {
-        const float theta = (p + 1.0f) * 0.25f * std::numbers::pi_v<float>;
-        l = 1.41421356f * std::cos(theta) * gain;
-        r = 1.41421356f * std::sin(theta) * gain;
+    // pan is a constant-power stereo rotation by up to 45 degrees (ADR-0010 amendment): a mono source follows the
+    // sin/cos law (+3 dB on the kept side at full pan), stereo content moves instead of being attenuated. The
+    // rotation and output gain are computed at the block edges and ramped per sample.
+    auto rotation = [](float p, float gain, float& c, float& s) {
+        const float theta = p * 0.25f * std::numbers::pi_v<float>;
+        c = std::cos(theta) * gain;
+        s = std::sin(theta) * gain;
     };
-    float gLStart, gRStart, gLEnd, gREnd;
-    panGains(panStart, oStart, gLStart, gRStart);
-    panGains(panEnd, oEnd, gLEnd, gREnd);
+    float cStart, sStart, cEnd, sEnd;
+    rotation(panStart, oStart, cStart, sStart);
+    rotation(panEnd, oEnd, cEnd, sEnd);
     const double fLow = xoverLow->current(), fHigh = juce::jmax(static_cast<double>(xoverHigh->current()), fLow * 1.5);
-    constexpr double kLrQ = 0.70710678118654752;
     if (fLow != apLowHz)
     {
         sLow.setCrossover(fLow);
@@ -132,14 +145,8 @@ void ImagerProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
         sMono.setCrossover(monoFc);
         mMonoAp.setCoeffs(mm::rbj::allPass(sr, monoFc, kLrQ));
     }
-    else if (want && monoFc != mbTarget)
-    {
-        const double maxOct = monoGlideOctPerSample * n, want2 = std::log2(mbTarget / monoFc);
-        monoFc *= std::exp2(juce::jlimit(-maxOct, maxOct, want2));
-        sMono.setCrossover(monoFc);
-        mMonoAp.setCoeffs(mm::rbj::allPass(sr, monoFc, kLrQ));
-    }
     const double mixTarget = want ? 1.0 : 0.0;
+    const bool gliding = want && monoFc != mbTarget; // glided inside the loop every 16 samples (block-size independent)
     int w = scopeWrite.load(std::memory_order_relaxed);
     for (int i = 0; i < n; ++i)
     {
@@ -154,6 +161,13 @@ void ImagerProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
         const float g0 = wStart[0] + (wEnd[0] - wStart[0]) * t, g1 = wStart[1] + (wEnd[1] - wStart[1]) * t, g2 = wStart[2] + (wEnd[2] - wStart[2]) * t;
         double sOut = sLowAp.process(sl) * g0 + sm * g1 + sh * g2;
         double mOut = mAp2.process(mAp1.process(m));
+        if (gliding && (i & 15) == 0)
+        {
+            const double maxOct = monoGlideOctPerSample * 16.0, want2 = std::log2(mbTarget / monoFc);
+            monoFc *= std::exp2(juce::jlimit(-maxOct, maxOct, want2));
+            sMono.setCrossover(monoFc);
+            mMonoAp.setCoeffs(mm::rbj::allPass(sr, monoFc, kLrQ));
+        }
         if (monoActive)
         {
             double lo, hi;
@@ -164,8 +178,12 @@ void ImagerProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
             mOut += (mAp - mOut) * monoMix; // the matching all-pass on the mid
         }
         float outL = static_cast<float>(mOut + sOut), outR = static_cast<float>(mOut - sOut);
-        outL *= gLStart + (gLEnd - gLStart) * t;
-        outR *= gRStart + (gREnd - gRStart) * t;
+        {
+            const float c = cStart + (cEnd - cStart) * t, sn = sStart + (sEnd - sStart) * t;
+            const float l = outL, r = outR;
+            outL = c * l - sn * r;
+            outR = sn * l + c * r;
+        }
         if (numOut > 1)
         {
             buffer.setSample(0, i, outL);

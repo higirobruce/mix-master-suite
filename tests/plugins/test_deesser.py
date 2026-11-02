@@ -3,7 +3,7 @@ import pytest
 
 from tests.harness import measure, signals
 from tests.harness.matrix import SAMPLE_RATES
-from tests.harness.render import render_plugin
+from tests.harness.render import render_module, render_plugin
 from tests.plugins import base_checks
 
 PLUGIN = "deesser"
@@ -77,12 +77,16 @@ def test_deesser_split_sum_flat():
 
 
 @pytest.mark.parametrize("mode", MODES)
-def test_deesser_listen_is_difference(mode):
+def test_deesser_listen_is_the_removed_part(mode):
+    # listen + wet rebuilds the plugin's linear path: the input in Band mode, the LR4 all-passed input in Split
+    # (whose listen is the removed high band, not dry - wet: review finding)
     sr = 48000
     x = two_tones(sr)
     wet, _ = render_plugin(PLUGIN, sr=sr, params=for_mode(mode), input=x)
     lis, _ = render_plugin(PLUGIN, sr=sr, params=for_mode(mode, listen=1), input=x)
-    assert measure.residual_dbfs(lis, x - wet) < -100.0
+    ref = x if mode == "Band" else render_module("lr_crossover", sr=sr, params={"freq_hz": 4000.0, "order": 4, "output": 2}, input=x, channels=1)[0]
+    assert measure.residual_dbfs(lis + wet, ref) < -100.0
+    assert measure.residual_dbfs(lis[int(0.3 * sr):], np.zeros_like(lis[int(0.3 * sr):])) > -40.0  # something is removed
 
 
 @pytest.mark.parametrize("sr", SAMPLE_RATES)
@@ -116,3 +120,51 @@ def test_deesser_extremes_and_base_checks(record_property):
 
 def test_cpu_budget(record_property):
     record_property("cpu_percent_per_instance", base_checks.check_cpu_budget(PLUGIN))
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_deesser_mono_in_stereo_out(mode):
+    # review finding: a mono input on a stereo bus ran every filter twice per sample; both outputs must equal the
+    # mono-to-mono result
+    sr = 48000
+    x = two_tones(sr)
+    ref, _ = render_plugin(PLUGIN, sr=sr, params=for_mode(mode), input=x)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=for_mode(mode), input=x, layout={"in": 1, "out": 2})
+    assert rep["nan_count"] == 0
+    np.testing.assert_allclose(y[:, 0], y[:, 1], atol=1e-6)
+    assert measure.residual_dbfs(y[:, :1], ref[:, :1]) < -100.0
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_deesser_listen_silent_below_threshold(mode):
+    # review finding: Split-mode listen output dry - allpass(dry) with nothing removed
+    sr = 48000
+    x = two_tones(sr)
+    y, _ = render_plugin(PLUGIN, sr=sr, params=for_mode(mode, threshold_db=0.0, listen=1), input=x)
+    seg = y[int(0.2 * sr):]
+    assert measure.residual_dbfs(seg, np.zeros_like(seg)) < -90.0
+
+
+def test_deesser_lookahead_ramp_no_click():
+    # review finding: a lookahead change landing inside the 5 ms tap crossfade dropped the half-faded tap
+    sr = 48000
+    x = signals.sine(1100.0, sr, 1.5, amp_db=-12.0, channels=1)
+    for auto in ([{"param": "lookahead_ms", "t_s": 0.5 + 0.0014 * k, "value": 0.3 * k} for k in range(1, 11)],
+                 [{"param": "lookahead_ms", "t_s": 0.5 + 0.002 * k, "value": 3.0 * (k % 2)} for k in range(20)]):
+        y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, threshold_db=0.0), input=x, automation=auto)
+        assert rep["nan_count"] == 0
+        seg = slice(int(0.4 * sr), int(1.4 * sr))
+        assert np.max(np.abs(np.diff(y[seg, 0]))) < 1.5 * np.max(np.abs(np.diff(x[seg, 0])))
+
+
+@pytest.mark.parametrize("param", ["mode", "listen"])
+def test_deesser_switch_no_click(param):
+    # review finding: Band <-> Split and Listen were hard switches
+    sr = 48000
+    x = signals.sine(1100.0, sr, 1.5, amp_db=-12.0, channels=1)
+    # switch times off the tone's zero crossings (0.5 s is exactly 550 cycles of 1100 Hz)
+    auto = [{"param": param, "t_s": 0.5003, "value": 1}, {"param": param, "t_s": 1.0007, "value": 0}]
+    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, threshold_db=0.0), input=x, automation=auto)
+    assert rep["nan_count"] == 0
+    seg = slice(int(0.4 * sr), int(1.4 * sr))
+    assert np.max(np.abs(np.diff(y[seg, 0]))) < 1.5 * np.max(np.abs(np.diff(x[seg, 0])))

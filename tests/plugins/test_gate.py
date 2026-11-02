@@ -191,3 +191,16 @@ def test_gate_extremes_and_base_checks(record_property):
 
 def test_cpu_budget(record_property):
     record_property("cpu_percent_per_instance", base_checks.check_cpu_budget(PLUGIN))
+
+
+def test_gate_lookahead_ramp_no_click():
+    # M4 review finding (shared tap-crossfade pattern): a lookahead change landing inside the 5 ms tap crossfade
+    # must not drop the half-faded tap
+    sr = 48000
+    x = signals.sine(1100.0, sr, 1.5, amp_db=-12.0, channels=1)
+    for auto in ([{"param": "lookahead_ms", "t_s": 0.5 + 0.0014 * k, "value": 0.5 * k} for k in range(1, 11)],
+                 [{"param": "lookahead_ms", "t_s": 0.5 + 0.002 * k, "value": 5.0 * (k % 2)} for k in range(20)]):
+        y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, threshold_db=-80.0), input=x, automation=auto)
+        assert rep["nan_count"] == 0
+        seg = slice(int(0.4 * sr), int(1.4 * sr))
+        assert np.max(np.abs(np.diff(y[seg, 0]))) < 1.5 * np.max(np.abs(np.diff(x[seg, 0])))

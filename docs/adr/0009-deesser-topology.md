@@ -18,3 +18,10 @@ Spec: De-esser with frequency 2–12 kHz, threshold, range, width (band/split mo
 
 - Tests gate band isolation (a 1 kHz tone within 0.05 dB while 6 kHz is reduced), the range cap, flatness without reduction, listen = dry − wet, and lookahead latency at four rates.
 - CPU: one SVF (or LR4) per channel for the detector, one SVF bell (or LR4 gain) per channel, a sliding max and an envelope: well inside 0.4 %.
+
+## Amendment (2026-11-03, M4 whole-branch review)
+
+- **Mono input on a stereo bus:** each filter runs once per input channel; extra outputs copy channel 0 (the review found every filter running twice per sample in a 1 → 2 layout, which left 0.8 dB of the 18 dB reduction).
+- **Split-mode Listen** outputs the removed high band `hi · (1 − g)`, not `dry − wet` (the split is an all-pass, so the difference carried almost the whole signal when nothing was being removed). Listen + wet rebuilds the input in Band mode and the LR4 all-passed input in Split mode.
+- **Mode and Listen are crossfaded** over 10 ms: on a mode change the incoming filter set starts from reset and both sets run during the fade; Listen fades between wet and the removed part. A change requested during a fade is taken when the fade ends.
+- **Lookahead changes that land inside the 5 ms tap crossfade wait for it** (the previous code restarted the fade from the original tap and dropped the half-faded one: a 3.4–9.5× sample jump under automation every 1.4–3 ms). The reported latency stays on the tap being heard until the next change is taken, so the host sees the new latency at most 5 ms late. The gate shares the pattern and got the same fix.

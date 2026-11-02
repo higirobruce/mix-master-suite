@@ -145,6 +145,35 @@ def test_imager_mono_below_switch_no_click():
     assert np.max(np.abs(np.diff(y[:, 0]))) < 2.0 * np.max(np.abs(np.diff(x[:, 0])))
 
 
+@pytest.mark.parametrize("block", [512, 2048])
+def test_imager_mono_below_drag_large_blocks(block):
+    # review finding: the 5 ms/octave glide was applied once per block, so a drag clicked at 512 and 2048
+    sr = 48000
+    x = signals.sine(80.0, sr, 2.0, amp_db=-12.0, channels=2)
+    x[:, 1] *= -1.0
+    auto = [{"param": "mono_below_hz", "t_s": 0.5, "value": 500.0}, {"param": "mono_below_hz", "t_s": 1.2, "value": 20.0}]  # a fast drag
+    y, rep = render_plugin(PLUGIN, sr=sr, block=block, params=dict(BASE, mono_below_hz=20.0), input=x, automation=auto)
+    assert rep["nan_count"] == 0
+    assert np.max(np.abs(np.diff(y[:, 0]))) < 2.0 * np.max(np.abs(np.diff(x[:, 0])))
+
+
+def test_imager_pan_rotates_stereo_content():
+    # review finding: pan scaled L and R independently (a balance control: a hard-right source vanished at pan
+    # left). Pan is a constant-power stereo rotation: a hard-right source panned fully left lands in the centre at
+    # equal level in both channels, -3 dB each, power kept; mono sources keep the sin/cos law (test_imager_pan)
+    sr = 48000
+    x = np.zeros((int(0.5 * sr), 2), dtype=np.float32)
+    x[:, 1] = signals.sine(1000.0, sr, 0.5, amp_db=-20.0, channels=1)[:, 0]
+    lvl = lambda y, ch: measure.level_at_db(y[:, ch], sr, 1000.0, start_s=0.2)
+    power = lambda y: 10 ** (lvl(y, 0) / 10) + 10 ** (lvl(y, 1) / 10)
+    centre, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, pan=-100.0), input=x)
+    assert abs(lvl(centre, 0) - lvl(centre, 1)) < 0.05
+    assert abs(lvl(centre, 0) - (lvl(x, 1) - 3.01)) < 0.1
+    half, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, pan=-50.0), input=x)
+    assert abs(power(half) - power(x)) / power(x) < 0.03
+    assert lvl(half, 0) > lvl(x, 1) - 12.0  # the source has moved into the left channel
+
+
 def test_imager_crossover_drag_no_click():
     # both crossovers dragged across a stereo tone pair at full width spread: no sample jump above 1.1x the slope of
     # the static output at either end of the drag
