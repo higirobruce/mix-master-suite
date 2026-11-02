@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Transistor · Guitar grit" plugin="saturation" version="1" meta="{&quot;tags&quot;:[&quot;colour&quot;,&quot;transistor&quot;,&quot;guitar&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Hard drive with HF roll-off at 6 kHz.&quot;}">
+  <PARAMS>
+    <PARAM id="drive_db" value="24"/>
+    <PARAM id="character" value="2"/>
+    <PARAM id="bias" value="0"/>
+    <PARAM id="hf_rolloff_hz" value="6000"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

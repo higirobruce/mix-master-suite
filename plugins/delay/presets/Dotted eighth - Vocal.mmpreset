@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Dotted eighth · Vocal" plugin="delay" version="1" meta="{&quot;tags&quot;:[&quot;time_space&quot;,&quot;vocal&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Dotted eighth with a ducked tail so words stay clear.&quot;}">
+  <PARAMS>
+    <PARAM id="time_l_ms" value="375"/>
+    <PARAM id="time_r_ms" value="500"/>
+    <PARAM id="link_lr" value="0"/>
+    <PARAM id="sync" value="8"/>
+    <PARAM id="feedback_pct" value="30"/>
+    <PARAM id="ping_pong" value="0"/>
+    <PARAM id="fb_lp_hz" value="8000"/>
+    <PARAM id="fb_hp_hz" value="100"/>
+    <PARAM id="mod_depth_ms" value="0"/>
+    <PARAM id="mod_rate_hz" value="0.5"/>
+    <PARAM id="mix_pct" value="25"/>
+    <PARAM id="duck_amount_db" value="10"/>
+    <PARAM id="duck_release_ms" value="400"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

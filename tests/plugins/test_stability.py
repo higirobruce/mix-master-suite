@@ -21,12 +21,14 @@ CHUNK_SECONDS = 20.0
 POINT_INTERVAL_S = 0.05  # automation points per parameter (applied at block boundaries by the host)
 INPUT_DB = -12.0
 MAX_STATIC_GAIN_DB = {"utility": 24 + 12, "channel_eq": 5 * 18 + 12, "channel_comp": 24 + 12, "gate": 12,
-                      "saturation": 12 + 12}  # drive is level-compensated: only output + trim add gain
+                      "saturation": 12 + 12,  # drive is level-compensated: only output + trim add gain
+                      "delay": 6 + 12,         # line input soft-limited at +6 dBFS, plus trim
+                      "reverb": 6 + 12}        # width 200 % can double a side, plus trim
 PURE_GAIN = {"utility": ["gain_db", "trim_db"], "channel_eq": ["trim_db"], "channel_comp": ["makeup_db", "trim_db"],
-             "gate": ["trim_db"], "saturation": ["output_db", "trim_db"]}
+             "gate": ["trim_db"], "saturation": ["output_db", "trim_db"], "delay": ["trim_db"], "reverb": ["trim_db"]}
 # settings that make the plugin's path linear so a gain envelope is meaningful (the Clip character at drive 0 is
 # exactly linear below 0.5)
-PURE_GAIN_BASE = {"saturation": {"character": 3, "drive_db": 0.0}}
+PURE_GAIN_BASE = {"saturation": {"character": 3, "drive_db": 0.0}, "delay": {"mix_pct": 0.0}, "reverb": {"mix_pct": 0.0}}
 
 
 def random_value(p: dict, rng: np.random.Generator) -> float:

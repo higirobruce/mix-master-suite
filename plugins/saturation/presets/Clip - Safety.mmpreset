@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Clip · Safety" plugin="saturation" version="1" meta="{&quot;tags&quot;:[&quot;colour&quot;,&quot;clip&quot;,&quot;mastering&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Soft clip at low drive: catches peaks only.&quot;}">
+  <PARAMS>
+    <PARAM id="drive_db" value="6"/>
+    <PARAM id="character" value="3"/>
+    <PARAM id="bias" value="0"/>
+    <PARAM id="hf_rolloff_hz" value="20000"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

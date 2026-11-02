@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Tape · Hot vocal" plugin="saturation" version="1" meta="{&quot;tags&quot;:[&quot;colour&quot;,&quot;tape&quot;,&quot;vocal&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Tape driven 12 dB with the HF roll-off at 10 kHz.&quot;}">
+  <PARAMS>
+    <PARAM id="drive_db" value="12"/>
+    <PARAM id="character" value="0"/>
+    <PARAM id="bias" value="0"/>
+    <PARAM id="hf_rolloff_hz" value="10000"/>
+    <PARAM id="mix_pct" value="80"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>
