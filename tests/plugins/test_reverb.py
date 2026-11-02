@@ -54,7 +54,7 @@ def test_reverb_predelay():
 
 def window_energy_db(m, sr, win_s=1.0):
     w = int(win_s * sr)
-    return [10 * np.log10(float(np.sum(m[i:i + w] ** 2)) + 1e-30) for i in range(w, len(m) - w, w)]
+    return [float(10 * np.log10(float(np.sum(m[i:i + w] ** 2)) + 1e-30)) for i in range(w, len(m) - w, w)]
 
 
 @pytest.mark.parametrize("algorithm", ["Hall", "Plate"])
@@ -70,7 +70,7 @@ def test_reverb_stability_long_decay(algorithm, record_property):
                            input=x, automation=auto)
     assert rep["nan_count"] == 0
     e = window_energy_db(y[:, 0] + y[:, 1], sr)
-    record_property("window_energy_db", [round(v, 1) for v in e])
+    record_property("window_energy_db", [round(float(v), 1) for v in e])  # plain floats: xdist serialises them
     assert all(b < a for a, b in zip(e, e[1:]))
     assert all(a - b < 12.0 for a, b in zip(e, e[1:]))
 
