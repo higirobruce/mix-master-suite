@@ -1,4 +1,5 @@
 #include "tools/render/Bench.h"
+#include "tools/render/ModuleRegistry.h"
 #include "tools/render/PluginTarget.h"
 #include "tools/render/Signals.h"
 #include <chrono>
@@ -6,17 +7,41 @@
 
 namespace mmr
 {
-int runBench(const juce::String& plugin, int instances, double seconds, double sampleRate, int block)
+int runBench(const juce::String& plugin, int instances, double seconds, double sampleRate, int block, const juce::StringArray& params)
 {
-    std::vector<std::unique_ptr<PluginTarget>> targets;
+    std::vector<std::unique_ptr<Target>> targets;
     juce::String error;
     Job job;
     job.sampleRate = sampleRate;
     job.blockSize = block;
+    const bool isModule = plugin.startsWith("module:");
     for (int i = 0; i < instances; ++i)
     {
-        auto t = PluginTarget::load(plugin, error);
-        if (t == nullptr || !t->prepare(sampleRate, block, job, error))
+        std::unique_ptr<Target> t;
+        if (isModule)
+        {
+            auto m = ModuleRegistry::instance().create(plugin.fromFirstOccurrenceOf("module:", false, false).toStdString());
+            if (m == nullptr)
+            {
+                std::cerr << "bench: unknown module " << plugin << "\n";
+                return 3;
+            }
+            t = std::make_unique<ModuleTarget>(std::move(m));
+        }
+        else
+            t = PluginTarget::load(plugin, error);
+        if (t == nullptr)
+        {
+            std::cerr << "bench: " << error << "\n";
+            return 3;
+        }
+        for (const auto& kv : params)
+            if (!t->setParam(kv.upToFirstOccurrenceOf("=", false, false), kv.fromFirstOccurrenceOf("=", false, false).getDoubleValue(), juce::var(), error))
+            {
+                std::cerr << "bench: " << error << "\n";
+                return 3;
+            }
+        if (!t->prepare(sampleRate, block, job, error))
         {
             std::cerr << "bench: " << error << "\n";
             return 3;

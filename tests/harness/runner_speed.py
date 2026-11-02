@@ -1,12 +1,13 @@
 """Runner speed calibration for the CPU budgets.
 
-The spec's budgets are per-instance percentages "on a mid-range laptop CPU". GitHub-hosted runners span a ~1.6x speed
-range between draws (the same build read saturation 0.62 % and 1.00 % on two Linux runs, 0.69 % and 1.13 % on two
-Windows runs), so an absolute gate flips with the draw. `runner_factor()` measures this machine with the core
-benchmark (mm_bench_core: ns per sample of a 255-tap FIR, a double biquad and a TPT SVF) against the reference
-machine recorded in docs/bench/core-2026-11-01.json, and the budget checks scale their limit by max(1, factor):
-a faster machine gets no relief, a slower runner gets a proportional allowance. The factor is printed with every
-result so a reviewer can see it (ruling recorded in the M3 review)."""
+The spec's budgets are per-instance percentages "on a mid-range laptop CPU". GitHub-hosted runners span a ~1.7x
+range between draws for hosted plugins (one build read saturation 0.62 % and 1.00 % on two Linux runs, 0.69 % and
+1.18 % on Windows), while an in-cache micro-benchmark reads those same runners as faster than the reference: the
+variation is in the many-instance hosted workload (memory, cache, scheduling), not raw ALU speed. So the yardstick
+is a fixed, non-product workload of the plugins' shape: the render host's 4x oversampled tanh module, 100 instances
+with their own buffers (docs/bench/calibration-2026-11-03.json records the reference machine's number). The budget
+checks scale their limit by max(1, measured / reference): a faster machine gets no relief, a slower runner gets a
+proportional allowance, and the factor is printed with every result (ruling recorded in the M3 review)."""
 from __future__ import annotations
 
 import json
@@ -14,28 +15,21 @@ import subprocess
 from functools import lru_cache
 from pathlib import Path
 
-from tests.harness.render import REPO_ROOT, build_dir
+from tests.harness.render import REPO_ROOT, mm_render_path
 
-REFERENCE = REPO_ROOT / "docs" / "bench" / "core-2026-11-01.json"
-PROBES = ("fir_255_float", "biquad_double", "svf_float")
-
-
-def bench_core_path() -> Path:
-    for cand in (build_dir() / "tools" / "bench" / "mm_bench_core", build_dir() / "tools" / "bench" / "mm_bench_core.exe",
-                 build_dir() / "tools" / "bench" / "Release" / "mm_bench_core.exe"):
-        if cand.exists():
-            return cand
-    raise FileNotFoundError("mm_bench_core not built")
+REFERENCE = REPO_ROOT / "docs" / "bench" / "calibration-2026-11-03.json"
 
 
 @lru_cache(maxsize=1)
 def runner_factor() -> float:
-    """Median ratio of this machine's core-module cost to the reference machine's (1.0 = same speed)."""
+    """This machine's cost of the calibration workload over the reference machine's (1.0 = same speed)."""
     ref = json.loads(REFERENCE.read_text())
-    out = subprocess.run([str(bench_core_path())], capture_output=True, text=True, check=True).stdout
-    measured = json.loads(out)
-    ratios = sorted(measured[k] / ref[k] for k in PROBES if k in measured and k in ref and ref[k] > 0)
-    return float(ratios[len(ratios) // 2]) if ratios else 1.0
+    cmd = [str(mm_render_path()), "--bench", ref["workload"], "--instances", str(ref["instances"]), "--seconds", str(ref["seconds"])]
+    for kv in ref["params"]:
+        cmd += ["--set", kv]
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
+    measured = json.loads(out)["cpu_percent_per_instance"]
+    return float(measured) / float(ref["cpu_percent_per_instance"])
 
 
 def effective_budget(budget: float) -> tuple[float, float]:

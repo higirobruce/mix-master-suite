@@ -1,7 +1,7 @@
 // mm_render: offline plugin/module host for the measurement suite.
 //   mm_render <job.json>
 //   mm_render --dump-params <plugin>
-//   mm_render --bench <plugin> --instances N --seconds S --sample-rate R --block B
+//   mm_render --bench <plugin>|module:<name> --instances N --seconds S --sample-rate R --block B [--set id=value]...
 //   mm_render --list-modules
 // Exit codes: 0 ok, 2 job error, 3 plugin load failure.
 #include "tools/render/Bench.h"
@@ -225,11 +225,14 @@ int main(int argc, char* argv[])
         if (args.size() < 2)
             return 2;
         int instances = 100, block = 64;
+        juce::StringArray params;
         double seconds = 10.0, sampleRate = 48000.0;
         for (int i = 2; i + 1 < args.size(); i += 2)
         {
             if (args[i] == "--instances")
                 instances = args[i + 1].getIntValue();
+            else if (args[i] == "--set")
+                params.add(args[i + 1]);
             else if (args[i] == "--seconds")
                 seconds = args[i + 1].getDoubleValue();
             else if (args[i] == "--sample-rate")
@@ -237,7 +240,7 @@ int main(int argc, char* argv[])
             else if (args[i] == "--block")
                 block = args[i + 1].getIntValue();
         }
-        return runBench(args[1], instances, seconds, sampleRate, block);
+        return runBench(args[1], instances, seconds, sampleRate, block, params);
     }
     return renderJob(juce::File::getCurrentWorkingDirectory().getChildFile(args[0]));
 }
