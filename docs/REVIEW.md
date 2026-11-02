@@ -1,5 +1,5 @@
 # Review: M2 Channel essentials
-Commit: {{SHA}}   Branch: milestone/m2-channel-essentials
+Commit: 4c77713   Branch: milestone/m2-channel-essentials
 
 ## What was built
 Three plugins on the shared base (`plugin_base/PluginProcessorBase`, `gui/PluginEditorBase`), composing the M1 modules:
@@ -18,14 +18,14 @@ Every number is in the "M2 measurements" table of docs/STATE.md.
 | Null test at flat settings (EQ) / 1:1 (compressor) | < −120 / < −90 dBFS | −200 dBFS / < −90 dBFS at 4 rates | ✓ |
 | Attack / release (compressor 1/10/100 ms, 50/300/1000 ms; gate 0.1/1/10 ms, 10/100/1000 ms), DC steps, 4 rates | within 10 % | compressor worst −1.1 %; gate attack 0.091–0.104 ms at 0.1 ms, else exact; hold 50/200/1000 → 51/201/1001 ms | ✓ |
 | Ratio (compressor 2/4/8/20/∞ feed-forward; feedback 2/4/8; expander 2/4) | within 0.1 (feedback 0.3) | 2.000 / 4.000 / 8.000 / 20.000; ∞ flat; feedback within 0.3; expander 2.000 / 4.000 | ✓ |
-| CPU within budget (EQ 0.5 %, comp 0.4 %, gate 0.3 %; 100 instances, 48 k / 64) | ≤ budget | EQ 0.121 %, comp 0.347 %, gate 0.212 % | ✓ |
+| CPU within budget (EQ 0.5 %, comp 0.4 %, gate 0.3 %; 100 instances, 48 k / 64) | ≤ budget | local: EQ 0.122, comp 0.260, gate 0.167 %; CI macOS 0.090 / 0.192 / 0.121, Linux 0.129 / 0.288 / 0.164, Windows 0.138 / 0.249 / 0.168 % | ✓ |
 | Hysteresis prevents chatter | ≤ 1 transition per AM cycle | 0 at 3 dB (15 at 0 dB, recorded) | ✓ |
 | Lookahead latency reported == measured; onset preserved | exact; ≥ 0.9 | 240 == 240; onset ratio 1.00 (0.30 without) | ✓ |
 | No clicks on parameter moves and switches (Review Focus 1) | 1 ms envelope step < 0.5 dB (sweeps) / glides never step | band sweep 0.14 dB; HP/LP cutoff sweeps ≤ 0.1 dB at every slope; band gain→0 and on/off ≤ 1.5 dB per ms (20 ms glide); HP on/off/slope ≤ 0.8 dB per ms; comp mix/auto-makeup ≤ 2.5 / 1.0; gate lookahead change: no sample jump | ✓ |
 | Stability fuzz (2 min per plugin on push, 1 h nightly) | no NaN, bounded | pass ×4 (peaks EQ +49.6 with five +18 dB bells, comp +19.7, gate +11.3, utility +24.9 dBFS) | ✓ |
 | pluginval strictness 10, auval, clap-validator | pass | EQ / comp / gate: VST3, AU, CLAP PASS (macOS local; CI runs every plugin on three OSes) | ✓ |
-| Sanitizers | clean | CI sanitizer jobs (macOS + Linux) | {{CI}} |
-| CI matrix green | green | run {{CI_RUN}} | {{CI}} |
+| Sanitizers | clean | CI sanitizer jobs (macOS + Linux) green | ✓ |
+| CI matrix green | green | run 41386855649, five jobs green | ✓ |
 
 ## Decisions made without asking (link ADRs)
 ADR-0003 (EQ bands and analog Q), ADR-0004 (compressor topology), ADR-0005 (gate hysteresis, hold, lookahead), each with a dated "Amendments" section from the review fix pass. Rulings recorded in the execution ledger:
@@ -55,7 +55,7 @@ tools/run_pluginval.sh channel_eq && tools/run_pluginval.sh channel_comp && tool
 DAW: load the VST3/AU from `build/plugins/<name>/<name>_artefacts/Release/` (CLAP next to them). Presets to start with: EQ "Vocal · Presence lift" (drag the 3.5 kHz node, wheel for Q, hold a node to solo it), Compressor "Vocal · Smooth" (drag the threshold line on the history; switch topology to Feedback and watch the footer), Gate "Snare · Tight" (open/closed shading on the history; raise lookahead to 5 ms and check the host's latency readout).
 
 ## Review history
-A fresh whole-branch reviewer found 2 Critical / 6 Important / 7 Minor. Fixed on the branch, each with a failing test first: the EQ editor no longer calls into audio-thread design code (static response from parameter values, host gestures around drags; GUI test asserts the DSP design is untouched by a drag); HP/LP cutoff moves no longer click at 6/18 dB/oct (the one-pole was re-prepared, i.e. reset, on every redesign) and switches glide instead of stepping (sections on the TPT SVF, eased per-octave glide; +5.5 dB → +1 dB worst case); bands finish their ramp to 0 dB before leaving the chain; the feedback compressor realises its labelled ratio with the detector pre-makeup; mix and auto makeup ramp per sample with the auto term capped; the gate's lookahead is unsmoothed and crossfades its delay tap; the four weakened/missing test halves were restored (band sweep envelope step, ∞:1 at −60 dB finite/no DC, loud external key drives reduction (comp + gate), HP/LP −3 dB at fc ±0.1 dB at four rates). Minors deferred to the ledger and listed above.
+A fresh whole-branch reviewer found 2 Critical / 6 Important / 7 Minor. Fixed on the branch, each with a failing test first: the EQ editor no longer calls into audio-thread design code (static response from parameter values, host gestures around drags; GUI test asserts the DSP design is untouched by a drag); HP/LP cutoff moves no longer click at 6/18 dB/oct (the one-pole was re-prepared, i.e. reset, on every redesign) and switches glide instead of stepping (sections on the TPT SVF, eased per-octave glide; +5.5 dB → +1 dB worst case); bands finish their ramp to 0 dB before leaving the chain; the feedback compressor realises its labelled ratio with the detector pre-makeup; mix and auto makeup ramp per sample with the auto term capped; the gate's lookahead is unsmoothed and crossfades its delay tap; the four weakened/missing test halves were restored (band sweep envelope step, ∞:1 at −60 dB finite/no DC, loud external key drives reduction (comp + gate), HP/LP −3 dB at fc ±0.1 dB at four rates). Minors deferred to the ledger and listed above. CI then measured the compressor at 0.50 % and the gate at 0.31 % on the Windows runner (the spec's "mid-range laptop"): per-sample pow/log10 were replaced by fast log2/exp2 conversions within 1e-4 dB (tested), a fully linked compressor computes one gain, settled envelopes land exactly so steady-state gains are exact constants, and the sliding maximum lost its per-sample integer modulo; the gate also skips idle sidechain filters and the zero-lookahead delay read. Windows now reads comp 0.249 %, gate 0.168 %.
 
 ## Questions for the reviewer (only if any)
 1. Feedback topology: the loop realises the labelled ratio up to its stability bound and the footer discloses the cap. Alternative: hide ratios above the bound in feedback mode. Preference?

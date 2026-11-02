@@ -8,8 +8,8 @@ Updated: 2026-11-02
 | --- | --- | --- | --- |
 | M0 Scaffold | built; CI run 41328502710 pending; review tag on green | milestone/m0-scaffold | review/m0-scaffold (after CI) |
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
-| M2 Channel essentials | built; review fix pass done (2 Critical / 6 Important fixed); CI pending; review tag on green | milestone/m2-channel-essentials | review/m2-channel-essentials (after CI) |
-| M3 Colour and space | planned (roadmap) | — | — |
+| M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
+| M3 Colour and space | next (plan to write) | milestone/m3-colour-and-space | — |
 | M4 Stereo and vocal | planned (roadmap) | — | — |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
@@ -145,7 +145,7 @@ Exit criteria (CLAUDE.md, verbatim): "Channel EQ, Channel Compressor, Gate. Freq
 | Sidechain HP/LP, external key with silent fallback, listen (comp + gate) | pass | pass | 2026-11-02 |
 | Base checks per plugin: variable blocks, SR change mid-stream, state round trip, param extremes, denormal tail, channel configs | < −100 / −60 dBFS; pass | EQ −200 / −200; comp −200 / −126; gate −200 / −200; all others pass | 2026-11-02 |
 | Stability fuzz, every parameter every 50 ms, SR 44.1→96→48 k and block 1…4096 mid-stream, 120 s per plugin | no NaN, peak < input + max static gain + 24 dB | pass ×4; peaks: utility +24.9, EQ +49.6 (bound 114: five +18 dB bells), comp +19.7, gate +11.3 dBFS; pure-gain steps ≤ 0.06 dB/sample | 2026-11-02 |
-| CPU per instance, 100 instances, 48 k / 64 (hosted VST3, M2 Max) | EQ < 0.5 %, comp < 0.4 %, gate < 0.3 % | EQ 0.121 %, comp 0.347 %, gate 0.212 % (utility 0.055 %), after the review fix pass | 2026-11-02 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3, M2 Max) | EQ < 0.5 %, comp < 0.4 %, gate < 0.3 % | local M2 Max: EQ 0.122 %, comp 0.260 %, gate 0.167 %; CI runners (run 41386855649) macOS 0.090 / 0.192 / 0.121, Linux 0.129 / 0.288 / 0.164, Windows 0.138 / 0.249 / 0.168 (utility 0.041–0.061). Per-sample pow/log10 replaced by tested fast conversions after Windows measured comp 0.50 / gate 0.31 | 2026-11-02 |
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | EQ, comp, gate: VST3 PASS, AU PASS, CLAP PASS | 2026-11-02 |
 | Factory presets | ≥ 8 per plugin | EQ 10, comp 10, gate 9, utility 8; every preset loads (C++ check per plugin) | 2026-11-02 |
-| CI matrix macOS/Windows/Linux + sanitizers | green | pending (push after the review fix pass) | 2026-11-02 |
+| CI matrix macOS/Windows/Linux + sanitizers | green | run 41386855649: all five jobs green (build-test ×3 incl. pluginval/clap-validator for every plugin and the CPU benchmark; sanitizers ×2) | 2026-11-02 |
