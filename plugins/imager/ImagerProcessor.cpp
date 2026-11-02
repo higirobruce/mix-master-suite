@@ -40,9 +40,10 @@ ImagerProcessor::ImagerProcessor()
     scopeR.assign(kScopeSize, 0.0f);
 }
 
-void ImagerProcessor::prepareDsp(double sampleRate, int, int)
+void ImagerProcessor::prepareDsp(double sampleRate, int, int channels)
 {
     sr = sampleRate;
+    analyserOut.prepare(sr, 11, juce::jmin(channels, 2));
     for (auto* x : {&sLow, &sHigh, &sMono})
     {
         x->prepare(sr);
@@ -184,6 +185,7 @@ void ImagerProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
         correlation.process(buffer.getReadPointer(0), buffer.getReadPointer(1), n);
         correlationValue.store(correlation.value(), std::memory_order_relaxed);
     }
+    analyserOut.push(buffer.getArrayOfReadPointers(), numOut, n);
 }
 
 juce::AudioProcessorEditor* ImagerProcessor::createEditor() { return new ImagerEditor(*this); }

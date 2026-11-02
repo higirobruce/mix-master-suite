@@ -18,3 +18,4 @@ mm_add_snapshot(saturation plugins/saturation/SaturationProcessor.h SaturationPr
 mm_add_snapshot(delay plugins/delay/DelayProcessor.h DelayProcessor)
 mm_add_snapshot(reverb plugins/reverb/ReverbProcessor.h ReverbProcessor)
 mm_add_snapshot(deesser plugins/deesser/DeEsserProcessor.h DeEsserProcessor)
+mm_add_snapshot(imager plugins/imager/ImagerProcessor.h ImagerProcessor)

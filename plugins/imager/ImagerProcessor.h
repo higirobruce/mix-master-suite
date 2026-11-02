@@ -2,6 +2,7 @@
 #include "core/filters/Biquad.h"
 #include "core/filters/LinkwitzRiley.h"
 #include "core/metering/Correlation.h"
+#include "core/metering/Spectrum.h"
 #include "plugin_base/PluginProcessorBase.h"
 #include <array>
 #include <atomic>
@@ -20,6 +21,7 @@ public:
     // the last stereo output samples for the goniometer (GUI thread; returns how many were copied, newest last)
     int pullScope(float* l, float* r, int maxSamples) const noexcept;
     static constexpr int kScopeSize = 4096;
+    mm::SpectrumAnalyser& outputAnalyser() noexcept { return analyserOut; }
 
 protected:
     void prepareDsp(double sampleRate, int maxBlock, int channels) override;
@@ -38,6 +40,7 @@ private:
     mm::Biquad<double> sLowAp, mAp1, mAp2, mMonoAp;
     double apLowHz = 0.0, apHighHz = 0.0; // cutoffs the all-pass coefficients were designed for
     mm::CorrelationMeter correlation;
+    mm::SpectrumAnalyser analyserOut;
     std::atomic<float> correlationValue{1.0f};
     std::vector<float> scopeL, scopeR;
     std::atomic<int> scopeWrite{0};
