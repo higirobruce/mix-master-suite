@@ -46,8 +46,8 @@ GateEditor::GateEditor(GateProcessor& p)
     history.setThresholdDb(p.apvts().getRawParameterValue(gp::id::threshold_db)->load());
     history.onThresholdChange = [this](float db) { setReal(gate.apvts(), gp::id::threshold_db, db); };
     history.onGesture = [this](bool starting) {
-        if (auto* p = gate.apvts().getParameter(gp::id::threshold_db))
-            starting ? p->beginChangeGesture() : p->endChangeGesture();
+        if (auto* param = gate.apvts().getParameter(gp::id::threshold_db))
+            starting ? param->beginChangeGesture() : param->endChangeGesture();
     };
     for (auto* k : {&threshold, &range, &attack, &hold, &release, &ratio, &hysteresis, &lookahead})
         c.addAndMakeVisible(*k);

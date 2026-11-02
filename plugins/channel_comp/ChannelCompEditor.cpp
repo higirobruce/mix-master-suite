@@ -41,8 +41,8 @@ ChannelCompEditor::ChannelCompEditor(ChannelCompProcessor& p)
     history.setThresholdDb(p.apvts().getRawParameterValue(cp::id::threshold_db)->load());
     history.onThresholdChange = [this](float db) { setReal(comp.apvts(), cp::id::threshold_db, db); };
     history.onGesture = [this](bool starting) {
-        if (auto* p = comp.apvts().getParameter(cp::id::threshold_db))
-            starting ? p->beginChangeGesture() : p->endChangeGesture();
+        if (auto* param = comp.apvts().getParameter(cp::id::threshold_db))
+            starting ? param->beginChangeGesture() : param->endChangeGesture();
     };
     for (auto* k : {&threshold, &ratio, &attack, &release, &knee, &mix, &makeup})
         c.addAndMakeVisible(*k);

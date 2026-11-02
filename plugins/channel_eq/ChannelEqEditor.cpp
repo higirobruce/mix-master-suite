@@ -48,19 +48,19 @@ ChannelEqEditor::ChannelEqEditor(ChannelEqProcessor& p)
     // the editor only writes parameter values; the audio thread designs from them on its next block
     curve.onGesture = [this](int band, bool starting) {
         for (int k : {2, 3})
-            if (auto* p = eq.apvts().getParameter(kBandIds[band][k]))
-                starting ? p->beginChangeGesture() : p->endChangeGesture();
+            if (auto* param = eq.apvts().getParameter(kBandIds[band][k]))
+                starting ? param->beginChangeGesture() : param->endChangeGesture();
     };
     curve.onNodeMove = [this](int band, double freq, double gainDb) {
         setReal(eq.apvts(), kBandIds[band][2], freq);
         setReal(eq.apvts(), kBandIds[band][3], gainDb);
     };
     curve.onNodeQ = [this](int band, double factor) {
-        auto* p = eq.apvts().getParameter(kBandIds[band][4]);
+        auto* param = eq.apvts().getParameter(kBandIds[band][4]);
         const float q = eq.apvts().getRawParameterValue(kBandIds[band][4])->load();
-        if (p != nullptr) p->beginChangeGesture();
+        if (param != nullptr) param->beginChangeGesture();
         setReal(eq.apvts(), kBandIds[band][4], q * factor);
-        if (p != nullptr) p->endChangeGesture();
+        if (param != nullptr) param->endChangeGesture();
     };
     curve.onNodeSolo = [this](int band, bool solo) {
         if (solo)
