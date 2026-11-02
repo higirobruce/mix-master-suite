@@ -184,3 +184,12 @@ target_link_libraries(mm_deesser_tests PRIVATE deesser mm_plugin_base Catch2::Ca
 mm_set_warnings(mm_deesser_tests)
 mm_enable_sanitizers(mm_deesser_tests)
 catch_discover_tests(mm_deesser_tests)
+
+# ---- de-esser GUI tests
+add_executable(mm_gui_deesser_tests test_gui_deesser.cpp)
+target_include_directories(mm_gui_deesser_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/deesser)
+target_link_libraries(mm_gui_deesser_tests PRIVATE deesser mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_deesser_tests)
+mm_enable_sanitizers(mm_gui_deesser_tests)
+catch_discover_tests(mm_gui_deesser_tests)
+
