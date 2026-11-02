@@ -20,7 +20,7 @@ DelayEditor::DelayEditor(DelayProcessor& p)
     : mm::gui::PluginEditorBase(p, mm::gui::Theme::dark(mm::gui::accents::timeSpace), 920, 580), delay(p),
       timeL(p.apvts(), dp::id::time_l_ms, "TIME L"), timeR(p.apvts(), dp::id::time_r_ms, "TIME R"),
       feedback(p.apvts(), dp::id::feedback_pct, "FEEDBACK"), mix(p.apvts(), dp::id::mix_pct, "MIX"), link(p.apvts(), dp::id::link_lr, "LINK"),
-      pingPong(p.apvts(), dp::id::ping_pong, "PING-PONG"), sync(p.apvts(), dp::id::sync, "SYNC"), drawer(juce::String::fromUTF8("Filter \xc2\xb7 Mod \xc2\xb7 Duck")),
+      pingPong(p.apvts(), dp::id::ping_pong, "PING-PONG"), sync(p.apvts(), dp::id::sync, "SYNC L"), syncR(p.apvts(), dp::id::sync_r, "SYNC R"), drawer(juce::String::fromUTF8("Filter \xc2\xb7 Mod \xc2\xb7 Duck")),
       fbLp(p.apvts(), dp::id::fb_lp_hz, "FB LOW-PASS"), fbHp(p.apvts(), dp::id::fb_hp_hz, "FB HIGH-PASS"),
       modDepth(p.apvts(), dp::id::mod_depth_ms, "MOD DEPTH"), modRate(p.apvts(), dp::id::mod_rate_hz, "MOD RATE"),
       duckAmount(p.apvts(), dp::id::duck_amount_db, "DUCK"), duckRelease(p.apvts(), dp::id::duck_release_ms, "DUCK RELEASE")
@@ -32,6 +32,7 @@ DelayEditor::DelayEditor(DelayProcessor& p)
     c.addAndMakeVisible(link);
     c.addAndMakeVisible(pingPong);
     c.addAndMakeVisible(sync);
+    c.addAndMakeVisible(syncR);
     taps.onTimeChange = [this](int channel, double ms) {
         setReal(delay.apvts(), channel == 0 ? dp::id::time_l_ms : dp::id::time_r_ms, static_cast<float>(ms));
     };
@@ -76,11 +77,14 @@ void DelayEditor::layoutContent(juce::Rectangle<int> area)
         link.setBounds(col.removeFromTop(24).reduced(8, 0));
         col.removeFromTop(6);
         sync.setBounds(col.removeFromTop(40));
-        col.removeFromTop(6);
+    }
+    {
+        auto col = strip.removeFromLeft(colW).reduced(4, 0);
         pingPong.setBounds(col.removeFromTop(24).reduced(8, 0));
+        col.removeFromTop(6);
+        syncR.setBounds(col.removeFromTop(40));
     }
     feedback.setBounds(strip.removeFromLeft(colW).reduced(4, 0));
-    strip.removeFromLeft(colW); // breathing room
     mix.setBounds(strip.reduced(4, 0));
     area.removeFromBottom(8);
     taps.setBounds(area);
@@ -94,7 +98,7 @@ void DelayEditor::themeChanged(const mm::gui::Theme& t)
 
 void DelayEditor::meterFrame(const mm::MeterFrame&)
 {
-    const bool synced = delay.apvts().getRawParameterValue(dp::id::sync)->load() >= 0.5f;
+    const bool synced = delay.apvts().getRawParameterValue(dp::id::sync)->load() >= 0.5f || delay.apvts().getRawParameterValue(dp::id::sync_r)->load() >= 0.5f;
     taps.setBpm(delay.currentBpm());
     taps.setTaps(delay.effectiveTimeMs(0), delay.effectiveTimeMs(1), delay.apvts().getRawParameterValue(dp::id::feedback_pct)->load() * 0.01f,
                  delay.apvts().getRawParameterValue(dp::id::ping_pong)->load() >= 0.5f, synced);

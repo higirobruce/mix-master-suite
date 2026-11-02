@@ -8,7 +8,7 @@ from tests.plugins import base_checks
 
 PLUGIN = "delay"
 # wet only, no feedback, filters wide open, no modulation
-BASE = {"time_l_ms": 375.0, "time_r_ms": 375.0, "link_lr": 0, "sync": 0, "feedback_pct": 0.0, "ping_pong": 0,
+BASE = {"time_l_ms": 375.0, "time_r_ms": 375.0, "link_lr": 0, "sync": 0, "sync_r": 0, "feedback_pct": 0.0, "ping_pong": 0,
         "fb_lp_hz": 20000.0, "fb_hp_hz": 20.0, "mod_depth_ms": 0.0, "mod_rate_hz": 0.5, "mix_pct": 100.0,
         "duck_amount_db": 0.0, "duck_release_ms": 300.0}
 
@@ -137,14 +137,37 @@ def test_delay_ducking():
     assert abs(after) < 1.0
 
 
-def test_delay_no_zipper_on_time_change():
-    # Review Focus 2: time jumped 1 -> 4000 ms (and back) while a tone runs: the slew glides, no sample jump above 2x the input's own
+@pytest.mark.parametrize("points", [2, 100, 300])
+def test_delay_no_zipper_on_time_change(points):
+    # Review Focus 2: time dragged 1 -> 4000 ms (log, `points` automation points over 1 s) and jumped back while a
+    # tone runs: glides and tap crossfades keep every sample-to-sample jump within 2x the input's own
     sr = 48000
-    x = signals.sine(440.0, sr, 2.0, amp_db=-12.0, channels=1)
-    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, time_l_ms=1.0, time_r_ms=1.0, feedback_pct=40.0), input=x,
-                           automation=[{"param": "time_l_ms", "t_s": 0.5, "value": 4000.0}, {"param": "time_l_ms", "t_s": 1.2, "value": 1.0}])
+    x = signals.sine(440.0, sr, 2.5, amp_db=-12.0, channels=1)
+    auto = [{"param": "time_l_ms", "t_s": 0.5 + 1.0 * k / max(1, points - 1), "value": 1.0 * (4000.0 ** (k / max(1, points - 1)))} for k in range(points)]
+    auto.append({"param": "time_l_ms", "t_s": 1.8, "value": 1.0})
+    y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, time_l_ms=1.0, time_r_ms=1.0, feedback_pct=40.0), input=x, automation=auto)
     assert rep["nan_count"] == 0
     assert np.max(np.abs(np.diff(y[:, 0]))) < 2.0 * np.max(np.abs(np.diff(x[:, 0])))
+
+
+def test_delay_mono_output_sums_ping_pong():
+    # mono in / mono out with ping-pong: every tap is heard (the mono sum of L and R), not only the left ones
+    sr = 48000
+    params = dict(BASE, time_l_ms=100.0, time_r_ms=100.0, feedback_pct=60.0, ping_pong=1)
+    taps, _ = impulse_taps(sr, params, dur=1.0, layout={"in": 1, "out": 1})
+    times = [round(t * 1000) for t, _ in taps[:6]]
+    assert times == [100, 200, 300, 400, 500, 600]
+
+
+def test_delay_independent_sync_sides():
+    # spec: L/R independent under tempo sync: L dotted eighth (375 ms) and R quarter (500 ms) at 120 BPM
+    sr = 48000
+    params = dict(BASE, sync=8, sync_r=3)
+    x = signals.impulse(sr, 1.0, channels=1)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=params, input=x, layout={"in": 1, "out": 2}, bpm=120.0)
+    assert rep["nan_count"] == 0
+    assert abs(int(np.argmax(np.abs(y[:, 0]))) / sr * 1000 - 375.0) < 0.1
+    assert abs(int(np.argmax(np.abs(y[:, 1]))) / sr * 1000 - 500.0) < 0.1
 
 
 def test_delay_extremes_and_base_checks(record_property):

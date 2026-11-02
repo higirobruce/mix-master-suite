@@ -73,7 +73,7 @@ def test_sat_harmonic_balance(character, record_property):
         even, odd = np.sqrt(np.sum(lin[1::2] ** 2)), np.sqrt(np.sum(lin[2::2] ** 2))
         ratios.append(20 * np.log10(even / odd + 1e-30))
     record_property("even_odd_db_by_bias", [round(float(r), 1) for r in ratios])
-    assert ratios[2] < -40.0 or character == "Tape"  # bias 0: no even harmonics (Tape's emphasis/head bump are linear: also none)
+    assert ratios[2] < -60.0  # bias 0: no even harmonics (the Tape emphasis and head bump are linear)
     assert ratios[3] > ratios[2] + 20.0 and ratios[1] > ratios[2] + 20.0  # any bias brings even harmonics in
     assert ratios[4] > ratios[3] and ratios[0] > ratios[1]  # more bias, more even content
 
@@ -99,7 +99,8 @@ def test_sat_null_mix_zero():
 @pytest.mark.parametrize("character", CHARACTERS)
 def test_sat_unity_small_signal(character):
     # drive adds colour, not level: a -60 dBFS tone (0.06 into the shaper at 36 dB drive: still small-signal) keeps
-    # its level within 0.5 dB from drive 0 to 36
+    # its level within 0.5 dB from drive 0 to 36 (ruling: at -40 dBFS the tone is already 0.63 into the shaper at
+    # 36 dB drive and is legitimately compressed by up to 1.6 dB)
     sr = 48000
     levels = []
     for drive in (0.0, 12.0, 24.0, 36.0):

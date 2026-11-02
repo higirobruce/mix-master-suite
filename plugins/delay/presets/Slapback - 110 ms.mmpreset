@@ -5,6 +5,7 @@
     <PARAM id="time_r_ms" value="110"/>
     <PARAM id="link_lr" value="1"/>
     <PARAM id="sync" value="0"/>
+    <PARAM id="sync_r" value="0"/>
     <PARAM id="feedback_pct" value="10"/>
     <PARAM id="ping_pong" value="0"/>
     <PARAM id="fb_lp_hz" value="5000"/>

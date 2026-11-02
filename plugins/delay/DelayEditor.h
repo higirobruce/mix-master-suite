@@ -25,7 +25,7 @@ private:
     mm::gui::TapDisplay taps;
     mm::gui::Knob timeL, timeR, feedback, mix;
     mm::gui::Toggle link, pingPong;
-    mm::gui::Selector sync;
+    mm::gui::Selector sync, syncR;
     mm::gui::AdvancedDrawer drawer;
     juce::Component drawerContent;
     mm::gui::Knob fbLp, fbHp, modDepth, modRate, duckAmount, duckRelease;

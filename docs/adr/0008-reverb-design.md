@@ -28,3 +28,10 @@ Spec: Reverb with algorithm (room / hall / plate / chamber), pre-delay, decay 0.
 - The tank's modulated all-passes read with 4-point Lagrange interpolation: linear interpolation low-passed the broadband tank and shortened long decays by ~10 %.
 - Algorithm and size changes crossfade between two FDN instances (or FDN and plate) over 200 ms, not 50: the incoming engine starts empty and needs ~0.3 s to fill, so a 50 ms fade dipped 10 dB.
 - Measured: RT60 within 3.5 % (FDN) / 0.5 % (plate) of the label at 0.5 / 2 / 8 s and four sample rates.
+
+## Amendments (2026-11-03, M3 review fix pass)
+
+- **Size never restarts an engine.** The FDN's line lengths glide to their new mutually prime targets over 200 ms (fractional reads while moving) so a size change, or a size drag, keeps the tail; algorithm changes still crossfade between the two FDN instances (or FDN and plate), and a change requested while a fade is running is queued until the fade ends (resetting the outgoing engine cut the tail: measured −8 to −200 dB on a size drag). The plate ignores size.
+- **Short decays.** Below RT60 0.6 s the four input diffusers shorten and soften in proportion (a 12.7 ms all-pass at g 0.675 rings for ~0.2 s on its own, which floored every FDN algorithm near 0.24 s). The plate's ~0.5 s floor stands as a reviewer question.
+- **Unsmoothed parameters (hard rule 2 exceptions):** `size_pct` (an integer-length configuration; glided inside the FDN) and `predelay_ms` (an integer read position; changes crossfade between the old and new positions over 20 ms).
+- **Mono output** carries the mid of the stereo wet (independent of width), so a mono bus never hears half the image.

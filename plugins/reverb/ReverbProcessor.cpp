@@ -47,9 +47,12 @@ ReverbProcessor::ReverbProcessor()
     width = &smoothed(rp::id::width_pct);
 }
 
+// below RT60 0.5 s the room shrinks with the decay: short lines mix fast enough for the label to be met
+static double effectiveSize(double sz, double rt60) noexcept { return sz * juce::jlimit(0.35, 1.0, rt60 / 0.5); }
+
 void ReverbProcessor::configureFdn(mm::reverb::FDN<float>& f, int algo, double sz)
 {
-    f.setAlgorithm(fdnAlgo(algo), sz);
+    f.setAlgorithm(fdnAlgo(algo), effectiveSize(sz, decay->current()));
     f.setRT60(decay->current());
     f.setDamping(damping->current() * 0.01f);
     f.setDiffusion(diffusion->current() * 0.01f);
@@ -74,6 +77,7 @@ void ReverbProcessor::prepareDsp(double sampleRate, int, int)
         f.setMode(mm::SvfMode::LowPass);
     }
     fadeStep = 1.0 / juce::jmax(1.0, kFadeMs * 1e-3 * sr);
+    preFadeStep = 1.0 / juce::jmax(1.0, 0.02 * sr);
     resetDsp();
     const int algo = juce::jlimit(0, 3, static_cast<int>(std::lround(algorithm.get())));
     const double sz = size.get() * 0.01;
@@ -87,8 +91,10 @@ void ReverbProcessor::prepareDsp(double sampleRate, int, int)
     plate.setDiffusion(diffusion->current() * 0.01f);
     early.setPattern(erPattern(algo), sz);
     lastAlgorithm = algo;
+    pendingAlgorithm = -1;
     lastSize = sz;
-    lastPredelay = -1;
+    preCur = preOld = juce::jlimit(0, static_cast<int>(kMaxPredelayMs * 1e-3 * sr), static_cast<int>(std::lround(predelay.get() * 1e-3 * sr)));
+    preFade = 1.0;
 }
 
 void ReverbProcessor::resetDsp()
@@ -104,14 +110,19 @@ void ReverbProcessor::resetDsp()
         f.reset();
 }
 
-// Algorithm or size change: configure the idle engine and crossfade to it (both run during the fade only).
-void ReverbProcessor::switchTo(int algo, double sz)
+// Algorithm change: configure the idle engine and crossfade to it (both run during the fade only). While a fade is
+// running the request is queued (resetting the outgoing engine would cut the tail) and applied when the fade ends.
+void ReverbProcessor::switchTo(int algo)
 {
-    int next;
-    if (algo == 2)
-        next = Plate;
-    else
-        next = cur == FdnA ? FdnB : FdnA;
+    if (fadePos < 1.0)
+    {
+        pendingAlgorithm = algo;
+        return;
+    }
+    const double sz = lastSize;
+    int next = algo == 2 ? Plate : (cur == FdnA ? FdnB : FdnA);
+    if (cur == Plate && algo != 2)
+        next = FdnA;
     if (next == Plate)
         plate.reset();
     else
@@ -126,6 +137,7 @@ void ReverbProcessor::switchTo(int algo, double sz)
         fadePos = 0.0;
     }
     early.setPattern(erPattern(algo), sz);
+    pendingAlgorithm = -1;
 }
 
 void ReverbProcessor::engineProcess(int engine, float inL, float inR, float& outL, float& outR) noexcept
@@ -148,17 +160,28 @@ void ReverbProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
         s->skip(n);
     const int algo = juce::jlimit(0, 3, static_cast<int>(std::lround(algorithm.get())));
     const double sz = size.get() * 0.01;
-    if (algo != lastAlgorithm || std::abs(sz - lastSize) > 0.005)
+    const double effSize = effectiveSize(sz, decay->current());
+    if (std::abs(sz - lastSize) > 0.005 || std::abs(effSize - lastEffectiveSize) > 0.005) // lengths glide; the plate ignores size
     {
-        switchTo(algo, sz);
-        lastAlgorithm = algo;
         lastSize = sz;
+        lastEffectiveSize = effSize;
+        for (auto& f : fdn)
+            f.setSize(effSize);
+        early.setPattern(erPattern(lastAlgorithm), sz);
     }
-    const int pre = juce::jlimit(0, predelayLine.getDelay() >= 0 ? static_cast<int>(kMaxPredelayMs * 1e-3 * sr) : 0, static_cast<int>(std::lround(predelay.get() * 1e-3 * sr)));
-    if (pre != lastPredelay)
+    if (pendingAlgorithm >= 0 && fadePos >= 1.0)
+        switchTo(pendingAlgorithm);
+    if (algo != lastAlgorithm)
     {
-        predelayLine.setDelay(pre);
-        lastPredelay = pre;
+        lastAlgorithm = algo;
+        switchTo(algo);
+    }
+    const int pre = juce::jlimit(0, static_cast<int>(kMaxPredelayMs * 1e-3 * sr), static_cast<int>(std::lround(predelay.get() * 1e-3 * sr)));
+    if (pre != preCur && preFade >= 1.0) // pre-delay: crossfade read positions over 20 ms (one move at a time)
+    {
+        preOld = preCur;
+        preCur = pre;
+        preFade = 0.0;
     }
     // per-block engine settings (smoothed values at the block end)
     for (auto& f : fdn)
@@ -186,8 +209,17 @@ void ReverbProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
         const float w = wStart + (wEnd - wStart) * t;
         const float dryL = buffer.getSample(0, i);
         const float dryR = numIn > 1 ? buffer.getSample(1, i) : dryL;
-        const float inL = predelayLine.process(dryL, 0);
-        const float inR = predelayLine.process(dryR, 1);
+        predelayLine.write(dryL, 0);
+        predelayLine.write(dryR, 1);
+        float inL = predelayLine.read(preCur, 0);
+        float inR = predelayLine.read(preCur, 1);
+        if (preFade < 1.0)
+        {
+            const float a = static_cast<float>(preFade * std::numbers::pi * 0.5);
+            inL = predelayLine.read(preOld, 0) * std::cos(a) + inL * std::sin(a);
+            inR = predelayLine.read(preOld, 1) * std::cos(a) + inR * std::sin(a);
+            preFade = juce::jmin(1.0, preFade + preFadeStep);
+        }
         float eL, eR, lL, lR;
         early.processStereo(inL, inR, eL, eR);
         engineProcess(cur, inL, inR, lL, lR);
@@ -215,11 +247,13 @@ void ReverbProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuf
             wetR = highCutF[1].process(wetR);
         }
         const float m = 0.5f * (wetL + wetR), s = 0.5f * (wetL - wetR) * w;
-        wetL = m + s;
-        wetR = m - s;
-        buffer.setSample(0, i, dryL * (1.0f - mixAmt) + wetL * mixAmt);
         if (numOut > 1)
-            buffer.setSample(1, i, dryR * (1.0f - mixAmt) + wetR * mixAmt);
+        {
+            buffer.setSample(0, i, dryL * (1.0f - mixAmt) + (m + s) * mixAmt);
+            buffer.setSample(1, i, dryR * (1.0f - mixAmt) + (m - s) * mixAmt);
+        }
+        else
+            buffer.setSample(0, i, dryL * (1.0f - mixAmt) + m * mixAmt); // mono bus: the mono sum, independent of width
     }
 }
 

@@ -36,6 +36,10 @@ public:
         reset();
     }
 
+    // Lengths glide to their new targets over kGlideSeconds (fractional reads while moving), so a size change never
+    // restarts the tail; the targets are mutually prime sample counts.
+    static constexpr double kGlideSeconds = 0.2;
+    void setSize(double size01) { setAlgorithm(algorithm, size01); }
     void setAlgorithm(FdnAlgorithm a, double size01)
     {
         algorithm = a;
@@ -66,12 +70,21 @@ public:
             while (!coprime(len))
                 ++len;
         }
+        for (int i = 0; i < N; ++i)
+        {
+            const double target = static_cast<double>(lengths[static_cast<size_t>(i)]);
+            if (!started)
+                curLen[static_cast<size_t>(i)] = target;
+            glideInc[static_cast<size_t>(i)] = (target - curLen[static_cast<size_t>(i)]) / std::max(1.0, kGlideSeconds * sr);
+        }
+        started = true;
         updateGains();
     }
     void setRT60(double seconds)
     {
         rt60 = std::max(0.05, seconds);
         updateGains();
+        setDiffusion(diffusion01); // diffuser ring time scales down with short decays
     }
     void setDamping(float d01)
     {
@@ -82,10 +95,13 @@ public:
     }
     void setDiffusion(float d01)
     {
-        diffusionCoeff = static_cast<T>(0.5 + 0.25 * std::clamp(d01, 0.0f, 1.0f));
+        diffusion01 = std::clamp(d01, 0.0f, 1.0f);
+        // a 12.7 ms all-pass at g 0.675 rings for ~0.2 s on its own: below RT60 0.6 s shorten and soften the diffusers
+        const double scale = std::clamp(rt60 / 0.6, 0.25, 1.0);
+        diffusionCoeff = static_cast<T>((0.5 + 0.25 * diffusion01) * scale);
         static const double apMs[4] = {4.771, 3.595, 12.73, 9.307};
         for (int i = 0; i < 4; ++i)
-            diffusers[static_cast<size_t>(i)].set(static_cast<int>(std::lround(apMs[i] * 1e-3 * sr)), diffusionCoeff);
+            diffusers[static_cast<size_t>(i)].set(std::max(1, static_cast<int>(std::lround(apMs[i] * scale * 1e-3 * sr))), diffusionCoeff);
     }
     const std::array<int, N>& lengthsSamples() const noexcept { return lengths; }
 
@@ -97,7 +113,19 @@ public:
         T sumL = T(0), sumR = T(0);
         for (int i = 0; i < N; ++i)
         {
-            const T y = lines[static_cast<size_t>(i)].read(lengths[static_cast<size_t>(i)]);
+            double& cur = curLen[static_cast<size_t>(i)];
+            const double target = static_cast<double>(lengths[static_cast<size_t>(i)]);
+            T y;
+            if (cur == target)
+                y = lines[static_cast<size_t>(i)].read(lengths[static_cast<size_t>(i)]);
+            else
+            {
+                const double inc = glideInc[static_cast<size_t>(i)];
+                cur += inc;
+                if ((inc > 0.0 && cur >= target) || (inc < 0.0 && cur <= target))
+                    cur = target;
+                y = lines[static_cast<size_t>(i)].readFrac(static_cast<float>(cur));
+            }
             if (i & 1) sumL += y; else sumR += y;
             v[i] = static_cast<float>(damp[static_cast<size_t>(i)].process(y) * gains[static_cast<size_t>(i)]);
         }
@@ -110,6 +138,8 @@ public:
 
     void reset() noexcept
     {
+        for (int i = 0; i < N; ++i)
+            curLen[static_cast<size_t>(i)] = static_cast<double>(lengths[static_cast<size_t>(i)]);
         for (auto& d : lines) d.reset();
         for (auto& d : damp) d.reset();
         for (auto& a : diffusers) a.reset();
@@ -122,7 +152,9 @@ private:
             gains[static_cast<size_t>(i)] = static_cast<T>(std::pow(10.0, -3.0 * lengths[static_cast<size_t>(i)] / (rt60 * sr)));
     }
     double sr = 48000.0, rt60 = 2.0, size = 0.6;
-    float damping = 0.0f;
+    float damping = 0.0f, diffusion01 = 0.7f;
+    bool started = false;
+    std::array<double, N> curLen{}, glideInc{};
     T diffusionCoeff = T(0.675);
     FdnAlgorithm algorithm = FdnAlgorithm::Hall;
     std::array<RingDelay<T>, N> lines;

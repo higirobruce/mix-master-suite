@@ -44,6 +44,7 @@ DelayProcessor::DelayProcessor()
     timeR = paramRef(dp::id::time_r_ms);
     linkLr = paramRef(dp::id::link_lr);
     sync = paramRef(dp::id::sync);
+    syncR = paramRef(dp::id::sync_r);
     pingPong = paramRef(dp::id::ping_pong);
     feedback = &smoothed(dp::id::feedback_pct);
     fbLp = &smoothed(dp::id::fb_lp_hz);
@@ -111,19 +112,36 @@ void DelayProcessor::setTargetSamples(int ch, double samples) noexcept
 {
     auto& t = time[static_cast<size_t>(ch)];
     samples = juce::jlimit(1.0, kMaxDelaySeconds * sr, samples);
-    if (std::abs(samples - t.target) < 0.01)
+    if (std::abs(samples - t.target) < 0.01 && t.pending < 0.0)
         return;
-    t.target = samples;
-    if (std::abs(samples - t.current) > kGlideLimitMs * 1e-3 * sr)
+    const double slewSamples = juce::jmax(1.0, kSlewMs * 1e-3 * sr);
+    if (t.xfPos < 1.0)
     {
-        // large jump: crossfade from the tap we are hearing to the new one (a slew would replay the buffer at speed)
+        // a crossfade is running: a new jump waits for it (retargeting now would drop the fading tap), a small move
+        // retargets the incoming tap's glide
+        if (std::abs(samples - t.current) <= slewSamples)
+        {
+            t.target = samples;
+            t.increment = (samples - t.current) / slewSamples;
+            t.pending = -1.0;
+        }
+        else
+            t.pending = samples;
+        return;
+    }
+    t.pending = -1.0;
+    t.target = samples;
+    if (std::abs(samples - t.current) > slewSamples)
+    {
+        // large jump: crossfade from the tap we are hearing to the new one (a glide faster than one sample per
+        // sample would replay the buffer at speed or backwards)
         t.xfOld = t.current;
         t.xfPos = 0.0;
         t.current = samples;
         t.increment = 0.0;
     }
     else
-        t.increment = (samples - t.current) / juce::jmax(1.0, kSlewMs * 1e-3 * sr); // small move: pitch glide
+        t.increment = (samples - t.current) / slewSamples; // small move: pitch glide, |increment| <= 1
 }
 
 void DelayProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -138,12 +156,20 @@ void DelayProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuff
         s->skip(n);
     // times: sync from the play head, else the knobs (R follows L when linked)
     const int syncIdx = juce::jlimit(0, 12, static_cast<int>(std::lround(sync.get())));
-    double msL = timeL.get(), msR = linkLr.on() ? msL : timeR.get();
+    const int syncIdxR = juce::jlimit(0, 12, static_cast<int>(std::lround(syncR.get())));
+    double msL = timeL.get(), msR = timeR.get();
     if (syncIdx > 0)
     {
         const auto& nt = kNotes[syncIdx];
-        msL = msR = juce::jlimit(1.0, kMaxDelaySeconds * 1000.0, mm::TempoSync::noteMs(currentBpm(), nt.division, nt.dotted, nt.triplet));
+        msL = juce::jlimit(1.0, kMaxDelaySeconds * 1000.0, mm::TempoSync::noteMs(currentBpm(), nt.division, nt.dotted, nt.triplet));
     }
+    if (syncIdxR > 0)
+    {
+        const auto& nt = kNotes[syncIdxR];
+        msR = juce::jlimit(1.0, kMaxDelaySeconds * 1000.0, mm::TempoSync::noteMs(currentBpm(), nt.division, nt.dotted, nt.triplet));
+    }
+    if (linkLr.on())
+        msR = msL; // R follows L (time and sync)
     effectiveMs[0].store(static_cast<float>(msL), std::memory_order_relaxed);
     effectiveMs[1].store(static_cast<float>(msR), std::memory_order_relaxed);
     setTargetSamples(0, msL * 1e-3 * sr);
@@ -210,23 +236,26 @@ void DelayProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuff
                 const float a = static_cast<float>(ts.xfPos * std::numbers::pi * 0.5);
                 v = old * std::cos(a) + v * std::sin(a); // equal-power
                 ts.xfPos = juce::jmin(1.0, ts.xfPos + xfStep);
+                if (ts.xfPos >= 1.0 && ts.pending >= 0.0)
+                    setTargetSamples(ch, ts.pending); // the jump that arrived mid-fade starts now
             }
             wet[ch] = v;
         }
         lastWet = {wet[0], wet[1]};
-        // ducking keyed from the dry: full duck above -20 dBFS, none below -40
+        // ducking keyed from the dry: full duck above -20 dBFS, none below -40 (the envelope always runs, so
+        // raising the amount mid-song starts from the current level)
+        const float env = duckEnv.process(mm::fastGainToDb(juce::jmax(std::abs(inL), std::abs(inR))));
         float duckGain = 1.0f;
         if (duckDb > 0.0f)
-        {
-            const float env = duckEnv.process(mm::fastGainToDb(juce::jmax(std::abs(inL), std::abs(inR))));
-            const float amount = juce::jlimit(0.0f, 1.0f, (env + 40.0f) / 20.0f);
-            duckGain = mm::fastDbToGain(-duckDb * amount);
-        }
-        for (int ch = 0; ch < numOut; ++ch)
-        {
-            const float dry = ch == 0 ? inL : inR;
-            buffer.setSample(ch, i, dry * (1.0f - mixAmt) + wet[ch] * mixAmt * duckGain);
-        }
+            duckGain = mm::fastDbToGain(-duckDb * juce::jlimit(0.0f, 1.0f, (env + 40.0f) / 20.0f));
+        if (numOut > 1)
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                const float dry = ch == 0 ? inL : inR;
+                buffer.setSample(ch, i, dry * (1.0f - mixAmt) + wet[ch] * mixAmt * duckGain);
+            }
+        else // mono bus: the mono sum of both taps (ping-pong keeps every repeat)
+            buffer.setSample(0, i, inL * (1.0f - mixAmt) + 0.5f * (wet[0] + wet[1]) * mixAmt * duckGain);
     }
 }
 

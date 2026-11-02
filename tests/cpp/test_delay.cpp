@@ -7,7 +7,7 @@
 TEST_CASE("delay table, zero latency, stereo output from mono input")
 {
     using namespace mm::plugins::delay;
-    REQUIRE(kNumParams == 15);
+    REQUIRE(kNumParams == 16);
     DelayProcessor p;
     p.prepareToPlay(48000.0, 64);
     REQUIRE(p.getLatencySamples() == 0);

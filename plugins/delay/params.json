@@ -5,6 +5,7 @@
     { "id": "time_r_ms", "name": "Time R", "type": "float", "unit": "ms", "min": 1, "max": 4000, "default": 500, "skew": 0.3, "smoothing_ms": 0 },
     { "id": "link_lr", "name": "Link L/R", "type": "bool", "default": false },
     { "id": "sync", "name": "Sync", "type": "choice", "choices": ["Off", "1/1", "1/2", "1/4", "1/8", "1/16", "1/32", "1/4 dotted", "1/8 dotted", "1/16 dotted", "1/4 triplet", "1/8 triplet", "1/16 triplet"], "default": 0 },
+    { "id": "sync_r", "name": "Sync R", "type": "choice", "choices": ["Off", "1/1", "1/2", "1/4", "1/8", "1/16", "1/32", "1/4 dotted", "1/8 dotted", "1/16 dotted", "1/4 triplet", "1/8 triplet", "1/16 triplet"], "default": 0 },
     { "id": "feedback_pct", "name": "Feedback", "type": "float", "unit": "%", "min": 0, "max": 120, "default": 35, "skew": 1.0, "smoothing_ms": 20 },
     { "id": "ping_pong", "name": "Ping-pong", "type": "bool", "default": false },
     { "id": "fb_lp_hz", "name": "Feedback LP", "type": "float", "unit": "Hz", "min": 200, "max": 20000, "default": 8000, "skew": 0.3, "smoothing_ms": 20, "group": "advanced" },

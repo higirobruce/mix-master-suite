@@ -33,10 +33,11 @@ private:
     {
         double current = 48.0, target = 48.0, increment = 0.0; // samples; small changes slew
         double xfOld = 0.0, xfPos = 1.0;                       // crossfade from xfOld to current (1 = done)
+        double pending = -1.0;                                 // a jump requested during a crossfade waits for it
     };
     void setTargetSamples(int ch, double samples) noexcept;
 
-    ParamRef timeL, timeR, linkLr, sync, pingPong;
+    ParamRef timeL, timeR, linkLr, sync, syncR, pingPong;
     mm::Smoother<float>*feedback, *fbLp, *fbHp, *modDepth, *modRate, *mix, *duckAmount, *duckRelease;
     mm::FractionalDelayLine<float> line;
     std::array<mm::SVF<float>, kChannels> lp, hp;

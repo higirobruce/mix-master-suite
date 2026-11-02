@@ -20,3 +20,9 @@ Spec: Delay with time (ms or tempo sync, L/R independent), feedback, ping-pong, 
 - A 1 → 4000 ms time jump glides over 20 ms (pitch sweep), never clicks; the test asserts sample-to-sample jumps within 2× the input's own.
 - Self-oscillation never exceeds +6 dBFS.
 - The render host gains a `bpm` job key and a play head so tempo sync is testable.
+
+## Amendments (2026-11-03, M3 review fix pass)
+
+- A time jump that arrives while a tap crossfade is running is queued until that fade completes (retargeting mid-fade dropped the fading tap: measured 20× the input's own sample-to-sample jump on a drag); a small move during a fade retargets the incoming tap's glide. Glides are capped at one sample per sample (moves larger than 20 ms worth of samples crossfade instead), so a glide never replays the buffer backwards or at speed.
+- `sync_r` gives the right side its own note value (spec: "L/R independent"); Link makes R follow L's time and sync.
+- A mono output bus receives the mono sum of both taps (ping-pong keeps every repeat); the ducking envelope always runs so raising the amount mid-song starts from the current level.

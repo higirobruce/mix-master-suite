@@ -8,8 +8,8 @@
 #include <array>
 
 // Reverb (ADR-0008): pre-delay -> early reflections + late engine (two FDN-16 instances for Room/Hall/Chamber so an
-// algorithm or size change crossfades between them over 50 ms; Dattorro plate for Plate) -> early/late balance ->
-// low/high cut -> width -> mix. Zero latency.
+// algorithm change crossfades between them over 200 ms; size glides the running FDN's line lengths; Dattorro plate
+// for Plate) -> early/late balance -> low/high cut -> width -> mix. Zero latency.
 class ReverbProcessor : public mm::PluginProcessorBase
 {
 public:
@@ -32,7 +32,7 @@ private:
         Plate = 2
     };
     void configureFdn(mm::reverb::FDN<float>& f, int algorithm, double size);
-    void switchTo(int algorithm, double size);
+    void switchTo(int algorithm);
     void engineProcess(int engine, float inL, float inR, float& outL, float& outR) noexcept;
 
     ParamRef algorithm, predelay, size;
@@ -42,7 +42,9 @@ private:
     mm::reverb::EarlyReflections<float> early;
     mm::IntegerDelay<float> predelayLine;
     std::array<mm::SVF<float>, 2> lowCutF, highCutF;
-    int cur = FdnA, prev = -1, lastAlgorithm = -1;
-    double lastSize = -1.0, fadePos = 1.0, fadeStep = 1.0, sr = 48000.0;
-    int lastPredelay = -1;
+    int cur = FdnA, prev = -1, lastAlgorithm = -1, pendingAlgorithm = -1;
+    double lastSize = -1.0, lastEffectiveSize = -1.0, fadePos = 1.0, fadeStep = 1.0, sr = 48000.0;
+    // pre-delay changes crossfade between the old and new read positions over 20 ms
+    int preCur = 0, preOld = 0;
+    double preFade = 1.0, preFadeStep = 1.0;
 };

@@ -45,7 +45,7 @@ float DecayDisplay::envelopeDb(double t) const noexcept { return static_cast<flo
 
 void DecayDisplay::dragDecayTo(float x)
 {
-    const double s = secondsForX(x);
+    const double s = secondsForX(x) - predelayMs * 1e-3; // the handle is drawn at decay + pre-delay
     decay = juce::jmax(0.05, s);
     if (onDecayChange)
         onDecayChange(decay);
