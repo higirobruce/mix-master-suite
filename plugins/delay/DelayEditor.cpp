@@ -20,7 +20,7 @@ DelayEditor::DelayEditor(DelayProcessor& p)
     : mm::gui::PluginEditorBase(p, mm::gui::Theme::dark(mm::gui::accents::timeSpace), 920, 580), delay(p),
       timeL(p.apvts(), dp::id::time_l_ms, "TIME L"), timeR(p.apvts(), dp::id::time_r_ms, "TIME R"),
       feedback(p.apvts(), dp::id::feedback_pct, "FEEDBACK"), mix(p.apvts(), dp::id::mix_pct, "MIX"), link(p.apvts(), dp::id::link_lr, "LINK"),
-      pingPong(p.apvts(), dp::id::ping_pong, "PING-PONG"), sync(p.apvts(), dp::id::sync, "SYNC"), drawer("Feedback filter, modulation, ducking"),
+      pingPong(p.apvts(), dp::id::ping_pong, "PING-PONG"), sync(p.apvts(), dp::id::sync, "SYNC"), drawer(juce::String::fromUTF8("Filter \xc2\xb7 Mod \xc2\xb7 Duck")),
       fbLp(p.apvts(), dp::id::fb_lp_hz, "FB LOW-PASS"), fbHp(p.apvts(), dp::id::fb_hp_hz, "FB HIGH-PASS"),
       modDepth(p.apvts(), dp::id::mod_depth_ms, "MOD DEPTH"), modRate(p.apvts(), dp::id::mod_rate_hz, "MOD RATE"),
       duckAmount(p.apvts(), dp::id::duck_amount_db, "DUCK"), duckRelease(p.apvts(), dp::id::duck_release_ms, "DUCK RELEASE")

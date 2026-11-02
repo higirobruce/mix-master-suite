@@ -168,3 +168,11 @@ target_link_libraries(mm_reverb_tests PRIVATE reverb mm_plugin_base Catch2::Catc
 mm_set_warnings(mm_reverb_tests)
 mm_enable_sanitizers(mm_reverb_tests)
 catch_discover_tests(mm_reverb_tests)
+
+# ---- reverb GUI tests
+add_executable(mm_gui_reverb_tests test_gui_reverb.cpp)
+target_include_directories(mm_gui_reverb_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/reverb)
+target_link_libraries(mm_gui_reverb_tests PRIVATE reverb mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_reverb_tests)
+mm_enable_sanitizers(mm_gui_reverb_tests)
+catch_discover_tests(mm_gui_reverb_tests)
