@@ -15,3 +15,4 @@ mm_add_snapshot(channel_eq plugins/channel_eq/ChannelEqProcessor.h ChannelEqProc
 mm_add_snapshot(channel_comp plugins/channel_comp/ChannelCompProcessor.h ChannelCompProcessor)
 mm_add_snapshot(gate plugins/gate/GateProcessor.h GateProcessor)
 mm_add_snapshot(saturation plugins/saturation/SaturationProcessor.h SaturationProcessor)
+mm_add_snapshot(delay plugins/delay/DelayProcessor.h DelayProcessor)
