@@ -193,3 +193,10 @@ mm_set_warnings(mm_gui_deesser_tests)
 mm_enable_sanitizers(mm_gui_deesser_tests)
 catch_discover_tests(mm_gui_deesser_tests)
 
+# ---- imager
+add_executable(mm_imager_tests test_imager.cpp)
+target_include_directories(mm_imager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/imager)
+target_link_libraries(mm_imager_tests PRIVATE imager mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_imager_tests)
+mm_enable_sanitizers(mm_imager_tests)
+catch_discover_tests(mm_imager_tests)

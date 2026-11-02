@@ -17,3 +17,11 @@ Spec: Stereo imager with width 0–200 % per band (3 bands), pan, mono below fre
 
 - Tests: width 0 → correlation 1.0; width 100 → flat ±0.02 dB and null < −100 dBFS against the `lr_crossover` all-passed reference at four rates; width 200 → side +6.02 dB per band; mono-below → side below f < −60 dB; L+R unchanged ±0.1 dB for every width; pan laws; correlation meter ±0.02 on known pairs.
 - CPU: four LR4 networks (two on S, two on M) plus the mono-below LR4 per instance: ~0.15 % at 48 k.
+
+## Amendment (2026-11-03, Task 4 measurements)
+
+- **All-pass legs are single biquads.** An LR4's low + high is exactly the second-order all-pass at its cutoff with Q = 1/√2 (LP² + HP² = D̄/D), so the mid path is two all-pass biquads and the side's low band passes through one all-pass biquad at the upper crossover (so the three-band side sum equals the two-stage all-pass that the mid sees). Only the side's two splitting crossovers and the mono-below filter are full LR4 networks: 16 biquads per sample instead of 28.
+- **64-bit crossovers** (as the spec's budget table gives the multiband compressor): float LR4s at 150 Hz / 192 kHz left the width-100 null at −83 dBFS; in double it is below −100 dBFS at all four rates.
+- **Mono-below engagement.** `mono_below_hz` is unsmoothed (ADR-0002 exception, like the de-esser lookahead): switching on from 0 starts the filters at the target cutoff from reset and crossfades them in over 20 ms; switching off crossfades out and then stops them; moves while on glide at 5 ms per octave (per block). A smoothed cutoff ramp from 0 Hz drove TDF-II LR4s through a 5 → 200 Hz sweep in 20 ms and clicked (0.17 peak on a −12 dBFS tone).
+- **Test geometry.** Band tones sit ≥ 2 octaves inside their band (40 / 800 / 12 000 Hz): the LR4 edge is −0.22 dB at 1.3 octaves, so a 60 Hz tone against a 150 Hz crossover reads +5.9 dB at width 200, not +6.02. Mono-below is measured at 2.9 octaves below its frequency (< −60 dB); at 1.7 octaves (60 Hz under 200 Hz) the LR4 leaves −42 dB, which is recorded, not failed.
+- Pan and output gains are computed at block edges and ramped per sample (constant power holds at the edges; the deviation inside a block during automation is below 0.01 dB).
