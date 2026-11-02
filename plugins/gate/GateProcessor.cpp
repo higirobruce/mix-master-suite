@@ -148,7 +148,7 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
             keySample[ch] = k;
             keyPeak = juce::jmax(keyPeak, std::abs(k));
         }
-        const float levelDb = mm::gainToDb(peakHold.maxEnvelope(lookahead.maxEnvelope(keyPeak)));
+        const float levelDb = mm::fastGainToDb(peakHold.maxEnvelope(lookahead.maxEnvelope(keyPeak)));
 
         // state machine (ADR-0005): open at T, leave Open below T - hysteresis, hold, then close
         if (levelDb >= T)
@@ -171,7 +171,7 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
         const float targetDb = state != State::Closed ? 0.0f : (expander ? gc.gainDb(levelDb) : rangeDb);
         const float gainDb = juce::jlimit(rangeDb, 0.0f, env.process(targetDb));
         maxReduction = juce::jmax(maxReduction, -gainDb);
-        const float g = mm::dbToGain(gainDb);
+        const float g = mm::fastDbToGain(gainDb);
         if (tapFade < 1.0)
             tapFade = juce::jmin(1.0, tapFade + tapFadeStep);
         for (int ch = 0; ch < numOut; ++ch)

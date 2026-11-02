@@ -27,7 +27,10 @@ public:
     void setMs(double ms) noexcept
     {
         currentMs = std::clamp(ms, 0.0, 1000.0 * maxSamples / sr);
-        window = std::clamp(static_cast<int>(std::lround(currentMs * 1e-3 * sr)), 0, maxSamples);
+        const int w = std::clamp(static_cast<int>(std::lround(currentMs * 1e-3 * sr)), 0, maxSamples);
+        if (w != window)
+            head = count = 0; // the sliding-max history restarts (a zero window keeps none)
+        window = w;
         delay.setDelay(window);
     }
     int latencySamples() const noexcept { return window; }
@@ -41,6 +44,8 @@ public:
     // Push the current detector level; returns max over the last window+1 levels (this one included).
     T maxEnvelope(T level) noexcept
     {
+        if (window == 0)
+            return level; // no lookahead: the maximum over one sample is the sample
         ++sampleIndex;
         // drop smaller values from the back (they can never be the max again)
         while (count > 0 && dqValue[static_cast<size_t>((head + count - 1) % capacity)] <= level)

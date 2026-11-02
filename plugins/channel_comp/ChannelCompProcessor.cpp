@@ -130,6 +130,7 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
     const float linkAmt = link->current() * 0.01f;
     const bool listen = listenSc.on();
     const bool autoMk = autoMakeup.on();
+    const bool fullLink = numMain > 1 && linkAmt >= 0.999f; // both channels share one gain: compute it once
     for (int ch = 0; ch < kMaxChannels; ++ch)
     {
         auto& d = detector[static_cast<size_t>(ch)];
@@ -195,17 +196,31 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
             level[ch] = detector[static_cast<size_t>(ch)].process(k);
         }
         const float maxLevel = numMain > 1 ? juce::jmax(level[0], level[1]) : level[0];
+        float sharedRed = 0.0f, sharedGain = 1.0f;
         for (int ch = 0; ch < numOut; ++ch)
         {
             const int src = juce::jmin(ch, numMain - 1);
-            const float lvl = numMain > 1 ? level[src] + (maxLevel - level[src]) * linkAmt : level[src];
-            const float lvlDb = mm::gainToDb(lvl);
-            const float reduction = (feedback && keyChannels == 0) ? feedbackReductionDb(lvlDb, fbThreshold, fbRatio, fbKnee)
-                                                                   : -gc.gainDb(lvlDb);
-            const float smoothedRed = env[static_cast<size_t>(ch)].process(reduction);
+            float smoothedRed, gain;
+            if (fullLink && ch > 0)
+            {
+                smoothedRed = sharedRed;
+                gain = sharedGain;
+                env[static_cast<size_t>(ch)].snapTo(smoothedRed); // keep the idle follower consistent for unlinking
+            }
+            else
+            {
+                const float lvl = numMain > 1 ? level[src] + (maxLevel - level[src]) * linkAmt : level[src];
+                const float lvlDb = mm::fastGainToDb(lvl);
+                const float reduction = (feedback && keyChannels == 0) ? feedbackReductionDb(lvlDb, fbThreshold, fbRatio, fbKnee)
+                                                                       : -gc.gainDb(lvlDb);
+                smoothedRed = env[static_cast<size_t>(ch)].process(reduction);
+                gain = mm::fastDbToGain(-smoothedRed);
+                sharedRed = smoothedRed;
+                sharedGain = gain;
+            }
             maxReduction = juce::jmax(maxReduction, smoothedRed);
             const float dry = buffer.getSample(ch, i);
-            const float compressed = dry * mm::dbToGain(-smoothedRed); // pre-makeup: what the feedback detector sees
+            const float compressed = dry * gain; // pre-makeup: what the feedback detector sees
             const float wet = compressed * mk;
             const float out = listen ? keySample[src] : (wet * mixAmt + dry * (1.0f - mixAmt));
             lastOut[static_cast<size_t>(ch)] = compressed;
