@@ -120,11 +120,14 @@ def check_channel_configs(name: str, params: dict | None = None, seconds: float 
 
 
 def check_cpu_budget(name: str, instances: int = 100, seconds: float = 5.0) -> float:
-    """Timing is only meaningful on an optimised build run serially (CI runs this test on its own)."""
+    """Timing is only meaningful on an optimised build run serially (CI runs this test on its own). The limit is the
+    spec budget scaled by the runner's measured speed against the reference machine (tests/harness/runner_speed.py)."""
+    from tests.harness.runner_speed import effective_budget
     if os.environ.get("MM_PLUGIN_CONFIG", "Release") != "Release":
         pytest.skip("CPU budget is measured on Release builds only")
     r = bench_plugin(name, instances=instances, seconds=seconds)
     cpu = r["cpu_percent_per_instance"]
     budget = BUDGETS[name]
-    assert cpu <= budget, f"{name}: {cpu:.4f} % per instance exceeds budget {budget}"
+    limit, factor = effective_budget(budget)
+    assert cpu <= limit, f"{name}: {cpu:.4f} % per instance exceeds budget {budget} (runner factor {factor:.2f}, limit {limit:.3f})"
     return cpu

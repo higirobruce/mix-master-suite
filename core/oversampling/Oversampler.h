@@ -1,8 +1,8 @@
 #pragma once
 // Polyphase half-band FIR oversampler (2x / 4x / 8x), linear phase, integer latency. Each stage is a Kaiser
 // half-band (core/filters/FIRDesign.h) folded into its symmetric odd taps: an up-sampler costs P multiplies per
-// input sample, a down-sampler P per output sample (P = 24 for the first stage, 6 for the others). Stage 0 keeps a
-// passband to 0.44 fs (transition 0.06, ~88 dB stopband: a 19 kHz tone at 44.1 k must pass without an image);
+// input sample, a down-sampler P per output sample (P = 20 for the first stage, 6 for the others). Stage 0 keeps a
+// passband to 0.44 fs (transition 0.06, ~75 dB stopband: a 19 kHz tone at 44.1 k must pass without an image);
 // later stages only see that band and use a 0.25 transition.
 // Replaces juce::dsp::Oversampling (its maximum-quality design spends ~5x the taps for a generic 5 % transition).
 // Factor 1 is a passthrough with zero latency. Sized in prepare(); no allocation afterwards.
@@ -29,7 +29,7 @@ public:
         for (int s = 0; s < numStages; ++s)
         {
             Stage st;
-            const int taps = s == 0 ? 95 : 23;
+            const int taps = s == 0 ? 79 : 23;
             st.design(taps, s == 0 ? 0.06 : 0.25, numChannels, std::max(1, maxBlock) * rateMul);
             stages.push_back(std::move(st));
             rateMul *= 2;

@@ -1,5 +1,5 @@
 {
-  "_comment": "CPU budget, percent per instance at 48 kHz / 64 samples, 100 instances (spec: Technical requirements per plugin)",
+  "_comment": "CPU budget, percent per instance at 48 kHz / 64 samples, 100 instances (spec: Technical requirements per plugin). Asserted at reference-machine speed: CI runners are calibrated by tests/harness/runner_speed.py and the limit scales by max(1, runner factor).",
   "gate": 0.3,
   "channel_eq": 0.5,
   "channel_comp": 0.4,
