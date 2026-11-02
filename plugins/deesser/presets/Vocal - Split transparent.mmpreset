@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Vocal · Split transparent" plugin="deesser" version="1" meta="{&quot;tags&quot;: [&quot;dynamics&quot;, &quot;vocal&quot;, &quot;split&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Split mode: everything above 5 kHz ducks together; no bell, no phase shift in the band.&quot;}">
+  <PARAMS>
+    <PARAM id="freq_hz" value="5000"/>
+    <PARAM id="threshold_db" value="-24"/>
+    <PARAM id="range_db" value="10"/>
+    <PARAM id="mode" value="1"/>
+    <PARAM id="width_oct" value="1"/>
+    <PARAM id="listen" value="0"/>
+    <PARAM id="lookahead_ms" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

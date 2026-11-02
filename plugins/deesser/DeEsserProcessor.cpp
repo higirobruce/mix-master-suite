@@ -40,6 +40,7 @@ DeEsserProcessor::DeEsserProcessor()
 void DeEsserProcessor::prepareDsp(double sampleRate, int maxBlock, int)
 {
     sr = sampleRate;
+    designedFc = designedQ = -1.0; // the filters' coefficients depend on the rate
     maxLookaheadSamples = static_cast<int>(std::lround(kMaxLookaheadMs * 1e-3 * sr));
     lookahead.prepare(sr, kMaxLookaheadMs, kChannels);
     lookahead.setMs(lookaheadRaw.get());
@@ -105,11 +106,16 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const double q = qForOctaves(width->current());
     const float bpGain = static_cast<float>(1.0 / q); // the SVF band output peaks at Q: unity at fc
     const float thr = threshold->current(), rng = range->current();
-    for (int ch = 0; ch < kChannels; ++ch)
+    if (fc != designedFc || q != designedQ) // the designs cost trig: only when the band moved
     {
-        detectorBp[static_cast<size_t>(ch)].setParams(fc, q, 0.0);
-        splitDet[static_cast<size_t>(ch)].setCrossover(fc);
-        splitOut[static_cast<size_t>(ch)].setCrossover(fc);
+        for (int ch = 0; ch < kChannels; ++ch)
+        {
+            detectorBp[static_cast<size_t>(ch)].setParams(fc, q, 0.0);
+            splitDet[static_cast<size_t>(ch)].setCrossover(fc);
+            splitOut[static_cast<size_t>(ch)].setCrossover(fc);
+        }
+        designedFc = fc;
+        designedQ = q;
     }
     const int window = lookahead.latencySamples();
     const bool passThrough = window == 0 && tapFade >= 1.0;
@@ -161,7 +167,7 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
             // the bell follows the reduction every 8 samples on a running counter (block-size independent; the SVF
             // is modulation-safe). The TPT peak's bandwidth scales with the cut depth (k = 1 / (Q A)): pass Q / A so
             // the bell keeps its labelled width at every reduction.
-            const double a = std::pow(10.0, -static_cast<double>(red) / 40.0);
+            const double a = mm::fastDbToGain(-0.5f * red); // 10^(-red/40)
             for (int ch = 0; ch < numMain; ++ch)
                 bell[static_cast<size_t>(ch)].setParams(fc, q / a, -red);
         }

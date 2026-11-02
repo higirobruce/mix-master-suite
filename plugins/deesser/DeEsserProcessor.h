@@ -39,5 +39,6 @@ private:
     double sr = 48000.0, tapFade = 1.0, tapFadeStep = 1.0;
     int oldWindow = 0, maxLookaheadSamples = 0;
     unsigned modCounter = 0;
+    double designedFc = -1.0, designedQ = -1.0; // the band the filters were last designed for (per block cache)
     std::atomic<bool> sibilant{false};
 };

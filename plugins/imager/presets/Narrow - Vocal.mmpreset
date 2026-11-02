@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Narrow · Vocal" plugin="imager" version="1" meta="{&quot;tags&quot;: [&quot;stereo&quot;, &quot;vocal&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Every band at 50 %: a doubled or stereo-reverbed vocal pulled toward the centre.&quot;}">
+  <PARAMS>
+    <PARAM id="xover_low_hz" value="150"/>
+    <PARAM id="xover_high_hz" value="3000"/>
+    <PARAM id="width_low_pct" value="50"/>
+    <PARAM id="width_mid_pct" value="50"/>
+    <PARAM id="width_high_pct" value="50"/>
+    <PARAM id="pan" value="0"/>
+    <PARAM id="mono_below_hz" value="0"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

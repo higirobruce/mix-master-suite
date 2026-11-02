@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Drums · Overheads wider" plugin="imager" version="1" meta="{&quot;tags&quot;: [&quot;stereo&quot;, &quot;drums&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Mids and highs to 130 %, lows mono below 100 Hz, crossovers at 200 Hz / 2 kHz.&quot;}">
+  <PARAMS>
+    <PARAM id="xover_low_hz" value="200"/>
+    <PARAM id="xover_high_hz" value="2000"/>
+    <PARAM id="width_low_pct" value="100"/>
+    <PARAM id="width_mid_pct" value="130"/>
+    <PARAM id="width_high_pct" value="130"/>
+    <PARAM id="pan" value="0"/>
+    <PARAM id="mono_below_hz" value="100"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>
