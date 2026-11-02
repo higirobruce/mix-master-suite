@@ -193,3 +193,16 @@ Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kH
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | saturation, delay, reverb: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | saturation 10, delay 9, reverb 10 (loaded by the C++ checks) | 2026-11-03 |
 | CI matrix + sanitizers | green | run 41521435810: all five jobs green (build-test ×3 with pluginval/clap-validator for every plugin, sanitizers ×2) | 2026-11-03 |
+
+## M4 Stereo and vocal — tasks
+
+Plan: docs/superpowers/plans/2026-11-03-m4-stereo-and-vocal.md
+
+Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibility and correlation tests."
+
+- [x] Task 1 ADR-0009 de-esser, ADR-0010 imager
+- [ ] Task 2 De-esser params and processor
+- [ ] Task 3 De-esser editor
+- [ ] Task 4 Imager params and processor
+- [ ] Task 5 Imager editor
+- [ ] Task 6 Presets, fuzz, STATE, REVIEW, review, CI, tag
