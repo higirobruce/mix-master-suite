@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Transistor · Drum bus edge" plugin="saturation" version="1" meta="{&quot;tags&quot;:[&quot;colour&quot;,&quot;transistor&quot;,&quot;drums&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Odd-order edge, dry/wet 50 %.&quot;}">
+  <PARAMS>
+    <PARAM id="drive_db" value="15"/>
+    <PARAM id="character" value="2"/>
+    <PARAM id="bias" value="0"/>
+    <PARAM id="hf_rolloff_hz" value="20000"/>
+    <PARAM id="mix_pct" value="50"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

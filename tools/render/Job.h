@@ -34,6 +34,7 @@ struct Job
     int blockSize = 64;
     int inChannels = 2, outChannels = 2, sidechainChannels = 0;
     double sidechainDb = 0.0; // sidechain channels = input channel 0 scaled by this
+    double bpm = 120.0;       // tempo reported to the plugin through the play head
     juce::var params;         // object id -> real value
     juce::var paramRanges;    // object id -> {min,max,skew,type}
     std::vector<AutomationPoint> automation;

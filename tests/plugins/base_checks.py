@@ -95,28 +95,39 @@ def check_denormal_tail(name: str, params: dict | None = None) -> None:
     y, rep = render_plugin(name, sr=sr, params=params, input=np.concatenate([loud, silent]))
     assert rep["nan_count"] == 0
     tail_ratio = rep["realtime_ratio"]
-    assert tail_ratio < 2.0 * max(rep_loud["realtime_ratio"], 1e-4) + 1e-3, "silence after audio runs slower (denormals?)"
+    # denormals slow a plugin by 10x or more; two sub-millisecond timings on a loaded runner jitter by far less than
+    # the 0.5 % of real time allowed here
+    assert tail_ratio < 4.0 * max(rep_loud["realtime_ratio"], 1e-4) + 5e-3, "silence after audio runs slower (denormals?)"
     assert np.max(np.abs(y[int(3.5 * sr):])) < 1e-6
 
 
-def check_channel_configs(name: str, params: dict | None = None) -> None:
+def check_channel_configs(name: str, params: dict | None = None, seconds: float = 0.2) -> None:
+    """Mono in / mono out, mono in / stereo out, stereo in / stereo out all run; the mono output carries the mono sum
+    (L+R)/2 of what the stereo output would be (same RMS within 0.5 dB), so a plugin that builds its own stereo does
+    not drop half of it on a mono bus."""
     sr = 48000
-    mono = signals.sine(1000, sr, 0.2, amp_db=-12, channels=1)
-    y, _ = render_plugin(name, sr=sr, params=params, input=mono, layout={"in": 1, "out": 1})
-    assert y.shape[1] == 1 and np.max(np.abs(y)) > 0.01
-    y, _ = render_plugin(name, sr=sr, params=params, input=mono, layout={"in": 1, "out": 2})
-    assert y.shape[1] == 2 and np.max(np.abs(y[:, 1])) > 0.01
+    mono = signals.sine(1000, sr, seconds, amp_db=-12, channels=1)
+    y1, _ = render_plugin(name, sr=sr, params=params, input=mono, layout={"in": 1, "out": 1})
+    assert y1.shape[1] == 1 and np.max(np.abs(y1)) > 0.01
+    y2, _ = render_plugin(name, sr=sr, params=params, input=mono, layout={"in": 1, "out": 2})
+    assert y2.shape[1] == 2 and np.max(np.abs(y2[:, 1])) > 0.01
+    mono_sum = 0.5 * (y2[:, 0] + y2[:, 1])
+    rms = lambda v: 20 * np.log10(np.sqrt(np.mean(v ** 2)) + 1e-12)
+    assert abs(rms(y1[:, 0]) - rms(mono_sum)) < 0.5, f"mono output {rms(y1[:, 0]):.2f} dB vs stereo mono sum {rms(mono_sum):.2f} dB"
     stereo = signals.sine(1000, sr, 0.2, amp_db=-12, channels=2)
     y, _ = render_plugin(name, sr=sr, params=params, input=stereo, layout={"in": 2, "out": 2})
     assert y.shape[1] == 2
 
 
 def check_cpu_budget(name: str, instances: int = 100, seconds: float = 5.0) -> float:
-    """Timing is only meaningful on an optimised build run serially (CI runs this test on its own)."""
+    """Timing is only meaningful on an optimised build run serially (CI runs this test on its own). The limit is the
+    spec budget scaled by the runner's measured speed against the reference machine (tests/harness/runner_speed.py)."""
+    from tests.harness.runner_speed import effective_budget
     if os.environ.get("MM_PLUGIN_CONFIG", "Release") != "Release":
         pytest.skip("CPU budget is measured on Release builds only")
     r = bench_plugin(name, instances=instances, seconds=seconds)
     cpu = r["cpu_percent_per_instance"]
     budget = BUDGETS[name]
-    assert cpu <= budget, f"{name}: {cpu:.4f} % per instance exceeds budget {budget}"
+    limit, factor = effective_budget(budget)
+    assert cpu <= limit, f"{name}: {cpu:.4f} % per instance exceeds budget {budget} (runner factor {factor:.2f}, limit {limit:.3f})"
     return cpu

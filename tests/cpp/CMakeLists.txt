@@ -3,6 +3,7 @@ include(Catch)
 add_executable(mm_core_tests
     test_smoke.cpp
     test_math.cpp
+    test_fdn.cpp
     test_math_m1.cpp
     test_biquad.cpp
     test_matched.cpp
@@ -127,3 +128,51 @@ target_link_libraries(mm_gui_gate_tests PRIVATE gate mm_gui mm_plugin_base Catch
 mm_set_warnings(mm_gui_gate_tests)
 mm_enable_sanitizers(mm_gui_gate_tests)
 catch_discover_tests(mm_gui_gate_tests)
+
+# ---- saturation
+add_executable(mm_saturation_tests test_saturation.cpp)
+target_include_directories(mm_saturation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/saturation)
+target_link_libraries(mm_saturation_tests PRIVATE saturation mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_saturation_tests)
+mm_enable_sanitizers(mm_saturation_tests)
+catch_discover_tests(mm_saturation_tests)
+
+# ---- saturation GUI tests
+add_executable(mm_gui_saturation_tests test_gui_saturation.cpp)
+target_include_directories(mm_gui_saturation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/saturation)
+target_link_libraries(mm_gui_saturation_tests PRIVATE saturation mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_saturation_tests)
+mm_enable_sanitizers(mm_gui_saturation_tests)
+catch_discover_tests(mm_gui_saturation_tests)
+
+# ---- delay
+add_executable(mm_delay_tests test_delay.cpp)
+target_include_directories(mm_delay_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/delay)
+target_link_libraries(mm_delay_tests PRIVATE delay mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_delay_tests)
+mm_enable_sanitizers(mm_delay_tests)
+catch_discover_tests(mm_delay_tests)
+
+# ---- delay GUI tests
+add_executable(mm_gui_delay_tests test_gui_delay.cpp)
+target_include_directories(mm_gui_delay_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/delay)
+target_link_libraries(mm_gui_delay_tests PRIVATE delay mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_delay_tests)
+mm_enable_sanitizers(mm_gui_delay_tests)
+catch_discover_tests(mm_gui_delay_tests)
+
+# ---- reverb
+add_executable(mm_reverb_tests test_reverb.cpp)
+target_include_directories(mm_reverb_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/reverb)
+target_link_libraries(mm_reverb_tests PRIVATE reverb mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_reverb_tests)
+mm_enable_sanitizers(mm_reverb_tests)
+catch_discover_tests(mm_reverb_tests)
+
+# ---- reverb GUI tests
+add_executable(mm_gui_reverb_tests test_gui_reverb.cpp)
+target_include_directories(mm_gui_reverb_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/reverb)
+target_link_libraries(mm_gui_reverb_tests PRIVATE reverb mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_reverb_tests)
+mm_enable_sanitizers(mm_gui_reverb_tests)
+catch_discover_tests(mm_gui_reverb_tests)

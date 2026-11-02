@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Dub · Filtered feedback" plugin="delay" version="1" meta="{&quot;tags&quot;:[&quot;time_space&quot;,&quot;dub&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;Long feedback through a 1.5 kHz low-pass and 200 Hz high-pass.&quot;}">
+  <PARAMS>
+    <PARAM id="time_l_ms" value="375"/>
+    <PARAM id="time_r_ms" value="500"/>
+    <PARAM id="link_lr" value="0"/>
+    <PARAM id="sync" value="4"/>
+    <PARAM id="sync_r" value="0"/>
+    <PARAM id="feedback_pct" value="75"/>
+    <PARAM id="ping_pong" value="0"/>
+    <PARAM id="fb_lp_hz" value="1500"/>
+    <PARAM id="fb_hp_hz" value="200"/>
+    <PARAM id="mod_depth_ms" value="0"/>
+    <PARAM id="mod_rate_hz" value="0.5"/>
+    <PARAM id="mix_pct" value="40"/>
+    <PARAM id="duck_amount_db" value="0"/>
+    <PARAM id="duck_release_ms" value="300"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

@@ -1,0 +1,8 @@
+{
+  "_comment": "CPU-budget calibration workload on the reference machine (Apple M2 Max, Release, 2026-11-03): mm_render --bench module:oversampled_tanh --instances 100 --seconds 5 --set factor=4 --set drive_db=6. A fixed, non-product workload of the plugins' shape (hosted process, 100 instances with their own buffers, 4x oversampling + ADAA). CI runners measure the same and scale the budget limits by max(1, measured / reference).",
+  "workload": "module:oversampled_tanh",
+  "instances": 100,
+  "seconds": 5.0,
+  "params": ["factor=4", "drive_db=6"],
+  "cpu_percent_per_instance": 0.38
+}

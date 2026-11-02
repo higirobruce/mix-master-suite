@@ -13,6 +13,8 @@
 #include "core/nonlinear/TubeTransfer.h"
 #include "core/nonlinear/Waveshapers.h"
 #include "core/oversampling/Oversampler.h"
+#include "core/reverb/DattorroPlate.h"
+#include "core/reverb/FDN.h"
 #include "core/dynamics/EnvelopeFollower.h"
 #include "core/dynamics/GainComputer.h"
 #include "core/dynamics/Lookahead.h"
@@ -65,6 +67,92 @@ void ModuleTarget::process(juce::AudioBuffer<float>& buffer, bool hostBypass)
     module->process(buffer.getArrayOfWritePointers(), juce::jmin(channels, buffer.getNumChannels()),
                     buffer.getNumSamples());
 }
+class FdnModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        fdn.prepare(sampleRate, 0.15);
+        apply();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "rt60_s") rt60 = v;
+        else if (id == "size_pct") size = v * 0.01;
+        else if (id == "damping_pct") damping = static_cast<float>(v * 0.01);
+        else if (id == "diffusion_pct") diffusion = static_cast<float>(v * 0.01);
+        else if (id == "algorithm") algorithm = static_cast<int>(v);
+        apply();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            const float inL = buf[0][i], inR = channels > 1 ? buf[1][i] : inL;
+            float l, r;
+            fdn.processStereo(inL, inR, l, r);
+            buf[0][i] = channels > 1 ? l : 0.5f * (l + r);
+            if (channels > 1) buf[1][i] = r;
+        }
+    }
+    void reset() override { fdn.reset(); }
+
+private:
+    void apply()
+    {
+        fdn.setAlgorithm(algorithm == 0 ? mm::reverb::FdnAlgorithm::Room : (algorithm == 2 ? mm::reverb::FdnAlgorithm::Chamber : mm::reverb::FdnAlgorithm::Hall), size);
+        fdn.setRT60(rt60);
+        fdn.setDamping(damping);
+        fdn.setDiffusion(diffusion);
+    }
+    mm::reverb::FDN<float> fdn;
+    double rt60 = 2.0, size = 0.6;
+    float damping = 0.0f, diffusion = 0.7f;
+    int algorithm = 1;
+};
+
+class PlateModule : public Module
+{
+public:
+    void prepare(double sampleRate, int, int) override
+    {
+        plate.prepare(sampleRate);
+        apply();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "rt60_s") rt60 = v;
+        else if (id == "damping_pct") damping = static_cast<float>(v * 0.01);
+        else if (id == "diffusion_pct") diffusion = static_cast<float>(v * 0.01);
+        else if (id == "raw") raw = v >= 0.5; // calibration: formula only, no correction table
+        apply();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int i = 0; i < n; ++i)
+        {
+            const float inL = buf[0][i], inR = channels > 1 ? buf[1][i] : inL;
+            float l, r;
+            plate.processStereo(inL, inR, l, r);
+            buf[0][i] = channels > 1 ? l : 0.5f * (l + r);
+            if (channels > 1) buf[1][i] = r;
+        }
+    }
+    void reset() override { plate.reset(); }
+
+private:
+    void apply()
+    {
+        if (raw) plate.setRT60Raw(rt60); else plate.setRT60(rt60);
+        plate.setDamping(damping);
+        plate.setDiffusion(diffusion);
+    }
+    mm::reverb::DattorroPlate<float> plate;
+    double rt60 = 2.0;
+    float damping = 0.0f, diffusion = 0.7f;
+    bool raw = false;
+};
+
 
 namespace
 {
@@ -831,6 +919,8 @@ void registerCoreModules()
     r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
     r.add("fir", [] { return std::make_unique<FirModule>(); });
     r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
+    r.add("fdn", [] { return std::make_unique<FdnModule>(); });
+    r.add("plate", [] { return std::make_unique<PlateModule>(); });
     r.add("envelope", [] { return std::make_unique<EnvelopeModule>(); });
     r.add("compressor_core", [] { return std::make_unique<CompressorCoreModule>(); });
     r.add("delay", [] { return std::make_unique<DelayModule>(); });

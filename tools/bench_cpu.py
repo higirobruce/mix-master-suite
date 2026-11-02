@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from tests.harness.render import bench_plugin  # noqa: E402
+from tests.harness.runner_speed import effective_budget, runner_factor  # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -34,14 +35,17 @@ def main(argv=None) -> int:
     else:
         ap.error("--plugin <id> or --all")
     ok = True
-    print(f"{'plugin':<18}{'instances':>10}{'cpu %/inst':>12}{'budget':>8}  result")
+    factor = runner_factor()
+    print(f"runner speed factor vs reference machine: {factor:.2f} (limits scale by max(1, factor))")
+    print(f"{'plugin':<18}{'instances':>10}{'cpu %/inst':>12}{'budget':>8}{'limit':>8}  result")
     for name in plugins:
         r = bench_plugin(name, instances=a.instances, seconds=a.seconds, sr=a.sample_rate, block=a.block)
         cpu = r["cpu_percent_per_instance"]
         budget = budgets.get(name)
-        passed = budget is None or cpu <= budget
+        limit = effective_budget(budget)[0] if budget is not None else None
+        passed = budget is None or cpu <= limit
         ok &= passed
-        print(f"{name:<18}{a.instances:>10}{cpu:>12.4f}{(budget if budget is not None else float('nan')):>8}  {'PASS' if passed else 'FAIL'}")
+        print(f"{name:<18}{a.instances:>10}{cpu:>12.4f}{(budget if budget is not None else float('nan')):>8}{(limit if limit is not None else float('nan')):>8.3f}  {'PASS' if passed else 'FAIL'}")
     return 0 if ok else 1
 
 

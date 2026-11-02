@@ -241,9 +241,10 @@ void PluginProcessorBase::processSubBlock(juce::AudioBuffer<float>& buffer, juce
 
     processDsp(buffer, midi);
 
-    // mono -> stereo: the processed mono channel feeds every main output
-    for (int ch = numIn; ch < numOut; ++ch)
-        buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
+    // mono -> stereo: the processed mono channel feeds every main output (unless the plugin made its own stereo)
+    if (!producesStereoFromMono())
+        for (int ch = numIn; ch < numOut; ++ch)
+            buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
 
     if (latency > 0)
         for (int ch = 0; ch < numOut; ++ch)

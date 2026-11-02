@@ -48,6 +48,8 @@ bool PluginTarget::prepare(double sampleRate, int maxBlock, const Job& job, juce
         return false;
     }
     instance->setNonRealtime(true);
+    playHead.set(job.bpm);
+    instance->setPlayHead(&playHead);
     instance->prepareToPlay(sampleRate, maxBlock);
     return true;
 }
@@ -119,6 +121,7 @@ void PluginTarget::process(juce::AudioBuffer<float>& buffer, bool hostBypass)
         instance->processBlockBypassed(buffer, midi);
     else
         instance->processBlock(buffer, midi);
+    playHead.advance(buffer.getNumSamples());
 }
 
 juce::var PluginTarget::paramsDump() const

@@ -15,7 +15,7 @@ from pathlib import Path
 SCHEMA_VERSION = "mm-schema-1"
 ID_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 ACCENT_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
-FAMILIES = {"eq", "dynamics", "time_space", "stereo", "mastering", "utility"}
+FAMILIES = {"eq", "dynamics", "colour", "time_space", "stereo", "mastering", "utility"}
 TYPES = {"float", "int", "bool", "choice"}
 RESERVED = [
     {"id": "bypass", "name": "Bypass", "type": "bool", "default": False, "ai": False, "group": "header"},
