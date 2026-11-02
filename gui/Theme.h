@@ -51,6 +51,7 @@ namespace accents
 inline const juce::Colour eq{0xff5b9de8};
 inline const juce::Colour dynamics{0xffe0b45c};
 inline const juce::Colour timeSpace{0xff3fbfb0};
+inline const juce::Colour colour{0xffe08a5c}; // saturation / console: warm orange between amber and the dynamics family
 inline const juce::Colour stereo{0xff9b7be8};
 inline const juce::Colour mastering{0xffd8dde4};
 inline const juce::Colour utility{0xffd8dde4};
@@ -58,6 +59,7 @@ inline juce::Colour forFamily(const juce::String& family)
 {
     if (family == "eq") return eq;
     if (family == "dynamics") return dynamics;
+    if (family == "colour") return colour;
     if (family == "time_space") return timeSpace;
     if (family == "stereo") return stereo;
     if (family == "mastering") return mastering;

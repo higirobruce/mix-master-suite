@@ -16,7 +16,8 @@ add_library(mm_gui STATIC
     AdvancedDrawer.cpp
     TransferCurveDisplay.cpp
     HistoryDisplay.cpp
-    GainReductionMeter.cpp)
+    GainReductionMeter.cpp
+    HarmonicDisplay.cpp)
 target_include_directories(mm_gui PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(mm_gui
     PUBLIC mm_plugin_base juce::juce_gui_extra juce::juce_audio_utils

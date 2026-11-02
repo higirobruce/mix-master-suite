@@ -14,6 +14,8 @@
 #include "core/metering/Correlation.h"
 #include "core/metering/RmsMeter.h"
 #include "core/nonlinear/ADAA.h"
+#include "core/nonlinear/ADAATable.h"
+#include "core/oversampling/Oversampler.h"
 #include "core/nonlinear/TapeHysteresis.h"
 #include "core/nonlinear/TubeTransfer.h"
 #include "core/nonlinear/Waveshapers.h"
@@ -116,6 +118,30 @@ int main()
     mm::CorrelationMeter corr;
     corr.prepare(kSr);
     rows.push_back({"correlation", nsPerSample([&](float v) { corr.process(&v, &v, 1); return v; }, x)});
+    rows.push_back({"tanh_adaa_table", nsPerSample([&, t = mm::TabulatedADAA1<mm::shape::tanhS, mm::shape::tanhAD1D>()](float v) mutable { return t.process(v * 4.0f); }, x)});
+    rows.push_back({"atan_adaa_table", nsPerSample([&, t = mm::TabulatedADAA1<mm::shape::atanS, mm::shape::atanAD1D>()](float v) mutable { return t.process(v * 4.0f); }, x)});
+    // oversampler round trip (up + down, no processing) per host frame, stereo, 64-sample blocks
+    for (int factor : {2, 4, 8})
+    {
+        mm::Oversampler os;
+        os.prepare(kSr, 64, 2, factor);
+        juce::AudioBuffer<float> blk(2, 64);
+        int pos = 0;
+        auto fn = [&](float v) {
+            blk.setSample(0, pos, v);
+            blk.setSample(1, pos, -v);
+            if (++pos == 64)
+            {
+                pos = 0;
+                juce::dsp::AudioBlock<float> b(blk);
+                os.up(b);
+                os.down(b);
+            }
+            return blk.getSample(0, pos);
+        };
+        static const char* names[] = {"oversampler_2x_stereo_frame", "oversampler_4x_stereo_frame", "oversampler_8x_stereo_frame"};
+        rows.push_back({names[factor == 2 ? 0 : (factor == 4 ? 1 : 2)], nsPerSample(fn, x)});
+    }
 
     std::printf("{\n");
     for (size_t i = 0; i < rows.size(); ++i)

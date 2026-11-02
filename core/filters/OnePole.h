@@ -66,4 +66,59 @@ private:
     OnePoleLP<T> lp;
     double cutoffHz = 10.0;
 };
+
+// First-order shelf (bilinear, prewarped) as a generic first-order section b0 + b1 z^-1 / (1 + a1 z^-1), with the
+// exact inverse available (swap numerator and denominator): the saturation's emphasis pair relies on it.
+template <typename T> class FirstOrderShelf
+{
+public:
+    // highShelf: gain above the corner; otherwise gain below it. gainDb may be negative. State in double.
+    void design(double sampleRate, double cornerHz, double gainDb, bool highShelf) noexcept
+    {
+        const double A = std::pow(10.0, gainDb / 20.0);
+        const double w = std::tan(std::numbers::pi * std::clamp(cornerHz, 1.0, 0.49 * sampleRate) / sampleRate);
+        // analog: low shelf H(s) = (s + A w) / (s + w) * ... use the standard first-order forms (unity at the far side)
+        double b0d, b1d, a1d;
+        if (highShelf) // H(s) = (A s + w) / (s + w): gain A at high frequencies, 1 at DC
+        {
+            const double n = 1.0 + w;
+            b0d = (A + w) / n;
+            b1d = (w - A) / n;
+            a1d = (w - 1.0) / n;
+        }
+        else // H(s) = (s + A w) / (s + w): gain A at DC, 1 at high frequencies
+        {
+            const double n = 1.0 + w;
+            b0d = (1.0 + A * w) / n;
+            b1d = (A * w - 1.0) / n;
+            a1d = (w - 1.0) / n;
+        }
+        b0 = b0d;
+        b1 = b1d;
+        a1 = a1d;
+    }
+    void invert() noexcept // 1/H: a first-order section again (the shelf is minimum phase)
+    {
+        const double nb0 = 1.0 / b0, nb1 = a1 / b0, na1 = b1 / b0;
+        b0 = nb0;
+        b1 = nb1;
+        a1 = na1;
+    }
+    T process(T x) noexcept
+    {
+        const double xd = static_cast<double>(x);
+        const double y = b0 * xd + z;
+        z = b1 * xd - a1 * y;
+        return static_cast<T>(y);
+    }
+    void reset() noexcept { z = 0.0; }
+    std::complex<double> evaluate(double hz, double sampleRate) const noexcept
+    {
+        const std::complex<double> zi = std::polar(1.0, -2.0 * std::numbers::pi * hz / sampleRate);
+        return (b0 + b1 * zi) / (1.0 + a1 * zi);
+    }
+
+private:
+    double b0 = 1.0, b1 = 0.0, a1 = 0.0, z = 0.0;
+};
 } // namespace mm

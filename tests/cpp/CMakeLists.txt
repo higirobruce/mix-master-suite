@@ -127,3 +127,19 @@ target_link_libraries(mm_gui_gate_tests PRIVATE gate mm_gui mm_plugin_base Catch
 mm_set_warnings(mm_gui_gate_tests)
 mm_enable_sanitizers(mm_gui_gate_tests)
 catch_discover_tests(mm_gui_gate_tests)
+
+# ---- saturation
+add_executable(mm_saturation_tests test_saturation.cpp)
+target_include_directories(mm_saturation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/saturation)
+target_link_libraries(mm_saturation_tests PRIVATE saturation mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_saturation_tests)
+mm_enable_sanitizers(mm_saturation_tests)
+catch_discover_tests(mm_saturation_tests)
+
+# ---- saturation GUI tests
+add_executable(mm_gui_saturation_tests test_gui_saturation.cpp)
+target_include_directories(mm_gui_saturation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/saturation)
+target_link_libraries(mm_gui_saturation_tests PRIVATE saturation mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_saturation_tests)
+mm_enable_sanitizers(mm_gui_saturation_tests)
+catch_discover_tests(mm_gui_saturation_tests)

@@ -62,7 +62,7 @@ def test_schema_excludes_ai_false_and_reserved(tmp_path):
         (lambda s: s["params"][0].update(skew=0), "skew"),
         (lambda s: s["params"][2].update(default=5), "choice"),
         (lambda s: s["plugin"].update(code="TooLong"), "code"),
-        (lambda s: s["plugin"].update(family="colour"), "family"),
+        (lambda s: s["plugin"].update(family="space"), "family"),
         (lambda s: s["params"][0].update(min=30), "range"),
     ],
 )

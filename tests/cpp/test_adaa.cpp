@@ -62,3 +62,22 @@ TEST_CASE("ADAA tanh in the float path matches an all-double ADAA within -100 dB
                 REQUIRE(20.0 * std::log10(worst + 1e-30) < -100.0);
             }
 }
+
+#include "core/nonlinear/ADAATable.h"
+TEST_CASE("tabulated ADAA matches the analytic antiderivative to 1e-9 and the analytic ADAA output to 1e-6")
+{
+    using Tab = mm::TabulatedADAA1<mm::shape::tanhS, mm::shape::tanhAD1D>;
+    for (int i = 0; i <= 2000; ++i)
+    {
+        const double x = -60.0 + 120.0 * i / 2000.0 + 0.0037;
+        REQUIRE(std::abs(Tab::antiderivative(x) - mm::shape::tanhAD1D(x)) < 1e-9);
+    }
+    Tab tab;
+    mm::ADAA1<mm::shape::tanhS, mm::shape::tanhAD1D> exact;
+    tab.reset();
+    for (int n = 0; n < 4000; ++n)
+    {
+        const float x = 3.0f * std::sin(0.07f * static_cast<float>(n)) + 0.5f * std::sin(1.3f * static_cast<float>(n));
+        REQUIRE(std::abs(tab.process(x) - exact.process(x)) < 1e-6f);
+    }
+}
