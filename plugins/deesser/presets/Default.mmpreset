@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Default" plugin="deesser" version="1" meta="{&quot;tags&quot;:[&quot;dynamics&quot;,&quot;init&quot;],&quot;author&quot;:&quot;MixMaster&quot;,&quot;notes&quot;:&quot;&quot;}">
+  <PARAMS>
+    <PARAM id="freq_hz" value="6000"/>
+    <PARAM id="threshold_db" value="-24"/>
+    <PARAM id="range_db" value="12"/>
+    <PARAM id="mode" value="0"/>
+    <PARAM id="width_oct" value="1"/>
+    <PARAM id="listen" value="0"/>
+    <PARAM id="lookahead_ms" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>
