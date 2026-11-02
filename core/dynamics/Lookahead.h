@@ -42,22 +42,33 @@ public:
     int maxWindowSamples() const noexcept { return maxSamples; }
 
     // Push the current detector level; returns max over the last window+1 levels (this one included).
+    // Monotonic deque in a ring; indices wrap by comparison (an integer modulo per sample costs ~25 cycles on x86).
     T maxEnvelope(T level) noexcept
     {
         if (window == 0)
             return level; // no lookahead: the maximum over one sample is the sample
         ++sampleIndex;
         // drop smaller values from the back (they can never be the max again)
-        while (count > 0 && dqValue[static_cast<size_t>((head + count - 1) % capacity)] <= level)
+        int back = head + count; // one past the last element
+        if (back >= capacity)
+            back -= capacity;
+        while (count > 0)
+        {
+            const int last = back == 0 ? capacity - 1 : back - 1;
+            if (dqValue[static_cast<size_t>(last)] > level)
+                break;
+            back = last;
             --count;
-        const int slot = (head + count) % capacity;
-        dqValue[static_cast<size_t>(slot)] = level;
-        dqIndex[static_cast<size_t>(slot)] = sampleIndex;
+        }
+        dqValue[static_cast<size_t>(back)] = level;
+        dqIndex[static_cast<size_t>(back)] = sampleIndex;
         ++count;
         // drop the front if it left the window
-        while (count > 0 && dqIndex[static_cast<size_t>(head)] <= sampleIndex - (window + 1))
+        const long long oldest = sampleIndex - (window + 1);
+        while (count > 0 && dqIndex[static_cast<size_t>(head)] <= oldest)
         {
-            head = (head + 1) % capacity;
+            if (++head == capacity)
+                head = 0;
             --count;
         }
         return dqValue[static_cast<size_t>(head)];

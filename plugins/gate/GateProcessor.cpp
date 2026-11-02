@@ -112,6 +112,9 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
     env.setAttackMs(attack->current());
     env.setReleaseMs(release->current());
     const int window = lookahead.latencySamples();
+    const bool passThrough = window == 0 && tapFade >= 1.0; // no delay to read: the output sample is the input sample
+    const bool scActive = scHpEnabled.on() || scLpEnabled.on();
+    const float rangeGain = mm::fastDbToGain(rangeDb);
     for (auto& f : scFilter)
     {
         f.setHighPass(scHpEnabled.on() ? scHp->current() : 0.0);
@@ -144,7 +147,8 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
         for (int ch = 0; ch < numMain; ++ch)
         {
             float k = keyChannels > 0 ? key[juce::jmin(ch, keyChannels - 1)][i] : buffer.getSample(ch, i);
-            k = scFilter[static_cast<size_t>(ch)].process(k);
+            if (scActive)
+                k = scFilter[static_cast<size_t>(ch)].process(k);
             keySample[ch] = k;
             keyPeak = juce::jmax(keyPeak, std::abs(k));
         }
@@ -171,13 +175,14 @@ void GateProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBuffe
         const float targetDb = state != State::Closed ? 0.0f : (expander ? gc.gainDb(levelDb) : rangeDb);
         const float gainDb = juce::jlimit(rangeDb, 0.0f, env.process(targetDb));
         maxReduction = juce::jmax(maxReduction, -gainDb);
-        const float g = mm::fastDbToGain(gainDb);
+        const float g = gainDb >= 0.0f ? 1.0f : (gainDb <= rangeDb ? rangeGain : mm::fastDbToGain(gainDb)); // settled: exact
         if (tapFade < 1.0)
             tapFade = juce::jmin(1.0, tapFade + tapFadeStep);
         for (int ch = 0; ch < numOut; ++ch)
         {
-            lookahead.writeSignal(buffer.getSample(ch, i), ch);
-            float delayed = lookahead.readDelayed(window, ch);
+            const float x = buffer.getSample(ch, i);
+            lookahead.writeSignal(x, ch); // history for a later lookahead increase
+            float delayed = passThrough ? x : lookahead.readDelayed(window, ch);
             if (tapFade < 1.0)
                 delayed = static_cast<float>(lookahead.readDelayed(oldWindow, ch) * (1.0 - tapFade) + delayed * tapFade);
             buffer.setSample(ch, i, listen ? keySample[juce::jmin(ch, numMain - 1)] : delayed * g);

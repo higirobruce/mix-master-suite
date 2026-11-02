@@ -214,7 +214,7 @@ void ChannelCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
                 const float reduction = (feedback && keyChannels == 0) ? feedbackReductionDb(lvlDb, fbThreshold, fbRatio, fbKnee)
                                                                        : -gc.gainDb(lvlDb);
                 smoothedRed = env[static_cast<size_t>(ch)].process(reduction);
-                gain = mm::fastDbToGain(-smoothedRed);
+                gain = smoothedRed <= 0.0f ? 1.0f : mm::fastDbToGain(-smoothedRed); // settled open: exact unity
                 sharedRed = smoothedRed;
                 sharedGain = gain;
             }
