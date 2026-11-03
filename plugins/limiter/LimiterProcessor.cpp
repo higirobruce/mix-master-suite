@@ -56,6 +56,7 @@ void LimiterProcessor::prepareDsp(double sampleRate, int maxBlock, int channels)
         c.hold.prepare(osRate, kMaxLookaheadMs + 1.0, 1);
         c.avgRing.assign(static_cast<size_t>(maxWindowOs + 1), 0.0f);
     }
+    monoLane.assign(static_cast<size_t>(std::max(1, maxBlock)), 0.0f);
     tpMeter.prepare(sr, kChannels, maxBlock);
     lmMeter.prepare(sr, kChannels, 600.0);
     crestWindow = std::max(1, static_cast<int>(0.05 * osRate));
@@ -174,8 +175,10 @@ void LimiterProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
         d.setBits(ditherChoice == 0 ? 0 : (ditherChoice == 1 ? 16 : 24));
 
     // input gain, then up
-    float* ptrs[kChannels] = {buffer.getWritePointer(0), numOut > 1 ? buffer.getWritePointer(1) : buffer.getWritePointer(0)};
-    if (numMain == 1 && numOut > 1)
+    // a mono output runs the stereo path on a scratch lane: aliasing both pointers to one buffer applied the input
+    // gain, the clamp and the dither twice (review finding)
+    float* ptrs[kChannels] = {buffer.getWritePointer(0), numOut > 1 ? buffer.getWritePointer(1) : monoLane.data()};
+    if (numMain == 1 || numOut == 1)
         std::copy_n(ptrs[0], n, ptrs[1]);
     for (int ch = 0; ch < kChannels; ++ch)
         for (int i = 0; i < n; ++i)

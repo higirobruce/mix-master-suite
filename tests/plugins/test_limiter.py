@@ -194,3 +194,19 @@ def test_limiter_base_checks(record_property):
 
 def test_cpu_budget(record_property):
     record_property("cpu_percent_per_instance", base_checks.check_cpu_budget(PLUGIN))
+
+
+def test_limiter_mono_layout_applies_gain_and_dither_once():
+    """Mono in / mono out runs the stereo path on a scratch lane, not on the same buffer twice: +6 dB of input gain
+    reads +6 dB (not +12), and 16-bit dither on silence leaves one TPDF floor (-96.3 dBFS), not two (review finding)."""
+    sr = 48000
+    mono = signals.sine(1000, sr, 0.3, amp_db=-20, channels=1)
+    rms = lambda v: 20 * np.log10(np.sqrt(np.mean(v ** 2)) + 1e-12)
+    y1, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, input_db=6.0), input=mono, layout={"in": 1, "out": 1})
+    y2, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, input_db=6.0), input=mono, layout={"in": 1, "out": 2})
+    assert abs(rms(y1[:, 0]) - rms(y2[:, 0])) < 0.1, f"mono/mono {rms(y1[:, 0]):.2f} dB vs mono/stereo {rms(y2[:, 0]):.2f} dB"
+    assert abs(rms(y1[:, 0]) - (-17.0)) < 0.3  # a -20 dBFS sine reads -23 dBFS RMS, +6 dB of input gain
+    silence = np.zeros((int(0.5 * sr), 1), np.float32)
+    y3, _ = render_plugin(PLUGIN, sr=sr, params=dict(BASE, dither=1), input=silence, layout={"in": 1, "out": 1})
+    floor = rms(y3[sr // 10:, 0])
+    assert abs(floor - (-96.3)) < 1.0, f"mono/mono 16-bit dither floor {floor:.1f} dBFS"

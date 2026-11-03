@@ -70,6 +70,7 @@ private:
     mm::Lookahead<float> delay; // the audio delayed by the window at the oversampled rate
     std::array<ChannelState, kChannels> chans;
     std::array<mm::Dither, kChannels> dither;
+    std::vector<float> monoLane; // the second lane of a mono output (sized in prepareDsp)
     mm::TruePeakMeter tpMeter;
     mm::LoudnessMeter lmMeter;
     std::atomic<float> outTp{-200.0f}, outLufs{-120.0f}, outLra{0.0f};
