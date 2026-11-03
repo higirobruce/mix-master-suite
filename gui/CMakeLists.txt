@@ -13,6 +13,7 @@ add_library(mm_gui STATIC
     PluginEditorBase.cpp
     CurveDisplay.cpp
     SpectrumDisplay.cpp
+    MultibandDisplay.cpp
     AdvancedDrawer.cpp
     TransferCurveDisplay.cpp
     HistoryDisplay.cpp

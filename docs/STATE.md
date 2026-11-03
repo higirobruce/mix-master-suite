@@ -239,8 +239,8 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 
 - [x] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design) (34e7269, b1c8411, dc9a0cf)
 - [x] Task 2 Loudness and true-peak metering with the EBU vectors (39e523f)
-- [ ] Task 3 Linear-phase EQ (in progress)
-- [ ] Task 4 Multiband compressor
+- [x] Task 3 Linear-phase EQ (eedba70, 2d161e7)
+- [ ] Task 4 Multiband compressor (in progress)
 - [ ] Task 5 Bus compressor
 - [ ] Task 6 M/S processor
 - [ ] Task 7 Soft clipper
@@ -265,3 +265,12 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 | LP-EQ: base checks (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass | 2026-11-03 |
 | LP-EQ CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 2.5 % | 1.02 % at 4096 taps, 0.93 % at 16384, 0.88 % at 2048 (loaded machine, load average 11; CPU gate passed) | 2026-11-03 |
 | LP-EQ pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS (clap-validator 32 passed, 0 failed, 1 warning, 11 skipped) | 2026-11-03 |
+| Multiband: every band 1:1 at 3 / 4 / 5 bands, 4 rates = the LR4 all-pass of every crossover (module reference) | null < −100 dBFS; latency 0 | pass (12 cases) | 2026-11-03 |
+| Multiband: per-band ratio 2 / 4 / 8 / 20 on every band (tone ≥ 2 octaves inside, band soloed) | within 0.1 | pass (20 cases); on the summed output the neighbours' −66 … −80 dB stopband residual bends 20:1 by up to 0.9 (recorded, inherent to LR4 multibands) | 2026-11-03 |
+| Multiband: band isolation (−6 dBFS tone in band 1, band 3 at −30 / 20:1 with a −40 dBFS tone) | band 3 tone unchanged ±0.1 dB | pass | 2026-11-03 |
+| Multiband: attack 10 / 100 ms, release 100 / 1000 ms on a 2 kHz burst, peak detector, against the Channel Compressor on the same burst | within 10 % + one cycle of each other; reduction within 0.5 dB | pass (a peak detector reads ~17 ms for a 10 ms label on a tone for either; M2's 10 % gate used DC steps) | 2026-11-03 |
+| Multiband: crossover 2 dragged below crossover 1 | held 1/3 octave above; sum still the clamped all-pass < −100 dBFS | pass | 2026-11-03 |
+| Multiband: solo / bypass | soloed band alone (others < −70 dB); bypassed band passes ±0.3 dB | pass | 2026-11-03 |
+| Multiband: base checks | pass | pass | 2026-11-03 |
+| Multiband CPU, 100 instances, 48 k / 64, 4 bands, min of 3 × 3 s | < 1.5 % | 1.018 % (runs 1.023 / 1.018 / 1.019) | 2026-11-03 |
+| Multiband pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
