@@ -119,3 +119,52 @@ TEST_CASE("partitioned convolver is silent after reset")
     for (float v : z)
         REQUIRE(v == 0.0f);
 }
+
+TEST_CASE("partitioned convolver takes per-channel spectra computed off-line and crossfades a swap")
+{
+    const int taps = 1023, maxBlock = 64;
+    mm::fir::PartitionedConvolver conv;
+    conv.prepare(taps, maxBlock, 2);
+    const int P = conv.partitionSize();
+    // channel 0: centred impulse at unity; channel 1: centred impulse at -6 dB -> a stereo pair is scaled per channel
+    std::vector<double> h1(static_cast<size_t>(taps), 0.0), h2(h1);
+    h1[(taps - 1) / 2] = 1.0;
+    h2[(taps - 1) / 2] = 0.5;
+    mm::fir::PartitionedConvolver::Spectra s1, s2;
+    conv.allocateSpectra(s1);
+    conv.allocateSpectra(s2);
+    conv.computeSpectra(h1.data(), taps, s1);
+    conv.computeSpectra(h2.data(), taps, s2);
+    conv.setSpectra(0, &s1, 0);
+    conv.setSpectra(1, &s2, 0);
+    REQUIRE(conv.latencySamples() == P + (taps - 1) / 2);
+    const int L = conv.latencySamples();
+    std::vector<float> a(static_cast<size_t>(L + 512), 0.0f), b(a);
+    a[0] = 1.0f;
+    b[0] = 1.0f;
+    for (int pos = 0; pos < static_cast<int>(a.size()); pos += maxBlock)
+    {
+        const int n = std::min(maxBlock, static_cast<int>(a.size()) - pos);
+        conv.process(a.data() + pos, n, 0);
+        conv.process(b.data() + pos, n, 1);
+    }
+    REQUIRE(a[static_cast<size_t>(L)] == Catch::Approx(1.0).margin(1e-9));
+    REQUIRE(b[static_cast<size_t>(L)] == Catch::Approx(0.5).margin(1e-9));
+
+    // swap channel 0 to the -6 dB impulse with a 20 ms fade on a DC input: the output glides from 1 to 0.5 with no
+    // step larger than the fade's own slope, and sits at 0.5 afterwards
+    conv.reset();
+    const int fade = 960;
+    std::vector<float> dc(static_cast<size_t>(L + 4 * fade), 1.0f);
+    int pos = 0;
+    for (; pos < L + fade; pos += maxBlock)
+        conv.process(dc.data() + pos, maxBlock, 0);
+    conv.setSpectra(0, &s2, fade);
+    for (; pos < static_cast<int>(dc.size()); pos += maxBlock)
+        conv.process(dc.data() + pos, std::min(maxBlock, static_cast<int>(dc.size()) - pos), 0);
+    float maxStep = 0.0f;
+    for (size_t i = static_cast<size_t>(L + 1); i < dc.size(); ++i)
+        maxStep = std::max(maxStep, std::abs(dc[i] - dc[i - 1]));
+    REQUIRE(maxStep < 2.0f * 0.5f / fade + 1e-6f);
+    REQUIRE(dc.back() == Catch::Approx(0.5).margin(1e-6));
+}

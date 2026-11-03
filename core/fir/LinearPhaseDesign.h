@@ -41,17 +41,14 @@ inline BiquadCoeffs<double> bandCoeffs(const BandSpec& b, double sampleRate) noe
 // within 0.1 dB of the target only above twice this).
 inline double resolutionHz(int length, double sampleRate) noexcept { return 2.0 * sampleRate / static_cast<double>(length); }
 
-// `length` is rounded up to a power of two L; the result has L - 1 taps, centre (L - 2) / 2.
-inline std::vector<double> design(const std::vector<BandSpec>& bands, int length, double sampleRate)
+// The target is the magnitude product of any biquad sections (RBJ, matched, ...): `length` is rounded up to a power
+// of two L; the result has L - 1 taps, centre (L - 2) / 2.
+inline std::vector<double> design(const std::vector<BiquadCoeffs<double>>& coeffs, int length, double sampleRate)
 {
     int L = 2;
     while (L < length)
         L <<= 1;
     std::vector<double> re(static_cast<size_t>(L), 0.0), im(static_cast<size_t>(L), 0.0);
-    std::vector<BiquadCoeffs<double>> coeffs;
-    coeffs.reserve(bands.size());
-    for (const auto& b : bands)
-        coeffs.push_back(bandCoeffs(b, sampleRate));
     for (int k = 0; k <= L / 2; ++k)
     {
         const double f = static_cast<double>(k) * sampleRate / static_cast<double>(L);
@@ -83,5 +80,14 @@ inline std::vector<double> design(const std::vector<BandSpec>& bands, int length
         h[static_cast<size_t>(N - 1 - i)] = v;
     }
     return h;
+}
+
+inline std::vector<double> design(const std::vector<BandSpec>& bands, int length, double sampleRate)
+{
+    std::vector<BiquadCoeffs<double>> coeffs;
+    coeffs.reserve(bands.size());
+    for (const auto& b : bands)
+        coeffs.push_back(bandCoeffs(b, sampleRate));
+    return design(coeffs, length, sampleRate);
 }
 } // namespace mm::fir

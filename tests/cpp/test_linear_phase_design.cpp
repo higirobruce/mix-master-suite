@@ -38,7 +38,7 @@ TEST_CASE("linear-phase design of no bands is a centred unit impulse")
 {
     for (int length : {2048, 16384})
     {
-        const auto h = mm::fir::design({}, length, 48000.0);
+        const auto h = mm::fir::design(std::vector<mm::fir::BandSpec>{}, length, 48000.0);
         REQUIRE(static_cast<int>(h.size()) == length - 1);
         const size_t centre = h.size() / 2;
         for (size_t i = 0; i < h.size(); ++i)
@@ -101,4 +101,24 @@ TEST_CASE("linear-phase design is exactly symmetric")
     const auto h = mm::fir::design(bands, 4096, 44100.0);
     for (size_t i = 0; i < h.size(); ++i)
         REQUIRE(h[i] == h[h.size() - 1 - i]);
+}
+
+#include "core/filters/MatchedBiquad.h"
+TEST_CASE("linear-phase design from biquad coefficients equals the band-spec design and takes any design family")
+{
+    const double sr = 48000.0;
+    const std::vector<mm::fir::BandSpec> bands = {{mm::FilterType::Peak, 1000.0, 1.0, -4.0}, {mm::FilterType::HighShelf, 6000.0, 0.7071, 3.0}};
+    std::vector<mm::BiquadCoeffs<double>> coeffs;
+    for (const auto& b : bands)
+        coeffs.push_back(mm::fir::bandCoeffs(b, sr));
+    const auto a = mm::fir::design(bands, 4096, sr);
+    const auto b = mm::fir::design(coeffs, 4096, sr);
+    REQUIRE(a.size() == b.size());
+    for (size_t i = 0; i < a.size(); ++i)
+        REQUIRE(a[i] == b[i]);
+    // a matched (Vicanek) bell: the FIR follows that magnitude, not the RBJ one
+    const auto matched = mm::matched::peak(sr, 12000.0, 9.0, 2.0);
+    const auto h = mm::fir::design(std::vector<mm::BiquadCoeffs<double>>{matched}, 16384, sr);
+    for (double f : {8000.0, 12000.0, 16000.0, 20000.0})
+        REQUIRE(20.0 * std::log10(std::abs(mm::test::responseAt(h, sr, f))) == Catch::Approx(20.0 * std::log10(std::abs(mm::evaluate(matched, sr, f)))).margin(0.1));
 }
