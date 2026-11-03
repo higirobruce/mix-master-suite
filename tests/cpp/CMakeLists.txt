@@ -244,3 +244,19 @@ mm_set_warnings(mm_gui_multiband_comp_tests)
 mm_enable_sanitizers(mm_gui_multiband_comp_tests)
 catch_discover_tests(mm_gui_multiband_comp_tests)
 
+# ---- bus comp
+add_executable(mm_bus_comp_tests test_bus_comp.cpp)
+target_include_directories(mm_bus_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/bus_comp)
+target_link_libraries(mm_bus_comp_tests PRIVATE bus_comp mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_bus_comp_tests)
+mm_enable_sanitizers(mm_bus_comp_tests)
+catch_discover_tests(mm_bus_comp_tests)
+
+# ---- gui bus comp
+add_executable(mm_gui_bus_comp_tests test_gui_bus_comp.cpp)
+target_include_directories(mm_gui_bus_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/bus_comp)
+target_link_libraries(mm_gui_bus_comp_tests PRIVATE bus_comp mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_bus_comp_tests)
+mm_enable_sanitizers(mm_gui_bus_comp_tests)
+catch_discover_tests(mm_gui_bus_comp_tests)
+

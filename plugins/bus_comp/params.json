@@ -1,0 +1,120 @@
+{
+  "plugin": {
+    "id": "bus_comp",
+    "name": "Bus Compressor",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Bscp",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "threshold_db",
+      "name": "Threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -30,
+      "max": 15,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "ratio",
+      "name": "Ratio",
+      "type": "choice",
+      "choices": [
+        "2:1",
+        "4:1",
+        "10:1"
+      ],
+      "default": 1,
+      "group": "main"
+    },
+    {
+      "id": "attack",
+      "name": "Attack",
+      "type": "choice",
+      "choices": [
+        "0.1 ms",
+        "0.3 ms",
+        "1 ms",
+        "3 ms",
+        "10 ms",
+        "30 ms"
+      ],
+      "default": 2,
+      "group": "main"
+    },
+    {
+      "id": "release",
+      "name": "Release",
+      "type": "choice",
+      "choices": [
+        "0.1 s",
+        "0.3 s",
+        "0.6 s",
+        "1.2 s",
+        "Auto"
+      ],
+      "default": 4,
+      "group": "main"
+    },
+    {
+      "id": "makeup_db",
+      "name": "Makeup",
+      "type": "float",
+      "unit": "dB",
+      "min": 0,
+      "max": 20,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "mix_pct",
+      "name": "Mix",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "sc_hp_hz",
+      "name": "Sidechain HP",
+      "type": "float",
+      "unit": "Hz",
+      "min": 0,
+      "max": 300,
+      "default": 0,
+      "skew": 0.5,
+      "smoothing_ms": 20,
+      "group": "advanced"
+    },
+    {
+      "id": "oversample",
+      "name": "Oversampling",
+      "type": "choice",
+      "choices": [
+        "Off",
+        "2x"
+      ],
+      "default": 0,
+      "group": "advanced"
+    },
+    {
+      "id": "sc_external",
+      "name": "External sidechain",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "advanced"
+    }
+  ]
+}
