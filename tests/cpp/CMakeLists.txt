@@ -293,3 +293,18 @@ mm_set_warnings(mm_gui_soft_clipper_tests)
 mm_enable_sanitizers(mm_gui_soft_clipper_tests)
 catch_discover_tests(mm_gui_soft_clipper_tests)
 
+# ---- limiter
+add_executable(mm_limiter_tests test_limiter.cpp)
+target_include_directories(mm_limiter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/limiter)
+target_link_libraries(mm_limiter_tests PRIVATE limiter mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_limiter_tests)
+mm_enable_sanitizers(mm_limiter_tests)
+catch_discover_tests(mm_limiter_tests)
+
+# ---- gui limiter
+add_executable(mm_gui_limiter_tests test_gui_limiter.cpp)
+target_include_directories(mm_gui_limiter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/limiter)
+target_link_libraries(mm_gui_limiter_tests PRIVATE limiter mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_limiter_tests)
+mm_enable_sanitizers(mm_gui_limiter_tests)
+catch_discover_tests(mm_gui_limiter_tests)

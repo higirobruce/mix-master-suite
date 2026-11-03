@@ -24,3 +24,4 @@ mm_add_snapshot(multiband_comp plugins/multiband_comp/MultibandCompProcessor.h M
 mm_add_snapshot(bus_comp plugins/bus_comp/BusCompProcessor.h BusCompProcessor)
 mm_add_snapshot(ms_processor plugins/ms_processor/MsProcessor.h MsProcessor)
 mm_add_snapshot(soft_clipper plugins/soft_clipper/SoftClipperProcessor.h SoftClipperProcessor)
+mm_add_snapshot(limiter plugins/limiter/LimiterProcessor.h LimiterProcessor)

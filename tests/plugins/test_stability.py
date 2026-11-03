@@ -30,14 +30,15 @@ MAX_STATIC_GAIN_DB = {"utility": 24 + 12, "channel_eq": 5 * 18 + 12, "channel_co
                       "multiband_comp": 12 + 12,  # band gain +12, trim
                       "bus_comp": 20 + 12,        # makeup +20, trim
                       "ms_processor": 12 + 6 + 2 * 12 + 12 + 12,  # mid +12, width 200, two EQ bands +12, output, trim
-                      "soft_clipper": 12 + 12}    # input +12 (the ceiling caps the rest), trim
+                      "soft_clipper": 12 + 12,    # input +12 (the ceiling caps the rest), trim
+                      "limiter": 24 + 12}         # input +24 (the ceiling caps the rest), trim
 PURE_GAIN = {"utility": ["gain_db", "trim_db"], "channel_eq": ["trim_db"], "channel_comp": ["makeup_db", "trim_db"],
              "gate": ["trim_db"], "saturation": ["output_db", "trim_db"], "delay": ["trim_db"], "reverb": ["trim_db"],
-             "deesser": ["trim_db"], "imager": ["output_db", "trim_db"], "lp_eq": ["trim_db"], "multiband_comp": ["trim_db"], "bus_comp": ["makeup_db", "trim_db"], "ms_processor": ["output_db", "trim_db"], "soft_clipper": ["trim_db"]}
+             "deesser": ["trim_db"], "imager": ["output_db", "trim_db"], "lp_eq": ["trim_db"], "multiband_comp": ["trim_db"], "bus_comp": ["makeup_db", "trim_db"], "ms_processor": ["output_db", "trim_db"], "soft_clipper": ["trim_db"], "limiter": ["trim_db"]}
 # settings that make the plugin's path linear so a gain envelope is meaningful (the Clip character at drive 0 is
 # exactly linear below 0.5)
 PURE_GAIN_BASE = {"saturation": {"character": 3, "drive_db": 0.0}, "delay": {"mix_pct": 0.0}, "reverb": {"mix_pct": 0.0},
-                  "deesser": {"range_db": 0.0}, "soft_clipper": {"input_db": -24.0, "mix_pct": 0.0}}
+                  "deesser": {"range_db": 0.0}, "soft_clipper": {"input_db": -24.0, "mix_pct": 0.0}, "limiter": {"input_db": -12.0}}
 
 
 def imager_reference(x: np.ndarray, sr: int) -> np.ndarray:
@@ -49,7 +50,16 @@ def imager_reference(x: np.ndarray, sr: int) -> np.ndarray:
 
 
 # plugins whose linear path is not phase-transparent: the envelope is y against this reference, not the input
-PURE_GAIN_REFERENCE = {"imager": imager_reference}
+def multiband_reference(x: np.ndarray, sr: int) -> np.ndarray:
+    # the multiband's bands sum to the LR4 all-pass of every crossover (four bands by default): the gain envelope is
+    # measured against it
+    y = x
+    for f in (120.0, 600.0, 2500.0):
+        y, _ = render_module("lr_crossover", sr=sr, params={"freq_hz": f, "order": 4, "output": 2}, input=y, channels=2)
+    return y
+
+
+PURE_GAIN_REFERENCE = {"imager": imager_reference, "multiband_comp": multiband_reference}
 
 
 def random_value(p: dict, rng: np.random.Generator) -> float:

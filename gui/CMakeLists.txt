@@ -15,6 +15,7 @@ add_library(mm_gui STATIC
     SpectrumDisplay.cpp
     MultibandDisplay.cpp
     NeedleMeter.cpp
+    CeilingHistory.cpp
     AdvancedDrawer.cpp
     TransferCurveDisplay.cpp
     HistoryDisplay.cpp

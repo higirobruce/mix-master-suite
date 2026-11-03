@@ -1,0 +1,104 @@
+{
+  "plugin": {
+    "id": "limiter",
+    "name": "True-peak Limiter",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Tplm",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "input_db",
+      "name": "Input",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 24,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "ceiling_dbtp",
+      "name": "Ceiling",
+      "type": "float",
+      "unit": "dBTP",
+      "min": -12,
+      "max": 0,
+      "default": -1.0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "release_ms",
+      "name": "Release",
+      "type": "float",
+      "unit": "ms",
+      "min": 1,
+      "max": 1000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "auto_release",
+      "name": "Auto release",
+      "type": "bool",
+      "default": true,
+      "group": "main"
+    },
+    {
+      "id": "lookahead_ms",
+      "name": "Lookahead",
+      "type": "float",
+      "unit": "ms",
+      "min": 0,
+      "max": 10,
+      "default": 2,
+      "skew": 1.0,
+      "smoothing_ms": 0,
+      "group": "main"
+    },
+    {
+      "id": "character",
+      "name": "Character",
+      "type": "choice",
+      "choices": [
+        "Transparent",
+        "Punchy",
+        "Loud"
+      ],
+      "default": 0,
+      "group": "main"
+    },
+    {
+      "id": "link_pct",
+      "name": "Stereo link",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "advanced"
+    },
+    {
+      "id": "dither",
+      "name": "Dither",
+      "type": "choice",
+      "choices": [
+        "Off",
+        "16-bit",
+        "24-bit"
+      ],
+      "default": 0,
+      "ai": false,
+      "group": "advanced"
+    }
+  ]
+}
