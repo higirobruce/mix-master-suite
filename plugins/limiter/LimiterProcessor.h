@@ -19,7 +19,7 @@ class LimiterProcessor : public mm::PluginProcessorBase
 {
 public:
     static constexpr double kMaxLookaheadMs = 10.0;
-    static constexpr double kMinLookaheadMs = 0.1; // the attack ramp's floor: a zero-width ramp is a clipper whose reconstruction overshoots (ADR-0012)
+    static constexpr double kMinLookaheadMs = 0.25; // the attack ramp's floor: a zero-width ramp is a clipper whose reconstruction overshoots (ADR-0012)
     static constexpr int kChannels = 2;
     struct Character
     {

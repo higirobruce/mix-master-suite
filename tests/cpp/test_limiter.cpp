@@ -36,10 +36,10 @@ TEST_CASE("limiter parameter table, latency = lookahead + oversampler, readouts 
     for (int block = 0; block < 20; ++block)
         p.processBlock(buf, midi);
     REQUIRE(p.getLatencySamples() == 480 + p.oversamplerLatency());
-    la->setValueNotifyingHost(la->convertTo0to1(0.0f)); // lookahead 0 keeps the window's 0.1 ms floor (ADR-0012)
+    la->setValueNotifyingHost(la->convertTo0to1(0.0f)); // lookahead 0 keeps the window's 0.25 ms floor (ADR-0012)
     for (int block = 0; block < 20; ++block)
         p.processBlock(buf, midi);
-    REQUIRE(p.getLatencySamples() == 5 + p.oversamplerLatency());
+    REQUIRE(p.getLatencySamples() == 12 + p.oversamplerLatency());
 }
 
 TEST_CASE("ceiling history keeps the latest reduction and over-ticks")

@@ -17,6 +17,7 @@ def vectors(sr: int) -> list[tuple[str, np.ndarray]]:
     env = gate.astype(np.float64)
     fade = max(1, int(0.002 * sr))
     ramp = 0.5 - 0.5 * np.cos(np.pi * np.arange(fade) / fade)
+    env[:fade] = ramp  # the first burst starts at t = 0: fade it in like the others
     edges = np.flatnonzero(np.diff(gate.astype(int)))
     for e in edges:
         if gate[e + 1]:  # turning on

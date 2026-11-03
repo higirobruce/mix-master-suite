@@ -17,9 +17,11 @@ BASE = {"input_db": 0.0, "ceiling_dbtp": -1.0, "release_ms": 100.0, "auto_releas
 
 
 def true_peak_dbtp(y: np.ndarray, edge: int = 2048) -> float:
-    """32x polyphase resample; the file's first and last `edge` samples are left out (the resampler rings at a
-    truncated signal's edges, which is not the plugin's output)."""
-    up = sps.resample_poly(y.astype(np.float64), 32, 1, axis=0)
+    """32x polyphase resample over the whole output from sample 0 (the file is padded with the silence the plugin saw
+    before it, as a DAW's transport would); the last `edge` samples are left out, where the resampler rings at the
+    truncation and not at anything the plugin produced."""
+    padded = np.concatenate([np.zeros((edge, y.shape[1]), np.float64), y.astype(np.float64)], axis=0)
+    up = sps.resample_poly(padded, 32, 1, axis=0)
     return float(20 * np.log10(np.max(np.abs(up[32 * edge:-32 * edge])) + 1e-30))
 
 
@@ -36,7 +38,7 @@ def passthrough_reference(x: np.ndarray, sr: int, with_latency: bool = False):
 def test_limiter_ceiling_never_exceeded(sr, ceiling, lookahead, record_property):
     """Every synthetic worst case of the roadmap's set (0.45 fs bursts, inter-sample peaks, square waves, a
     DC-offset tone, click trains, a 60 Hz overload), every character and release, auto on and off: the output's true
-    peak (32x resample) over the whole render, the first block included, stays at or under the ceiling + 0.1 dBTP.
+    peak (32x resample) over the whole render from its first sample stays at or under the ceiling + 0.1 dBTP.
     White noise driven 7-13 dB over the ceiling is recorded, not gated: limiting it that hard makes the gain
     modulation itself broadband, and the reconstruction filter leaves 0.2-0.4 dB of inter-sample overshoot at every
     rate and lookahead (ADR-0012 amendment)."""
@@ -69,8 +71,8 @@ def test_limiter_ebu_truepeak_files():
 @pytest.mark.parametrize("character,fast_ms,slow_ms", [(0, 30.0, 300.0), (1, 10.0, 500.0), (2, 50.0, 150.0)])
 def test_limiter_release_times(character, fast_ms, slow_ms, record_property):
     """Dual-stage release (ADR-0012): after a 500 ms burst 5 dB over the ceiling the gain recovers through the slow
-    stage (10-90 % within 25 % of its labelled time); after a 5 ms burst the fast stage alone recovers it (10-90 %
-    within 50 % of its labelled time, plus two 1 ms windows either way)."""
+    stage (10-90 % within the spec's 10 % of its labelled time); after a 5 ms burst the fast stage recovers it (10-90 %
+    within 25 % of its labelled time, plus two 1 ms windows either way; see the tolerance note below)."""
     sr = 48000
     win = sr // 1000
 
@@ -103,14 +105,16 @@ def test_limiter_release_times(character, fast_ms, slow_ms, record_property):
     record_property(f"release_short_{character}", rel_short)
     assert 5.5 < gr_long < 6.5
     assert gr_short > 4.0
-    assert abs(rel_long - slow_ms) <= 0.25 * slow_ms + 2 * win / sr * 1000
-    assert abs(rel_short - fast_ms) <= 0.5 * fast_ms + 2 * win / sr * 1000
+    assert abs(rel_long - slow_ms) <= 0.10 * slow_ms + 2 * win / sr * 1000  # the spec's 10 % (measured 299 / 492 / 150)
+    # the fast stage's 10-90 % on a 5 ms burst includes the slow stage's 4 % residual decaying at the slow rate:
+    # measured 34 / 10 / 57 ms for 30 / 10 / 50 (up to 14 %); gated at 25 % and raised as a spec question (REVIEW)
+    assert abs(rel_short - fast_ms) <= 0.25 * fast_ms + 2 * win / sr * 1000
 
 
 @pytest.mark.parametrize("sr", SAMPLE_RATES)
 def test_limiter_null_below_threshold(sr):
     """Material under the ceiling passes untouched: null against the oversampler with nothing in between, the
-    lookahead's delay removed (the window's 0.1 ms floor at lookahead 0; ADR-0012 amendment)."""
+    lookahead's delay removed (the window's 0.25 ms floor at lookahead 0; ADR-0012 amendment)."""
     x = signals.noise(sr, 1.0, seed=6, amp_db=-6.0)
     y, rep = render_plugin(PLUGIN, sr=sr, params=dict(BASE, ceiling_dbtp=-0.1, lookahead_ms=0.0), input=x)
     assert rep["nan_count"] == 0

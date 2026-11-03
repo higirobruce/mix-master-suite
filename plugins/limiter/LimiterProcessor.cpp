@@ -58,7 +58,7 @@ void LimiterProcessor::prepareDsp(double sampleRate, int maxBlock, int channels)
     }
     monoLane.assign(static_cast<size_t>(std::max(1, maxBlock)), 0.0f);
     tpMeter.prepare(sr, kChannels, maxBlock);
-    lmMeter.prepare(sr, kChannels, 600.0);
+    lmMeter.prepare(sr, kChannels);
     crestWindow = std::max(1, static_cast<int>(0.05 * osRate));
     tapFadeStep = 1.0 / std::max(1.0, 0.005 * osRate);
     for (int ch = 0; ch < kChannels; ++ch)
