@@ -11,7 +11,7 @@ Updated: 2026-11-03
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
 | M4 Stereo and vocal | built; CI run 41549350883 failed two CPU gates (fixed: see M4 CPU-gate fix); review tag on green | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal (after CI) |
-| M5 Mastering | planned (roadmap) | — | — |
+| M5 Mastering | in progress (plan written 2026-11-03) | milestone/m5-mastering | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
 
@@ -230,3 +230,24 @@ Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibilit
 | CPU per instance, 100 instances, 48 k / 64 (hosted VST3), local M2 Max, min of 3 × 3 s | de-esser < 0.4 %, imager < 0.4 % | de-esser 0.348 % (0.377–0.386 after the review fix pass, before the CPU-gate fix), imager 0.179 %; gate 0.157 %, utility 0.056 %, channel_comp 0.272 % unchanged or better | 2026-11-03 |
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | de-esser and imager: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | de-esser 10, imager 11 (incl. Default; loaded by the C++ checks) | 2026-11-03 |
+
+## M5 Mastering — tasks
+
+Plan: docs/superpowers/plans/2026-11-03-m5-mastering.md
+
+Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, Multiband comp, Bus comp, M/S processor, Soft clipper, True-peak limiter. EBU Tech 3341/3342 vectors within ±0.1 LU and ±0.3 dBTP; limiter never exceeds ceiling by more than 0.1 dBTP on the test set."
+
+- [ ] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design)
+- [ ] Task 2 Loudness and true-peak metering with the EBU vectors
+- [ ] Task 3 Linear-phase EQ
+- [ ] Task 4 Multiband compressor
+- [ ] Task 5 Bus compressor
+- [ ] Task 6 M/S processor
+- [ ] Task 7 Soft clipper
+- [ ] Task 8 ADR-0012 and the true-peak limiter
+- [ ] Task 9 Presets, fuzz, chain integration, STATE, REVIEW, review, CI, tag
+
+## M5 measurements
+
+| Criterion | Target | Measured | Date |
+| --- | --- | --- | --- |
