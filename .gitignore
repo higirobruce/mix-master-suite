@@ -9,3 +9,8 @@ tests/fixtures/ebu/
 tests/out/
 .cache/
 .superpowers/
+# EBU loudness test set (fetched by tools/fetch_ebu_vectors.py)
+tests/fixtures/ebu/*.wav
+tests/fixtures/ebu/*.zip
+!tests/fixtures/ebu/
+!tests/fixtures/ebu/README.md
