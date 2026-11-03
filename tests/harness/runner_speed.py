@@ -7,17 +7,22 @@ variation is in the many-instance hosted workload (memory, cache, scheduling), n
 is a fixed, non-product workload of the plugins' shape: the render host's 4x oversampled tanh module, 100 instances
 with their own buffers (docs/bench/calibration-2026-11-03.json records the reference machine's number). The budget
 checks scale their limit by max(1, measured / reference): a faster machine gets no relief, a slower runner gets a
-proportional allowance, and the factor is printed with every result (ruling recorded in the M3 review)."""
+proportional allowance, and the factor is printed with every result (ruling recorded in the M3 review).
+
+Both the calibration and the plugin benches take the minimum of REPS runs of SECONDS each (M4 review: one 5 s sample
+of each read a hosted runner's calibration 25 % faster and Utility 20 % slower than the run before; interference only
+adds time, so the minimum of a few runs is the cost and a single run is the cost plus the neighbours')."""
 from __future__ import annotations
 
 import json
-import subprocess
 from functools import lru_cache
 from pathlib import Path
 
-from tests.harness.render import REPO_ROOT, mm_render_path
+from tests.harness.render import REPO_ROOT, bench_min, mm_render_path
 
 REFERENCE = REPO_ROOT / "docs" / "bench" / "calibration-2026-11-03.json"
+REPS = 3
+SECONDS = 3.0
 
 
 @lru_cache(maxsize=1)
@@ -27,8 +32,7 @@ def runner_factor() -> float:
     cmd = [str(mm_render_path()), "--bench", ref["workload"], "--instances", str(ref["instances"]), "--seconds", str(ref["seconds"])]
     for kv in ref["params"]:
         cmd += ["--set", kv]
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-    measured = json.loads(out)["cpu_percent_per_instance"]
+    measured = bench_min(cmd, ref["reps"])["cpu_percent_per_instance"]
     return float(measured) / float(ref["cpu_percent_per_instance"])
 
 
