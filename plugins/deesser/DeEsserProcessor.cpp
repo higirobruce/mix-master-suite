@@ -3,6 +3,7 @@
 #include "core/common/Math.h"
 #include "deesser_data.h"
 #include "plugins/deesser/DeEsserEditor.h"
+#include <algorithm>
 #include <cmath>
 
 namespace dp = mm::plugins::deesser;
@@ -42,7 +43,7 @@ void DeEsserProcessor::prepareDsp(double sampleRate, int maxBlock, int)
     sr = sampleRate;
     designedFc = designedQ = -1.0; // the filters' coefficients depend on the rate
     maxLookaheadSamples = static_cast<int>(std::lround(kMaxLookaheadMs * 1e-3 * sr));
-    lookahead.prepare(sr, kMaxLookaheadMs, kChannels);
+    lookahead.prepare(sr, kMaxLookaheadMs, kChannels, maxBlock);
     lookahead.setMs(lookaheadRaw.get());
     oldWindow = lookahead.latencySamples();
     tapFade = 1.0;
@@ -145,21 +146,34 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
     const int window = lookahead.latencySamples();
     const bool passThrough = window == 0 && tapFade >= 1.0;
 
-    // dry copy aligned to the lookahead (two taps while a lookahead change fades)
+    // dry copy aligned to the lookahead: block copies through the ring, per sample only while a lookahead change
+    // crossfades its two taps (5 ms)
+    float* out[kChannels] = {nullptr, nullptr}; // every channel the loops touch (inputs and outputs; both <= the buffer's)
+    for (int ch = 0; ch < juce::jmax(numMain, numOut); ++ch)
+        out[ch] = buffer.getWritePointer(ch);
     for (int ch = 0; ch < numMain; ++ch)
     {
         const float* src = buffer.getReadPointer(ch);
         float* d = dryBuf[static_cast<size_t>(ch)].data();
+        if (tapFade >= 1.0)
+        {
+            lookahead.writeSignalBlock(src, n, ch);
+            if (passThrough)
+                std::copy_n(src, n, d);
+            else
+                lookahead.readDelayedBlock(d, n, window, ch);
+            continue;
+        }
+        double fade = tapFade;
         for (int i = 0; i < n; ++i)
         {
             lookahead.writeSignal(src[i], ch);
-            float delayed = passThrough ? src[i] : lookahead.readDelayed(window, ch);
-            if (tapFade < 1.0)
-                delayed = static_cast<float>(lookahead.readDelayed(oldWindow, ch) * (1.0 - tapFade) + delayed * tapFade);
-            d[i] = delayed;
-            if (ch == numMain - 1 && tapFade < 1.0)
-                tapFade = juce::jmin(1.0, tapFade + tapFadeStep);
+            const float delayed = lookahead.readDelayed(window, ch);
+            d[i] = fade < 1.0 ? static_cast<float>(lookahead.readDelayed(oldWindow, ch) * (1.0 - fade) + delayed * fade) : delayed;
+            fade = juce::jmin(1.0, fade + tapFadeStep);
         }
+        if (ch == numMain - 1)
+            tapFade = fade;
     }
 
     float maxReduction = 0.0f;
@@ -171,7 +185,7 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
         float peak = 0.0f;
         for (int ch = 0; ch < numMain; ++ch)
         {
-            const float x = buffer.getSample(ch, i);
+            const float x = out[ch][i]; // in place: the input is read before this sample's output is written
             if (splitMode || fading)
             {
                 splitDet[static_cast<size_t>(ch)].process(x, lowBand[ch], highBand[ch]);
@@ -190,9 +204,9 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
             // the bell follows the reduction every 8 samples on a running counter (block-size independent; the SVF
             // is modulation-safe). The TPT peak's bandwidth scales with the cut depth (k = 1 / (Q A)): pass Q / A so
             // the bell keeps its labelled width at every reduction.
-            const double a = mm::fastDbToGain(-0.5f * red); // 10^(-red/40)
+            const double a = mm::fastDbToGain(-0.5f * red); // 10^(-red/40) = the SVF's A for a -red dB peak
             for (int ch = 0; ch < numMain; ++ch)
-                bell[static_cast<size_t>(ch)].setParams(fc, q / a, -red);
+                bell[static_cast<size_t>(ch)].setParamsA(fc, q / a, a);
         }
         const float hiGain = mm::fastDbToGain(-red);
         const float fade = static_cast<float>(modeFade), lmix = static_cast<float>(listenMix);
@@ -219,10 +233,10 @@ void DeEsserProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::MidiBu
                 wet = wetFrom + (wet - wetFrom) * fade;
                 removed = remFrom + (removed - remFrom) * fade;
             }
-            buffer.setSample(ch, i, wet + (removed - wet) * lmix);
+            out[ch][i] = wet + (removed - wet) * lmix;
         }
         for (int ch = numMain; ch < numOut; ++ch)
-            buffer.setSample(ch, i, buffer.getSample(0, i));
+            out[ch][i] = out[0][i];
         if (fading)
             modeFade = juce::jmin(1.0, modeFade + switchStep);
         listenMix += juce::jlimit(-switchStep, switchStep, listenTarget - listenMix);
