@@ -106,10 +106,24 @@ public:
     }
 
     // hand channel `ch` new spectra; with fadeSamples > 0 the output crossfades from the previous spectra over that
-    // many samples (rounded up to whole blocks of P). A swap during a fade finishes the fade from the current mix.
+    // many samples (rounded up to whole blocks of P). A swap while a fade is running is held until that fade has
+    // finished and then starts its own (restarting the mix snapped the output back towards the first spectra:
+    // review finding); a swap before a pending fade has started simply replaces its target.
     void setSpectra(int ch, const Spectra* s, int fadeSamples) noexcept
     {
         auto& c = chans[static_cast<size_t>(ch)];
+        if (c.fading)
+        {
+            c.pending = s;
+            c.pendingFade = fadeSamples;
+            return;
+        }
+        if (c.previous != nullptr) // registered, not yet heard: nothing of the earlier target has been output
+        {
+            c.current = s;
+            c.fadeRemaining = std::max(c.fadeRemaining, fadeSamples);
+            return;
+        }
         if (s == c.current)
             return;
         c.previous = fadeSamples > 0 ? c.current : nullptr;
@@ -132,7 +146,17 @@ public:
                 const double t = std::min(1.0, static_cast<double>(c.fadePos++) / static_cast<double>(c.fadeTotal));
                 out = c.outFifoPrev[static_cast<size_t>(c.pos)] + (out - c.outFifoPrev[static_cast<size_t>(c.pos)]) * t;
                 if (c.fadePos >= c.fadeTotal)
+                {
                     c.fading = false; // the rest of this block's outFifo already holds the new output alone
+                    if (c.pending != nullptr)
+                    {
+                        const Spectra* next = c.pending;
+                        const int fadeSamples = c.pendingFade;
+                        c.pending = nullptr;
+                        c.pendingFade = 0;
+                        setSpectra(ch, next, fadeSamples); // starts at the next partition boundary
+                    }
+                }
             }
             buf[i] = static_cast<float>(out);
             if (++c.pos == P)
@@ -164,6 +188,8 @@ public:
             c.pos = 0;
             c.head = 0;
             c.previous = nullptr;
+            c.pending = nullptr;
+            c.pendingFade = 0;
             c.fadeRemaining = 0;
             c.fading = false;
         }
@@ -176,6 +202,8 @@ private:
         int pos = 0, head = 0; // head: the ring slot holding the newest input spectrum
         const Spectra* current = nullptr;
         const Spectra* previous = nullptr; // during a fade: the spectra being faded out
+        const Spectra* pending = nullptr; // a swap that arrived during a fade, applied when it ends
+        int pendingFade = 0;
         int fadeRemaining = 0, fadeTotal = 1, fadePos = 0;
         bool fading = false;
     };

@@ -274,6 +274,10 @@ void LpEqProcessor::run()
 
 void LpEqProcessor::takeReadySlot() noexcept
 {
+    // a ready slot waits until the running fade is over (the worker retires superseded slots itself), so the
+    // fading slot is never freed while the convolver still reads it
+    if (fadingSlot >= 0 && designCounter <= fadeSamples + convolver.partitionSize())
+        return;
     for (int i = 0; i < static_cast<int>(slots.size()); ++i)
     {
         auto& s = slots[static_cast<size_t>(i)];

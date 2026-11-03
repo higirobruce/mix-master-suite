@@ -168,3 +168,44 @@ TEST_CASE("partitioned convolver takes per-channel spectra computed off-line and
     REQUIRE(maxStep < 2.0f * 0.5f / fade + 1e-6f);
     REQUIRE(dc.back() == Catch::Approx(0.5).margin(1e-6));
 }
+
+TEST_CASE("a second swap landing inside a running fade does not restart the mix from the first spectra")
+{
+    // review finding: setSpectra during a fade reset fadePos to 0 while outFifoPrev still held the first spectra's
+    // output, so the mix snapped back by t * (second - first). With a DC input and three centred impulses at 1, 0.5
+    // and 0.25 the output must glide monotonically with no step above the fades' own slope.
+    const int taps = 255, maxBlock = 64;
+    mm::fir::PartitionedConvolver conv;
+    conv.prepare(taps, maxBlock, 1);
+    std::vector<double> h1(static_cast<size_t>(taps), 0.0), h2(h1), h3(h1);
+    h1[(taps - 1) / 2] = 1.0;
+    h2[(taps - 1) / 2] = 0.5;
+    h3[(taps - 1) / 2] = 0.25;
+    mm::fir::PartitionedConvolver::Spectra s1, s2, s3;
+    for (auto* s : {&s1, &s2, &s3})
+        conv.allocateSpectra(*s);
+    conv.computeSpectra(h1.data(), taps, s1);
+    conv.computeSpectra(h2.data(), taps, s2);
+    conv.computeSpectra(h3.data(), taps, s3);
+    conv.setSpectra(0, &s1, 0);
+    const int L = conv.latencySamples(), fade = 512;
+    std::vector<float> dc(static_cast<size_t>(L + 8 * fade), 1.0f);
+    int pos = 0;
+    for (; pos < L + fade; pos += maxBlock)
+        conv.process(dc.data() + pos, maxBlock, 0);
+    conv.setSpectra(0, &s2, fade);
+    for (int k = 0; k < 3; ++k, pos += maxBlock) // part-way into the fade (after the partition boundary)
+        conv.process(dc.data() + pos, maxBlock, 0);
+    conv.setSpectra(0, &s3, fade);
+    for (; pos < static_cast<int>(dc.size()); pos += maxBlock)
+        conv.process(dc.data() + pos, std::min(maxBlock, static_cast<int>(dc.size()) - pos), 0);
+    float maxStep = 0.0f, maxRise = 0.0f;
+    for (size_t i = static_cast<size_t>(L + 1); i < dc.size(); ++i)
+    {
+        maxStep = std::max(maxStep, std::abs(dc[i] - dc[i - 1]));
+        maxRise = std::max(maxRise, dc[i] - dc[i - 1]);
+    }
+    REQUIRE(maxStep < 2.0f * 0.5f / fade + 1e-6f);
+    REQUIRE(maxRise < 1e-6f); // never back towards the first spectra
+    REQUIRE(dc.back() == Catch::Approx(0.25).margin(1e-6));
+}
