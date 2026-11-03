@@ -4,6 +4,8 @@
 #include "core/filters/Biquad.h"
 #include "core/filters/FIRDesign.h"
 #include "core/filters/FIRFilter.h"
+#include "core/fir/LinearPhaseDesign.h"
+#include "core/fir/PartitionedConvolver.h"
 #include "core/filters/LinkwitzRiley.h"
 #include "core/delay/FractionalDelayLine.h"
 #include "core/metering/Correlation.h"
@@ -443,6 +445,45 @@ private:
     int taps = 63;
     double cutoff = 0.25, beta = 8.6;
     mm::fir::Window window = mm::fir::Window::Kaiser;
+};
+// Partitioned FFT convolver (ADR-0011) with a linear-phase low-pass design. params: taps (FIR length, power of
+// two), cutoff_hz, min_partition
+class FirConvolverModule : public Module
+{
+public:
+    void prepare(double sampleRate, int maxBlock, int channels) override
+    {
+        sr = sampleRate;
+        conv.prepare(16384, maxBlock, channels, minPartition);
+        prepared = true;
+        design();
+    }
+    void setParam(const std::string& id, double v) override
+    {
+        if (id == "taps") taps = static_cast<int>(v);
+        else if (id == "cutoff_hz") cutoff = v;
+        else if (id == "min_partition") minPartition = static_cast<int>(v);
+        if (prepared)
+            design();
+    }
+    void process(float* const* buf, int channels, int n) override
+    {
+        for (int ch = 0; ch < channels; ++ch)
+            conv.process(buf[ch], n, ch);
+    }
+    int latencySamples() const override { return conv.latencySamples(); }
+    void reset() override { conv.reset(); }
+
+private:
+    void design()
+    {
+        const auto h = mm::fir::design({{mm::FilterType::LowPass, cutoff, 0.7071, 0.0}}, taps, sr);
+        conv.setImpulse(h.data(), static_cast<int>(h.size()));
+    }
+    mm::fir::PartitionedConvolver conv;
+    bool prepared = false;
+    int taps = 4096, minPartition = 512;
+    double sr = 48000.0, cutoff = 1000.0;
 };
 // Linkwitz-Riley crossover (64-bit, as the spec budgets for crossovers). params: freq_hz, order {2,4,8},
 // output {0 low, 1 high, 2 sum}
@@ -918,6 +959,7 @@ void registerCoreModules()
     r.add("allpass1", [] { return std::make_unique<AllPass1Module>(); });
     r.add("allpass2", [] { return std::make_unique<AllPass2Module>(); });
     r.add("fir", [] { return std::make_unique<FirModule>(); });
+    r.add("fir_convolver", [] { return std::make_unique<FirConvolverModule>(); });
     r.add("lr_crossover", [] { return std::make_unique<LrCrossoverModule>(); });
     r.add("fdn", [] { return std::make_unique<FdnModule>(); });
     r.add("plate", [] { return std::make_unique<PlateModule>(); });

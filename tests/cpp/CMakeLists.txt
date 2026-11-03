@@ -26,6 +26,8 @@ add_executable(mm_core_tests
     test_spectrum.cpp
     test_smoother.cpp
     test_integer_delay.cpp
+    test_partitioned_convolver.cpp
+    test_linear_phase_design.cpp
     test_onepole.cpp
     test_allpass.cpp
     test_meter_fifo.cpp
