@@ -173,3 +173,18 @@ def test_mb_base_checks(record_property):
 
 def test_cpu_budget(record_property):
     record_property("cpu_percent_per_instance", base_checks.check_cpu_budget(PLUGIN))
+
+
+@pytest.mark.parametrize("hz", [100.0, 1000.0])
+def test_mb_num_bands_switch_no_click(hz, record_property):
+    """Band count switched 4 -> 5 while a tone runs, all bands 1:1: the old and new trees run side by side and
+    crossfade, so no sample step above 1.5x the static output's own (review finding: an instant switch stepped 6-7x)."""
+    sr = 48000
+    x = signals.sine(hz, sr, 3.0, amp_db=-6)
+    params = dict(XOVER, **OPEN, num_bands=1)
+    y, rep = render_plugin(PLUGIN, sr=sr, params=params, input=x, automation=[{"param": "num_bands", "t_s": 1.5, "value": 2}])
+    assert rep["nan_count"] == 0
+    static = float(np.max(np.abs(np.diff(y[int(0.6 * sr):int(1.4 * sr), 0]))))
+    step = float(np.max(np.abs(np.diff(y[int(1.4 * sr):int(2.9 * sr), 0])))) / static
+    record_property(f"num_bands_switch_step_ratio_{int(hz)}", step)
+    assert step < 1.5

@@ -19,6 +19,7 @@ class MultibandCompProcessor : public mm::PluginProcessorBase
 public:
     static constexpr int kMaxBands = 5, kMaxCrossovers = 4, kChannels = 2;
     static constexpr double kKneeDb = 6.0, kRmsMs = 10.0, kMinRatioOct = 1.0 / 3.0, kSwitchMs = 20.0;
+    static constexpr double kWarmMs = 30.0; // a band-count change: the new tree warms up silently, then crossfades over kSwitchMs
 
     MultibandCompProcessor();
     juce::AudioProcessorEditor* createEditor() override;
@@ -62,6 +63,9 @@ private:
     ParamRef numBandsRef, detectorRef, scExternal;
     mm::Smoother<float>* mix = nullptr;
     std::array<Tree, kChannels> trees, keyTrees;
+    std::array<Tree, kChannels> fadeTrees; // the outgoing band count's tree during a band-count crossfade
+    int fadeN = 0, fadeWarm = 0, warmSamples = 0;
+    double fadePos = 0.0, fadeStep = 1.0;
     std::array<double, kMaxCrossovers> designedHz{};
     std::array<mm::BiquadCoeffs<double>, kMaxCrossovers> apCoeffs;
     std::array<std::atomic<float>, kMaxBands> reduction{}, levelDb{};

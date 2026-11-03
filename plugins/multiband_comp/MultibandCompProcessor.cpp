@@ -81,7 +81,9 @@ void MultibandCompProcessor::prepareDsp(double sampleRate, int maxBlock, int)
 {
     sr = sampleRate;
     switchStep = 1.0 / std::max(1.0, kSwitchMs * 1e-3 * sr);
-    for (auto* t : {&trees, &keyTrees})
+    fadeStep = switchStep;
+    warmSamples = static_cast<int>(kWarmMs * 1e-3 * sr);
+    for (auto* t : {&trees, &keyTrees, &fadeTrees})
         for (auto& tree : *t)
             for (auto& s : tree.split)
             {
@@ -124,6 +126,7 @@ void MultibandCompProcessor::resetDsp()
         levelDb[static_cast<size_t>(b)].store(-120.0f);
     }
     lastNumBands = n;
+    fadeN = 0;
 }
 
 // crossovers from the smoothed parameters, each held a third of an octave above the one below; the all-pass legs
@@ -181,6 +184,13 @@ void MultibandCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::
     const int n = numBands();
     if (n != lastNumBands)
     {
+        // the outgoing band count keeps running on a copy of its tree while the new tree starts clean, warms up
+        // silently for kWarmMs and then crossfades in over kSwitchMs (an instant switch stepped the output 6-7x
+        // its own slope: review finding). The copy is of fixed-size filter state: nothing allocates.
+        fadeN = lastNumBands;
+        fadeTrees = trees;
+        fadeWarm = warmSamples;
+        fadePos = 0.0;
         lastNumBands = n;
         for (auto& t : trees)
             t.reset();
@@ -225,7 +235,7 @@ void MultibandCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::
     const float* in[kChannels] = {buffer.getReadPointer(0), numMain > 1 ? buffer.getReadPointer(1) : buffer.getReadPointer(0)};
     const float mixAmt = mix->current() * 0.01f;
     float maxRed[kMaxBands] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f}, maxLvl[kMaxBands] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    double bandSig[kChannels][kMaxBands], keySig[kChannels][kMaxBands];
+    double bandSig[kChannels][kMaxBands], keySig[kChannels][kMaxBands], oldSig[kChannels][kMaxBands], gains[kMaxBands];
     for (int i = 0; i < numSamples; ++i)
     {
         if ((modCounter++ & 31) == 0)
@@ -233,6 +243,8 @@ void MultibandCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::
         for (int ch = 0; ch < numMain; ++ch)
         {
             splitBands(trees[static_cast<size_t>(ch)], in[ch][i], bandSig[ch], n);
+            if (fadeN > 0)
+                splitBands(fadeTrees[static_cast<size_t>(ch)], in[ch][i], oldSig[ch], fadeN);
             if (keyChannels > 0)
                 splitBands(keyTrees[static_cast<size_t>(ch)], key[juce::jmin(ch, keyChannels - 1)][i], keySig[ch], n);
         }
@@ -254,11 +266,38 @@ void MultibandCompProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::
                 r.audiblePos = r.audiblePos < r.audibleTarget ? std::min(r.audibleTarget, r.audiblePos + switchStep) : std::max(r.audibleTarget, r.audiblePos - switchStep);
             const double compGain = red <= 0.0f ? 1.0 : static_cast<double>(mm::fastDbToGain(-red));
             const double gain = (1.0 + (compGain * static_cast<double>(mm::fastDbToGain(r.gain->current())) - 1.0) * r.activePos) * r.audiblePos;
+            gains[b] = gain;
             for (int ch = 0; ch < numMain; ++ch)
             {
                 dry[ch] += bandSig[ch][b];
                 wet[ch] += bandSig[ch][b] * gain;
             }
+        }
+        if (fadeN > 0)
+        {
+            // the outgoing tree's bands take the nearest new band's gain; output = old during the warm-up, then a fade
+            double wetOld[kChannels] = {0.0, 0.0}, dryOld[kChannels] = {0.0, 0.0};
+            for (int b = 0; b < fadeN; ++b)
+            {
+                const double g = gains[std::min(b, n - 1)];
+                for (int ch = 0; ch < numMain; ++ch)
+                {
+                    dryOld[ch] += oldSig[ch][b];
+                    wetOld[ch] += oldSig[ch][b] * g;
+                }
+            }
+            double t = 0.0;
+            if (fadeWarm > 0)
+                --fadeWarm;
+            else
+                t = fadePos = std::min(1.0, fadePos + fadeStep);
+            for (int ch = 0; ch < numMain; ++ch)
+            {
+                dry[ch] = dryOld[ch] + (dry[ch] - dryOld[ch]) * t;
+                wet[ch] = wetOld[ch] + (wet[ch] - wetOld[ch]) * t;
+            }
+            if (fadePos >= 1.0)
+                fadeN = 0;
         }
         for (int ch = 0; ch < numOut; ++ch)
         {
