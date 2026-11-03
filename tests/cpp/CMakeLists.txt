@@ -260,3 +260,19 @@ mm_set_warnings(mm_gui_bus_comp_tests)
 mm_enable_sanitizers(mm_gui_bus_comp_tests)
 catch_discover_tests(mm_gui_bus_comp_tests)
 
+# ---- ms processor
+add_executable(mm_ms_processor_tests test_ms_processor.cpp)
+target_include_directories(mm_ms_processor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/ms_processor)
+target_link_libraries(mm_ms_processor_tests PRIVATE ms_processor mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_ms_processor_tests)
+mm_enable_sanitizers(mm_ms_processor_tests)
+catch_discover_tests(mm_ms_processor_tests)
+
+# ---- gui ms processor
+add_executable(mm_gui_ms_processor_tests test_gui_ms_processor.cpp)
+target_include_directories(mm_gui_ms_processor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/ms_processor)
+target_link_libraries(mm_gui_ms_processor_tests PRIVATE ms_processor mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_ms_processor_tests)
+mm_enable_sanitizers(mm_gui_ms_processor_tests)
+catch_discover_tests(mm_gui_ms_processor_tests)
+

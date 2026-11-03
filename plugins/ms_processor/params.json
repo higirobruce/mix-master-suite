@@ -1,0 +1,305 @@
+{
+  "plugin": {
+    "id": "ms_processor",
+    "name": "M/S Processor",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Mspr",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "mid_db",
+      "name": "Mid gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "side_db",
+      "name": "Side gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "width_pct",
+      "name": "Width",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 200,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "mono_below_hz",
+      "name": "Mono below",
+      "type": "float",
+      "unit": "Hz",
+      "min": 0,
+      "max": 500,
+      "default": 0,
+      "skew": 0.5,
+      "smoothing_ms": 0,
+      "group": "main"
+    },
+    {
+      "id": "mid_eq1_enabled",
+      "name": "Mid EQ 1 on",
+      "type": "bool",
+      "default": false,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq1_type",
+      "name": "Mid EQ 1 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf"
+      ],
+      "default": 0,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq1_freq_hz",
+      "name": "Mid EQ 1 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 300.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq1_gain_db",
+      "name": "Mid EQ 1 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq1_q",
+      "name": "Mid EQ 1 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq2_enabled",
+      "name": "Mid EQ 2 on",
+      "type": "bool",
+      "default": false,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq2_type",
+      "name": "Mid EQ 2 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf"
+      ],
+      "default": 2,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq2_freq_hz",
+      "name": "Mid EQ 2 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 6000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq2_gain_db",
+      "name": "Mid EQ 2 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "mid_eq2_q",
+      "name": "Mid EQ 2 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq1_enabled",
+      "name": "Side EQ 1 on",
+      "type": "bool",
+      "default": false,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq1_type",
+      "name": "Side EQ 1 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf"
+      ],
+      "default": 0,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq1_freq_hz",
+      "name": "Side EQ 1 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 300.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq1_gain_db",
+      "name": "Side EQ 1 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq1_q",
+      "name": "Side EQ 1 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq2_enabled",
+      "name": "Side EQ 2 on",
+      "type": "bool",
+      "default": false,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq2_type",
+      "name": "Side EQ 2 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf"
+      ],
+      "default": 2,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq2_freq_hz",
+      "name": "Side EQ 2 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 6000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq2_gain_db",
+      "name": "Side EQ 2 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "side_eq2_q",
+      "name": "Side EQ 2 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "eq"
+    },
+    {
+      "id": "solo",
+      "name": "Solo",
+      "type": "choice",
+      "choices": [
+        "Off",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "ai": false,
+      "group": "main"
+    },
+    {
+      "id": "output_db",
+      "name": "Output",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    }
+  ]
+}
