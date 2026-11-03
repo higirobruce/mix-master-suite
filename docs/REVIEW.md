@@ -31,7 +31,7 @@ ADR-0009 (de-esser topology), ADR-0010 + Amendment (imager topology; all-pass le
 
 ## Known gaps / deferred
 - Deferred minors from the whole-branch review (ledger): the goniometer scope ring is read by the editor while the audio thread writes it (aligned floats, no tearing; a cursor FIFO would also stop redrawing ~2.5× duplicated samples); mono-below between 0 and 5 Hz is off while the knob shows a value; on a mono output bus the pan lowers the sum by up to 3 dB and the correlation meter holds its last value.
-- The de-esser's budget is tight on the reference machine (0.37 % of 0.40 %); CI runners are judged through the calibrated limit.
+- The de-esser's budget is the tightest in the suite (0.348 % of 0.40 % on the reference machine after the CPU-gate fix; 0.377 before); CI runners are judged through the calibrated limit.
 - Open from M3: alias gate at full drive, plate decay floor, static tape, reference machine for the CPU budgets (docs/reviews/m3-colour-and-space.md).
 
 ## How to try it (exact commands, which DAW, which preset)
@@ -46,6 +46,13 @@ tools/run_pluginval.sh deesser && tools/run_pluginval.sh imager
 ./build/tools/snapshot/mm_snapshot_deesser docs/snapshots 1.0 && ./build/tools/snapshot/mm_snapshot_imager docs/snapshots 1.0
 ```
 DAW: load from `build/plugins/<name>/<name>_artefacts/Release/`. Start with De-esser "Vocal · Firm 6 kHz" on a vocal (engage Listen to hear what is removed; switch to Split and compare), Imager "Mix · Wide top, mono below 120" on a mix (watch the goniometer spread with the width knobs and the correlation bar; open the drawer and drag mono-below along the spectrum line).
+
+## CPU-gate fix (after CI run 41549350883)
+Three of five jobs passed; macOS failed Utility's CPU gate by 1.4 % (0.1014 % against 0.100, runner factor 0.93) and Windows failed the de-esser's by 1 % (0.552 % against 0.546, factor 1.36). Investigated, not retried:
+- **One 5 s sample each** for the calibration and the plugin: the macOS calibration read 25 % faster than the run before while Utility read 20 % slower, so the two did not co-vary and a factor below 1 left no headroom at all. Both benches now take the minimum of 3 × 3 s runs (interference only adds time); the reference machine was re-measured the same way (0.364). Ruling recorded in `tests/harness/runner_speed.py`.
+- **The de-esser sat at 95 % of its budget** on the reference machine after the review fix pass (0.377–0.386 %; per-frame accounting: two SVFs per channel 34 ns, sliding max 16, lookahead ring 10, envelope 9, bell redesign 6, dB conversions 3 = the 78 ns measured). Now 0.348 % (−8.5 %): the lookahead's sliding max is a block decomposition (van Herk / Gil-Werman: two comparisons per sample, no data-dependent branch, bit-identical to the deque; tests extended to seven windows and a mid-stream window change), the SVF takes the peak gain as linear A and keeps its tan while the frequency stands (`setParamsA`; test against the dB path), the dry copy goes through the lookahead ring in block copies (IntegerDelay block forms; test against the per-sample form) and the loops use raw channel pointers.
+- **`fastExp2` rounds with the 1.5·2²³ trick** instead of `std::floor`, which MSVC compiles to a library call on its SSE2 baseline: three per sample in the de-esser and gate. The 1e-4 dB accuracy test is unchanged.
+- **CI ran pluginval on four plugins** (a fixed list from M2); it now loops over every plugin folder.
 
 ## Review history
 A fresh whole-branch reviewer (opus) found 1 Critical / 5 Important / 6 Minor, each confirmed by rendering audio. Fixed on the branch with a failing test first: a mono input on a stereo bus ran every de-esser filter twice per sample (0.8 dB of the 18 dB reduction survived); Split-mode Listen output dry − allpass(dry) instead of the removed band; a lookahead change landing inside the 5 ms tap crossfade dropped the half-faded tap (de-esser and, by the same pattern, the gate); Band/Split and Listen were hard switches (now 10 ms crossfades); the imager's mono-below glide stepped once per block (clicked at 512 and 2048); pan was a balance control that lost a hard-panned source (now a constant-power stereo rotation); mono-below faded back in for 20 ms after every reset. Suite after the fix pass: ctest 100 %, 62 plugin tests, CPU gates, 120 s fuzz, pluginval all green. Minors deferred to the ledger and listed above.

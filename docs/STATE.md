@@ -10,7 +10,7 @@ Updated: 2026-11-03
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
-| M4 Stereo and vocal | next (plan to write) | milestone/m4-stereo-and-vocal | — |
+| M4 Stereo and vocal | built; CI run 41549350883 failed two CPU gates (fixed: see M4 CPU-gate fix); review tag on green | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal (after CI) |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
@@ -206,6 +206,7 @@ Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibilit
 - [x] Task 4 Imager params and processor (a5c96af; ADR-0010 amended: all-pass legs as single biquads, 64-bit crossovers, crossfaded mono-below)
 - [x] Task 5 Imager editor (1007d61)
 - [x] Task 6 Presets, fuzz, STATE, REVIEW (review, CI, tag below)
+- [x] Task 7 CPU-gate fix after CI run 41549350883 (macOS: utility 0.1014 % vs limit 0.100 at runner factor 0.93; Windows: de-esser 0.552 % vs limit 0.546 at factor 1.36). Root causes: one 5 s sample each for the calibration and the plugin (the macOS calibration read 25 % faster and Utility 20 % slower than the run before), and the de-esser sitting at 95 % of its budget on the reference machine after the review fix pass. Fixes: both benches take the minimum of 3 × 3 s (reference re-measured 0.364); de-esser −8.5 % on the reference (lookahead sliding max by block decomposition, SVF redesign without tan/pow, block copies through the lookahead ring, raw channel pointers); fastExp2 rounds without a floor() call (a library call on MSVC's SSE2 baseline, three per sample in the de-esser and gate); CI runs pluginval on every plugin (it listed four). Verified locally: ctest 129/129, plugin suite 95 + 9 CPU gates; the gate's denormal-tail check (a two-timing comparison) failed once under `-n auto` with the machine loaded and passed alone. The 0.348 % was measured idle before three self-review fixes that leave the hot path unchanged (pointer table covers inputs and outputs, the SVF's tan guard sits in update(), fastExp2 rounds by a truncating int conversion).
 
 ## M4 measurements
 
@@ -226,6 +227,6 @@ Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibilit
 | Imager: correlation meter on known pairs ρ = 1 / 0.5 / 0 / −1 | ±0.02 | pass (300 ms exponential window, 2 s per pair) | 2026-11-03 |
 | Imager: base checks | pass | pass; variable-block and SR-change residuals −200 dBFS | 2026-11-03 |
 | Stability fuzz 120 s (both) + pure-gain envelope (imager measured against its all-pass reference) | no NaN, bounded, no gain step > 6 dB | pass | 2026-11-03 |
-| CPU per instance, 100 instances, 48 k / 64 (hosted VST3), local M2 Max | de-esser < 0.4 %, imager < 0.4 % | de-esser 0.358 %, imager 0.172 % (runner factor 0.95) | 2026-11-03 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3), local M2 Max, min of 3 × 3 s | de-esser < 0.4 %, imager < 0.4 % | de-esser 0.348 % (0.377–0.386 after the review fix pass, before the CPU-gate fix), imager 0.179 %; gate 0.157 %, utility 0.056 %, channel_comp 0.272 % unchanged or better | 2026-11-03 |
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | de-esser and imager: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | de-esser 10, imager 11 (incl. Default; loaded by the C++ checks) | 2026-11-03 |
