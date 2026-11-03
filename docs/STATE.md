@@ -237,9 +237,9 @@ Plan: docs/superpowers/plans/2026-11-03-m5-mastering.md
 
 Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, Multiband comp, Bus comp, M/S processor, Soft clipper, True-peak limiter. EBU Tech 3341/3342 vectors within ±0.1 LU and ±0.3 dBTP; limiter never exceeds ceiling by more than 0.1 dBTP on the test set."
 
-- [ ] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design)
-- [ ] Task 2 Loudness and true-peak metering with the EBU vectors
-- [ ] Task 3 Linear-phase EQ
+- [x] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design) (34e7269, b1c8411, dc9a0cf)
+- [x] Task 2 Loudness and true-peak metering with the EBU vectors (39e523f)
+- [ ] Task 3 Linear-phase EQ (in progress)
 - [ ] Task 4 Multiband compressor
 - [ ] Task 5 Bus compressor
 - [ ] Task 6 M/S processor
@@ -251,3 +251,17 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 
 | Criterion | Target | Measured | Date |
 | --- | --- | --- | --- |
+| FIR engine: partitioned convolver vs direct convolution, 1023 / 4097 / 16383 taps, varying block schedule (1 … 4096) | < −120 dBFS | pass (float output against a double direct form); output impulse at P + (N−1)/2 exactly; silent after reset | 2026-11-03 |
+| FIR engine cost, Release, M2 Max, P = 512 (ns per sample per channel) | fits 2.5 % at 16384 taps | convolver_4096_p512 115, convolver_16384_p512 214 (2.1 % of a stereo 48 k frame at the longest FIR) | 2026-11-03 |
+| Linear-phase design: three bands at 4 rates, 2048 and 16384 taps, bands ≥ 2 floors | ±0.1 dB above 2 × floor; phase ±2° | worst 0.015 dB (Tukey half taper; no window rings 0.57 dB from a sub-floor band, Kaiser β 8 costs 0.4 dB) | 2026-11-03 |
+| Loudness meter: BS.1770-4 Tables at 48 k; synthetic Tech 3341 seq 1 / 2 / 3 / 4 / 5 / 9 at 4 rates; Tech 3342 seq 1–4 | 1e-5; ±0.1 LU; LRA ±1 LU | tables to 1e-9 (De Man form); every synthetic sequence within 0.1 LU at 44.1 / 48 / 96 / 192 k; LRA 10 / 5 / 20 / 15 within 1 LU; pyloudnorm cross-check within 0.1 LU | 2026-11-03 |
+| True-peak meter: fs/4 inter-sample peak (sample peak −9.03, true −6.02 dBTP), 1 kHz at −1 dBFS, 4 rates | ±0.3 dBTP (spec); ±0.1 asserted | pass at ±0.1 dBTP | 2026-11-03 |
+| EBU real files (seq-3341-7/8, 3342-5/6, TP 15–23) | ±0.1 LU / ±0.3 dBTP | not run: the EBU serves the set behind a browser challenge; manual two-step in tests/fixtures/ebu/README.md (reviewer question) | 2026-11-03 |
+| LP-EQ: three linear bands, 4 rates, 4096 and 16384 taps | ±0.1 dB above 2 × floor; phase ±2° | pass (impulse centred on the reported latency) | 2026-11-03 |
+| LP-EQ: Minimum mode nulls against the Channel EQ (matched designs), 44.1 / 96 k | < −120 dBFS | pass | 2026-11-03 |
+| LP-EQ: all bands off = input delayed by the reported latency, every length, 4 rates; latency = P + (L−2)/2 | < −120 dBFS; exact | pass; 512 + 2047 at 4096 taps with 64-sample blocks (4096 + 2047 with 4096-sample blocks) | 2026-11-03 |
+| LP-EQ: FIR length 2048 → 16384 while a +6 dB band plays a tone | no sample step above 1.1 × the static output's own; level unchanged ±0.1 dB | pass (20 ms crossfade inside the convolver; the reported latency jumps at the swap) | 2026-11-03 |
+| LP-EQ: Mid-only / Side-only band isolation | untouched lane < −120 dBFS; targeted lane +6.0 ± 0.1 dB | pass | 2026-11-03 |
+| LP-EQ: base checks (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass | 2026-11-03 |
+| LP-EQ CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 2.5 % | 1.02 % at 4096 taps, 0.93 % at 16384, 0.88 % at 2048 (loaded machine, load average 11; CPU gate passed) | 2026-11-03 |
+| LP-EQ pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS (clap-validator 32 passed, 0 failed, 1 warning, 11 skipped) | 2026-11-03 |

@@ -86,7 +86,7 @@ void SpectrumDisplay::paint(juce::Graphics& g)
         g.setColour(theme.accent);
         g.drawLine(static_cast<float>(x), a.getY(), static_cast<float>(x), a.getBottom(), 1.5f);
         g.setFont(10.0f);
-        g.drawText("mono < " + juce::String(juce::roundToInt(marker)) + " Hz", juce::Rectangle<float>(static_cast<float>(x) + 4.0f, a.getY(), 90.0f, 14.0f), juce::Justification::centredLeft);
+        g.drawText(markerPrefix + juce::String(juce::roundToInt(marker)) + " Hz", juce::Rectangle<float>(static_cast<float>(x) + 4.0f, a.getY(), 90.0f, 14.0f), juce::Justification::centredLeft);
     }
 }
 
