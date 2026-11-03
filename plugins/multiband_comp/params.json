@@ -1,0 +1,478 @@
+{
+  "plugin": {
+    "id": "multiband_comp",
+    "name": "Multiband Compressor",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Mbcp",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "num_bands",
+      "name": "Bands",
+      "type": "choice",
+      "choices": [
+        "3",
+        "4",
+        "5"
+      ],
+      "default": 1,
+      "group": "main"
+    },
+    {
+      "id": "xover_1_hz",
+      "name": "Crossover 1",
+      "type": "float",
+      "unit": "Hz",
+      "min": 40,
+      "max": 400,
+      "default": 120.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "xover"
+    },
+    {
+      "id": "xover_2_hz",
+      "name": "Crossover 2",
+      "type": "float",
+      "unit": "Hz",
+      "min": 200,
+      "max": 2000,
+      "default": 600.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "xover"
+    },
+    {
+      "id": "xover_3_hz",
+      "name": "Crossover 3",
+      "type": "float",
+      "unit": "Hz",
+      "min": 1000,
+      "max": 8000,
+      "default": 2500.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "xover"
+    },
+    {
+      "id": "xover_4_hz",
+      "name": "Crossover 4",
+      "type": "float",
+      "unit": "Hz",
+      "min": 4000,
+      "max": 16000,
+      "default": 8000.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "xover"
+    },
+    {
+      "id": "b1_threshold_db",
+      "name": "Band 1 threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_ratio",
+      "name": "Band 1 ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 2,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_attack_ms",
+      "name": "Band 1 attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_release_ms",
+      "name": "Band 1 release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_gain_db",
+      "name": "Band 1 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_solo",
+      "name": "Band 1 solo",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "band"
+    },
+    {
+      "id": "b1_bypass",
+      "name": "Band 1 bypass",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b2_threshold_db",
+      "name": "Band 2 threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_ratio",
+      "name": "Band 2 ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 2,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_attack_ms",
+      "name": "Band 2 attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_release_ms",
+      "name": "Band 2 release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_gain_db",
+      "name": "Band 2 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_solo",
+      "name": "Band 2 solo",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "band"
+    },
+    {
+      "id": "b2_bypass",
+      "name": "Band 2 bypass",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b3_threshold_db",
+      "name": "Band 3 threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_ratio",
+      "name": "Band 3 ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 2,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_attack_ms",
+      "name": "Band 3 attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_release_ms",
+      "name": "Band 3 release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_gain_db",
+      "name": "Band 3 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_solo",
+      "name": "Band 3 solo",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "band"
+    },
+    {
+      "id": "b3_bypass",
+      "name": "Band 3 bypass",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b4_threshold_db",
+      "name": "Band 4 threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_ratio",
+      "name": "Band 4 ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 2,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_attack_ms",
+      "name": "Band 4 attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_release_ms",
+      "name": "Band 4 release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_gain_db",
+      "name": "Band 4 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_solo",
+      "name": "Band 4 solo",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "band"
+    },
+    {
+      "id": "b4_bypass",
+      "name": "Band 4 bypass",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b5_threshold_db",
+      "name": "Band 5 threshold",
+      "type": "float",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "default": -20,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_ratio",
+      "name": "Band 5 ratio",
+      "type": "float",
+      "unit": ":1",
+      "min": 1,
+      "max": 20,
+      "default": 2,
+      "skew": 0.4,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_attack_ms",
+      "name": "Band 5 attack",
+      "type": "float",
+      "unit": "ms",
+      "min": 0.1,
+      "max": 100,
+      "default": 10,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_release_ms",
+      "name": "Band 5 release",
+      "type": "float",
+      "unit": "ms",
+      "min": 10,
+      "max": 2000,
+      "default": 100,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_gain_db",
+      "name": "Band 5 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_solo",
+      "name": "Band 5 solo",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "band"
+    },
+    {
+      "id": "b5_bypass",
+      "name": "Band 5 bypass",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "mix_pct",
+      "name": "Mix",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "detector",
+      "name": "Detector",
+      "type": "choice",
+      "choices": [
+        "Peak",
+        "RMS"
+      ],
+      "default": 1,
+      "group": "advanced"
+    },
+    {
+      "id": "sc_external",
+      "name": "External sidechain",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "advanced"
+    }
+  ]
+}
