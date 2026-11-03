@@ -1,5 +1,5 @@
 # Review: M4 Stereo and vocal
-Commit: <sha>   Branch: milestone/m4-stereo-and-vocal
+Commit: 27415eb   Branch: milestone/m4-stereo-and-vocal
 
 ## What was built
 - **De-esser** (`plugins/deesser`, 9 parameters, ADR-0009): a linked peak detector on the sibilance band (Band mode: TPT SVF band-pass at the labelled width in octaves; Split mode: the high band of an LR4 at the frequency), a 0–3 ms lookahead on the detector with the dry path delayed to match (latency reported), a 0.5 / 60 ms envelope in dB with the reduction clamped to `range_db`. Band mode cuts with a dynamic bell whose Q is corrected for the TPT peak's depth-dependent bandwidth (`Q / A`), updated every 8 samples on a running counter so the result is block-size independent; Split mode scales the high band of a second LR4 on the delayed dry. Listen outputs dry − wet. Editor: scrolling peak history with sibilant frames shaded and the reduction drawn from the top, GR meter, Listen toggle, strip frequency / threshold / range / width / mode / lookahead.
@@ -17,9 +17,9 @@ Every number is in the "M4 measurements" table of docs/STATE.md.
 | Imager width 100 = all-passed input, 4 rates; width 200 = +6.02 dB per band | null < −100 dBFS, flat ±0.02; ±0.1 | pass at 44.1 / 48 / 96 / 192 k; +5.98 / +5.97 / +6.01 dB | ✓ |
 | Imager mono-below / pan laws / mono input / correlation meter | side < −60 dB at 2.9 oct; constant power; = all-passed input; ±0.02 | −70.0 dB / pass / pass / pass | ✓ |
 | Click-free automation: width sweep, mono-below on/drag/off, crossover drags, de-esser lookahead | no sample jump above the static output's own slope (1.1×; 2× for mono-below and lookahead) | pass | ✓ |
-| CPU within budget (0.4 / 0.4 %) | ≤ budget | local: de-esser 0.358 %, imager 0.172 %; CI: see run below | ✓ |
+| CPU within budget (0.4 / 0.4 %) | ≤ budget | local: de-esser 0.348 %, imager 0.179 %; CI gates green on three OSes (run 41655793686) | ✓ |
 | Stability fuzz 120 s, pluginval / auval / clap-validator, base checks | pass | pass for both (macOS local; CI three OSes) | ✓ |
-| CI matrix + sanitizers | green | run <id> | <pending> |
+| CI matrix + sanitizers | green | run 41655793686: build-test macOS / Windows / Linux and sanitizers macOS / Linux all green (pluginval on every plugin) | ✓ |
 
 ## Decisions made without asking (link ADRs)
 ADR-0009 (de-esser topology), ADR-0010 + Amendment (imager topology; all-pass legs as single biquads, 64-bit crossovers, crossfaded mono-below engagement). Ledger rulings worth knowing:
