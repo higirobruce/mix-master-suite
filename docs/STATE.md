@@ -10,7 +10,7 @@ Updated: 2026-11-03
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
-| M4 Stereo and vocal | built; CI run 41549350883 failed two CPU gates (fixed: see M4 CPU-gate fix); review tag on green | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal (after CI) |
+| M4 Stereo and vocal | done; CI run 41655793686 green; merged to main | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal |
 | M5 Mastering | in progress (plan written 2026-11-03) | milestone/m5-mastering | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
@@ -240,9 +240,9 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 - [x] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design) (34e7269, b1c8411, dc9a0cf)
 - [x] Task 2 Loudness and true-peak metering with the EBU vectors (39e523f)
 - [x] Task 3 Linear-phase EQ (eedba70, 2d161e7)
-- [ ] Task 4 Multiband compressor (in progress)
-- [ ] Task 5 Bus compressor
-- [ ] Task 6 M/S processor
+- [x] Task 4 Multiband compressor (ef108ad, 1dd2f50)
+- [x] Task 5 Bus compressor
+- [ ] Task 6 M/S processor (in progress)
 - [ ] Task 7 Soft clipper
 - [ ] Task 8 ADR-0012 and the true-peak limiter
 - [ ] Task 9 Presets, fuzz, chain integration, STATE, REVIEW, review, CI, tag
@@ -274,3 +274,12 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 | Multiband: base checks | pass | pass | 2026-11-03 |
 | Multiband CPU, 100 instances, 48 k / 64, 4 bands, min of 3 × 3 s | < 1.5 % | 1.018 % (runs 1.023 / 1.018 / 1.019) | 2026-11-03 |
 | Multiband pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| Bus comp: stepped attack 0.1 / 0.3 / 1 / 3 / 10 / 30 ms on a DC step, 4 rates | within 10 % + two samples | pass (24 cases) | 2026-11-03 |
+| Bus comp: stepped release 0.1 / 0.3 / 0.6 / 1.2 s on a DC step | within 10 % + one sample | pass; Auto recorded (program-dependent 60 ms → 500 ms) | 2026-11-03 |
+| Bus comp: stepped ratio 2 / 4 / 10 on DC levels | within 0.1 | pass | 2026-11-03 |
+| Bus comp: null at the +15 dB threshold, 4 rates | < −90 dBFS, latency 0 | pass | 2026-11-03 |
+| Bus comp: attack / ratio / release switched during 12 dB of reduction; 2× switched on while running | no step above 1.5 × the static output's own; latency re-reported; impulse at the latency | pass (10 ms crossfade after the oversampled path's warm-up) | 2026-11-03 |
+| Bus comp: sidechain HP 120 Hz | 40 Hz tone not reduced, 1 kHz reduced | pass | 2026-11-03 |
+| Bus comp: base checks | pass | pass | 2026-11-03 |
+| Bus comp CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 0.5 % | 0.124 % (2× on: 0.126 %; runs 0.124 / 0.371 / 0.150 on a loaded machine; gate passed) | 2026-11-03 |
+| Bus comp pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
