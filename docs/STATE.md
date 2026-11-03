@@ -10,7 +10,7 @@ Updated: 2026-11-03
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
-| M4 Stereo and vocal | next (plan to write) | milestone/m4-stereo-and-vocal | — |
+| M4 Stereo and vocal | built; CI run 41549350883 failed two CPU gates (fixed: see M4 CPU-gate fix); review tag on green | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal (after CI) |
 | M5 Mastering | planned (roadmap) | — | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
@@ -193,3 +193,40 @@ Exit criteria (CLAUDE.md, verbatim): "Saturation (aliasing < −80 dBFS at 19 kH
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | saturation, delay, reverb: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | saturation 10, delay 9, reverb 10 (loaded by the C++ checks) | 2026-11-03 |
 | CI matrix + sanitizers | green | run 41521435810: all five jobs green (build-test ×3 with pluginval/clap-validator for every plugin, sanitizers ×2) | 2026-11-03 |
+
+## M4 Stereo and vocal — tasks
+
+Plan: docs/superpowers/plans/2026-11-03-m4-stereo-and-vocal.md
+
+Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibility and correlation tests."
+
+- [x] Task 1 ADR-0009 de-esser, ADR-0010 imager
+- [x] Task 2 De-esser params and processor (3c2a5af)
+- [x] Task 3 De-esser editor (feea0bd)
+- [x] Task 4 Imager params and processor (a5c96af; ADR-0010 amended: all-pass legs as single biquads, 64-bit crossovers, crossfaded mono-below)
+- [x] Task 5 Imager editor (1007d61)
+- [x] Task 6 Presets, fuzz, STATE, REVIEW (review, CI, tag below)
+- [x] Task 7 CPU-gate fix after CI run 41549350883 (macOS: utility 0.1014 % vs limit 0.100 at runner factor 0.93; Windows: de-esser 0.552 % vs limit 0.546 at factor 1.36). Root causes: one 5 s sample each for the calibration and the plugin (the macOS calibration read 25 % faster and Utility 20 % slower than the run before), and the de-esser sitting at 95 % of its budget on the reference machine after the review fix pass. Fixes: both benches take the minimum of 3 × 3 s (reference re-measured 0.364); de-esser −8.5 % on the reference (lookahead sliding max by block decomposition, SVF redesign without tan/pow, block copies through the lookahead ring, raw channel pointers); fastExp2 rounds without a floor() call (a library call on MSVC's SSE2 baseline, three per sample in the de-esser and gate); CI runs pluginval on every plugin (it listed four). Verified locally: ctest 129/129, plugin suite 95 + 9 CPU gates; the gate's denormal-tail check (a two-timing comparison) failed once under `-n auto` with the machine loaded and passed alone. The 0.348 % was measured idle before three self-review fixes that leave the hot path unchanged (pointer table covers inputs and outputs, the SVF's tan guard sits in update(), fastExp2 rounds by a truncating int conversion).
+
+## M4 measurements
+
+| Criterion | Target | Measured | Date |
+| --- | --- | --- | --- |
+| De-esser: 1 kHz component untouched while the 6 kHz band is reduced, Band and Split, 4 rates | within ±0.05 dB; band < −6 dB | 1 kHz −0.026 … −0.029 dB; band Band −17.7 dB, Split −10.6 … −11.2 dB (12 dB range on a −12 dBFS 6 kHz tone, threshold −24) | 2026-11-03 |
+| De-esser: no reduction below threshold / range cap 6 dB | 0 dB / 6 ± 0.2 | pass / Band 5.98, Split 5.91 dB | 2026-11-03 |
+| De-esser: Split mode low + high sums flat / Listen = dry − wet | ±0.05 dB / null | pass / pass | 2026-11-03 |
+| De-esser: lookahead 0 / 1 / 3 ms latency reported == measured, 4 rates; change 0 → 3 ms while running | exact; no sample jump > 1.5× input's | pass (144 samples at 48 k for 3 ms); pass (5 ms tap crossfade) | 2026-11-03 |
+| De-esser: base checks (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass; variable-block and SR-change residuals −200 dBFS | 2026-11-03 |
+| Imager: width 0 → L = R | correlation 1 ± 0.001 | pass | 2026-11-03 |
+| Imager: width 100 → the LR4 all-passed input, 4 rates | null < −100 dBFS; flat ±0.02 dB at 50 Hz … 15 kHz | pass at 44.1 / 48 / 96 / 192 k (64-bit crossovers; float left 192 k at −83 dBFS) | 2026-11-03 |
+| Imager: width 200 per band, pure side tone ≥ 2 octaves inside its band (40 / 800 / 12 000 Hz) | +6.02 ± 0.1 dB | +5.98 / +5.97 / +6.01 dB | 2026-11-03 |
+| Imager: mono-below (LR4 on S) | side 2.9 octaves below < −60 dB; 2 kHz unchanged ±0.05 | −70.0 dB (40 Hz under 300 Hz); −41.9 dB at 1.7 octaves (60 Hz under 200 Hz, recorded); 2 kHz pass | 2026-11-03 |
+| Imager: mono compatibility — L + R unchanged for width 0 / 50 / 150 / 200, per band | ±0.1 dB vs the all-passed reference | pass | 2026-11-03 |
+| Imager: pan laws (−100 / +100 / 50), mono input (no side: every width = all-passed input; pan 100 silences L) | constant power; null < −100 dBFS | pass / pass | 2026-11-03 |
+| Imager: width 0 → 200 sweep, mono-below on/drag/off, crossover drags while tones run | no sample jump above 1.1× the static output's own slope (2× for mono-below) | pass / pass (20 ms engagement crossfade, 5 ms/oct glide) / pass | 2026-11-03 |
+| Imager: correlation meter on known pairs ρ = 1 / 0.5 / 0 / −1 | ±0.02 | pass (300 ms exponential window, 2 s per pair) | 2026-11-03 |
+| Imager: base checks | pass | pass; variable-block and SR-change residuals −200 dBFS | 2026-11-03 |
+| Stability fuzz 120 s (both) + pure-gain envelope (imager measured against its all-pass reference) | no NaN, bounded, no gain step > 6 dB | pass | 2026-11-03 |
+| CPU per instance, 100 instances, 48 k / 64 (hosted VST3), local M2 Max, min of 3 × 3 s | de-esser < 0.4 %, imager < 0.4 % | de-esser 0.348 % (0.377–0.386 after the review fix pass, before the CPU-gate fix), imager 0.179 %; gate 0.157 %, utility 0.056 %, channel_comp 0.272 % unchanged or better | 2026-11-03 |
+| pluginval strictness 10, auval, clap-validator (macOS local) | pass | de-esser and imager: VST3, AU, CLAP PASS | 2026-11-03 |
+| Factory presets | ≥ 8 per plugin | de-esser 10, imager 11 (incl. Default; loaded by the C++ checks) | 2026-11-03 |

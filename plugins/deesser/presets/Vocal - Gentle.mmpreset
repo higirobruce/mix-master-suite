@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Vocal · Gentle" plugin="deesser" version="1" meta="{&quot;tags&quot;: [&quot;dynamics&quot;, &quot;vocal&quot;, &quot;gentle&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Wide band around 6 kHz, 6 dB of range: takes the edge off without lisping.&quot;}">
+  <PARAMS>
+    <PARAM id="freq_hz" value="6000"/>
+    <PARAM id="threshold_db" value="-20"/>
+    <PARAM id="range_db" value="6"/>
+    <PARAM id="mode" value="0"/>
+    <PARAM id="width_oct" value="1.2"/>
+    <PARAM id="listen" value="0"/>
+    <PARAM id="lookahead_ms" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

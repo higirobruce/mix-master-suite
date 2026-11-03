@@ -84,10 +84,11 @@ void GateProcessor::resetDsp()
 void GateProcessor::beginBlock(int)
 {
     const int want = juce::jlimit(0, lookahead.maxWindowSamples(), static_cast<int>(std::lround(lookaheadRaw.get() * 1e-3 * sr)));
-    if (want != lookahead.latencySamples())
+    // a change that lands inside the 5 ms tap crossfade waits for it (M4 review: restarting the fade dropped the
+    // half-faded tap); the reported latency stays on the tap being heard until the next change is taken
+    if (want != lookahead.latencySamples() && tapFade >= 1.0)
     {
-        // keep whatever tap we are currently hearing as the fade source, then fade to the new tap
-        oldWindow = tapFade >= 1.0 ? lookahead.latencySamples() : oldWindow;
+        oldWindow = lookahead.latencySamples();
         lookahead.setSamples(want);
         tapFade = 0.0;
     }

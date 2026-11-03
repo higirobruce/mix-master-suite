@@ -115,10 +115,22 @@ def dump_params(name: str, fmt: str = "VST3") -> list[dict]:
     return json.loads(proc.stdout)
 
 
-def bench_plugin(name: str, *, instances: int = 100, seconds: float = 10.0, sr: int = 48000, block: int = 64) -> dict:
-    proc = subprocess.run([str(mm_render_path()), "--bench", str(plugin_path(name)), "--instances", str(instances),
-                           "--seconds", str(seconds), "--sample-rate", str(sr), "--block", str(block)],
-                          capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RenderError(f"bench failed: {proc.stderr.strip()}")
-    return json.loads(proc.stdout)
+def bench_plugin(name: str, *, instances: int = 100, seconds: float = 10.0, sr: int = 48000, block: int = 64,
+                 reps: int = 1) -> dict:
+    """Hosted bench of `instances` copies of the plugin. With reps > 1 the run with the lowest cost is returned (its
+    "runs" lists every run): interference from the rest of the machine only ever adds time, so the minimum of a few
+    short runs is the plugin's cost, where one long run is the plugin's cost plus whatever else the host was doing."""
+    return bench_min([str(mm_render_path()), "--bench", str(plugin_path(name)), "--instances", str(instances),
+                      "--seconds", str(seconds), "--sample-rate", str(sr), "--block", str(block)], reps)
+
+
+def bench_min(cmd: list[str], reps: int) -> dict:
+    runs = []
+    for _ in range(max(1, reps)):
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            raise RenderError(f"bench failed: {proc.stderr.strip()}")
+        runs.append(json.loads(proc.stdout))
+    best = dict(min(runs, key=lambda r: r["cpu_percent_per_instance"]))
+    best["runs"] = [r["cpu_percent_per_instance"] for r in runs]
+    return best

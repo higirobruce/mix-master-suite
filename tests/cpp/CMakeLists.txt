@@ -176,3 +176,35 @@ target_link_libraries(mm_gui_reverb_tests PRIVATE reverb mm_gui mm_plugin_base C
 mm_set_warnings(mm_gui_reverb_tests)
 mm_enable_sanitizers(mm_gui_reverb_tests)
 catch_discover_tests(mm_gui_reverb_tests)
+
+# ---- de-esser
+add_executable(mm_deesser_tests test_deesser.cpp)
+target_include_directories(mm_deesser_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/deesser)
+target_link_libraries(mm_deesser_tests PRIVATE deesser mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_deesser_tests)
+mm_enable_sanitizers(mm_deesser_tests)
+catch_discover_tests(mm_deesser_tests)
+
+# ---- de-esser GUI tests
+add_executable(mm_gui_deesser_tests test_gui_deesser.cpp)
+target_include_directories(mm_gui_deesser_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/deesser)
+target_link_libraries(mm_gui_deesser_tests PRIVATE deesser mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_deesser_tests)
+mm_enable_sanitizers(mm_gui_deesser_tests)
+catch_discover_tests(mm_gui_deesser_tests)
+
+# ---- imager
+add_executable(mm_imager_tests test_imager.cpp)
+target_include_directories(mm_imager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/imager)
+target_link_libraries(mm_imager_tests PRIVATE imager mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_imager_tests)
+mm_enable_sanitizers(mm_imager_tests)
+catch_discover_tests(mm_imager_tests)
+
+# ---- imager GUI tests
+add_executable(mm_gui_imager_tests test_gui_imager.cpp)
+target_include_directories(mm_gui_imager_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/imager)
+target_link_libraries(mm_gui_imager_tests PRIVATE imager mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_imager_tests)
+mm_enable_sanitizers(mm_gui_imager_tests)
+catch_discover_tests(mm_gui_imager_tests)

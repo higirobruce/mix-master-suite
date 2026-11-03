@@ -1,0 +1,12 @@
+{
+  "plugin": { "id": "deesser", "name": "De-esser", "family": "dynamics", "version": "0.1.0", "code": "Dees", "accent": "#E0B45C" },
+  "params": [
+    { "id": "freq_hz", "name": "Frequency", "type": "float", "unit": "Hz", "min": 2000, "max": 12000, "default": 6000, "skew": 0.5, "smoothing_ms": 20 },
+    { "id": "threshold_db", "name": "Threshold", "type": "float", "unit": "dB", "min": -60, "max": 0, "default": -24, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "range_db", "name": "Range", "type": "float", "unit": "dB", "min": 0, "max": 24, "default": 12, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "mode", "name": "Mode", "type": "choice", "choices": ["Band", "Split"], "default": 0 },
+    { "id": "width_oct", "name": "Width", "type": "float", "unit": "oct", "min": 0.2, "max": 2, "default": 1.0, "skew": 0.6, "smoothing_ms": 20 },
+    { "id": "listen", "name": "Listen", "type": "bool", "default": false, "ai": false },
+    { "id": "lookahead_ms", "name": "Lookahead", "type": "float", "unit": "ms", "min": 0, "max": 3, "default": 1, "skew": 1.0, "smoothing_ms": 0 }
+  ]
+}

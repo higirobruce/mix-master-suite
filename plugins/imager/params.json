@@ -1,0 +1,13 @@
+{
+  "plugin": { "id": "imager", "name": "Stereo Imager", "family": "stereo", "version": "0.1.0", "code": "Imgr", "accent": "#9B7BE8" },
+  "params": [
+    { "id": "xover_low_hz", "name": "Low crossover", "type": "float", "unit": "Hz", "min": 40, "max": 500, "default": 150, "skew": 0.3, "smoothing_ms": 20 },
+    { "id": "xover_high_hz", "name": "High crossover", "type": "float", "unit": "Hz", "min": 1000, "max": 8000, "default": 3000, "skew": 0.3, "smoothing_ms": 20 },
+    { "id": "width_low_pct", "name": "Width low", "type": "float", "unit": "%", "min": 0, "max": 200, "default": 100, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "width_mid_pct", "name": "Width mid", "type": "float", "unit": "%", "min": 0, "max": 200, "default": 100, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "width_high_pct", "name": "Width high", "type": "float", "unit": "%", "min": 0, "max": 200, "default": 100, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "pan", "name": "Pan", "type": "float", "unit": "%", "min": -100, "max": 100, "default": 0, "skew": 1.0, "smoothing_ms": 20 },
+    { "id": "mono_below_hz", "name": "Mono below", "type": "float", "unit": "Hz", "min": 0, "max": 500, "default": 0, "skew": 0.5, "smoothing_ms": 0, "group": "advanced" },
+    { "id": "output_db", "name": "Output", "type": "float", "unit": "dB", "min": -12, "max": 12, "default": 0, "skew": 1.0, "smoothing_ms": 20 }
+  ]
+}

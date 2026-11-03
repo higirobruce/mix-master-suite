@@ -16,6 +16,8 @@ public:
     void setTheme(const Theme& t);
     void setVisiblePrePost(bool showPre, bool showPost) noexcept;
     void pull(); // editor timer: fetch new frames
+    void setMarkerHz(float hz); // vertical accent line (0 = none): the imager's mono-below frequency
+    float markerHz() const noexcept { return marker; }
     void paint(juce::Graphics&) override;
 
 private:
@@ -24,6 +26,7 @@ private:
     std::vector<float> preMag, postMag;
     double sampleRate, minHz, maxHz;
     bool showPreFlag = true, showPostFlag = true;
+    float marker = 0.0f;
     Theme theme = Theme::dark(accents::eq);
 };
 } // namespace mm::gui

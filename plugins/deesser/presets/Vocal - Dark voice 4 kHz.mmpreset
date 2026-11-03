@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Vocal · Dark voice 4 kHz" plugin="deesser" version="1" meta="{&quot;tags&quot;: [&quot;dynamics&quot;, &quot;vocal&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Lower sibilance centre for baritone or distant mics.&quot;}">
+  <PARAMS>
+    <PARAM id="freq_hz" value="4000"/>
+    <PARAM id="threshold_db" value="-26"/>
+    <PARAM id="range_db" value="9"/>
+    <PARAM id="mode" value="0"/>
+    <PARAM id="width_oct" value="1"/>
+    <PARAM id="listen" value="0"/>
+    <PARAM id="lookahead_ms" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

@@ -99,3 +99,26 @@ TEST_CASE("SVF edge parameters are finite")
                         REQUIRE(std::isfinite(svf.process(n == 0 ? 1.0f : 0.0f)));
                 }
 }
+
+TEST_CASE("SVF setParamsA (linear A = 10^(dB/40)) matches setParams in dB, and a moved frequency is redesigned")
+{
+    for (auto mode : {mm::SvfMode::Peak, mm::SvfMode::LowShelf, mm::SvfMode::HighShelf, mm::SvfMode::BandPass})
+        for (double db : {-18.0, -3.0, 0.0, 6.0})
+        {
+            mm::SVF<float> a, b, fresh;
+            for (auto* f : {&a, &b, &fresh})
+            {
+                f->prepare(48000.0);
+                f->setMode(mode);
+            }
+            a.setParams(3000.0, 1.3, db);
+            b.setParamsA(3000.0, 1.3, std::pow(10.0, db / 40.0));
+            for (double hz : {100.0, 3000.0, 12000.0})
+                REQUIRE(std::abs(a.evaluate(hz) - b.evaluate(hz)) < 1e-9);
+            // the frequency moves: the design must follow (a cached tan must be invalidated)
+            b.setParamsA(6000.0, 0.7, std::pow(10.0, db / 40.0));
+            fresh.setParams(6000.0, 0.7, db);
+            for (double hz : {100.0, 6000.0, 12000.0})
+                REQUIRE(std::abs(fresh.evaluate(hz) - b.evaluate(hz)) < 1e-9);
+        }
+}

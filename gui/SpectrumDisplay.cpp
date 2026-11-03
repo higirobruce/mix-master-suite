@@ -79,5 +79,20 @@ void SpectrumDisplay::paint(juce::Graphics& g)
         drawSpectrum(g, preMag, theme.textDim.withAlpha(0.5f), false);
     if (showPostFlag)
         drawSpectrum(g, postMag, theme.accent.withAlpha(0.7f), true);
+    if (marker > 0.0f)
+    {
+        const auto a = getLocalBounds().toFloat().reduced(8.0f, 6.0f);
+        const double x = a.getX() + a.getWidth() * std::log(juce::jlimit(minHz, maxHz, static_cast<double>(marker)) / minHz) / std::log(maxHz / minHz);
+        g.setColour(theme.accent);
+        g.drawLine(static_cast<float>(x), a.getY(), static_cast<float>(x), a.getBottom(), 1.5f);
+        g.setFont(10.0f);
+        g.drawText("mono < " + juce::String(juce::roundToInt(marker)) + " Hz", juce::Rectangle<float>(static_cast<float>(x) + 4.0f, a.getY(), 90.0f, 14.0f), juce::Justification::centredLeft);
+    }
+}
+
+void SpectrumDisplay::setMarkerHz(float hz)
+{
+    marker = hz;
+    repaint();
 }
 } // namespace mm::gui
