@@ -29,6 +29,7 @@ add_executable(mm_core_tests
     test_partitioned_convolver.cpp
     test_linear_phase_design.cpp
     test_loudness.cpp
+    test_dither.cpp
     test_onepole.cpp
     test_allpass.cpp
     test_meter_fifo.cpp
@@ -275,4 +276,20 @@ target_link_libraries(mm_gui_ms_processor_tests PRIVATE ms_processor mm_gui mm_p
 mm_set_warnings(mm_gui_ms_processor_tests)
 mm_enable_sanitizers(mm_gui_ms_processor_tests)
 catch_discover_tests(mm_gui_ms_processor_tests)
+
+# ---- soft clipper
+add_executable(mm_soft_clipper_tests test_soft_clipper.cpp)
+target_include_directories(mm_soft_clipper_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/soft_clipper)
+target_link_libraries(mm_soft_clipper_tests PRIVATE soft_clipper mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_soft_clipper_tests)
+mm_enable_sanitizers(mm_soft_clipper_tests)
+catch_discover_tests(mm_soft_clipper_tests)
+
+# ---- gui soft clipper
+add_executable(mm_gui_soft_clipper_tests test_gui_soft_clipper.cpp)
+target_include_directories(mm_gui_soft_clipper_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/soft_clipper)
+target_link_libraries(mm_gui_soft_clipper_tests PRIVATE soft_clipper mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_soft_clipper_tests)
+mm_enable_sanitizers(mm_gui_soft_clipper_tests)
+catch_discover_tests(mm_gui_soft_clipper_tests)
 

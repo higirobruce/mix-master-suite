@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Drums - Crunch" plugin="soft_clipper" version="1" meta="{&quot;tags&quot;: [&quot;drums&quot;, &quot;clipper&quot;, &quot;crunch&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;+6 dB in, hard knee, 50 % mix.&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="6.0"/>
+    <PARAM id="ceiling_db" value="-0.3"/>
+    <PARAM id="knee_pct" value="5"/>
+    <PARAM id="mix_pct" value="50"/>
+    <PARAM id="listen_delta" value="0"/>
+    <PARAM id="oversample" value="0"/>
+    <PARAM id="true_peak" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

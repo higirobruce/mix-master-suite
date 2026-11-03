@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Master - 8x hard" plugin="soft_clipper" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;clipper&quot;, &quot;8x&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Hard knee at 8x oversampling, ceiling -0.2.&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="0"/>
+    <PARAM id="ceiling_db" value="-0.2"/>
+    <PARAM id="knee_pct" value="0"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="listen_delta" value="0"/>
+    <PARAM id="oversample" value="1"/>
+    <PARAM id="true_peak" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>
