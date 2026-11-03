@@ -183,7 +183,7 @@ int renderJob(const juce::File& jobFile)
             // BS.1770-4 / EBU readings of the rendered output (core meters, offline, 1024-sample chunks)
             mm::LoudnessMeter lm;
             mm::TruePeakMeter tp;
-            lm.prepare(job.sampleRate, job.outChannels, audioSeconds + 1.0);
+            lm.prepare(job.sampleRate, job.outChannels);
             tp.prepare(job.sampleRate, job.outChannels, 1024);
             std::vector<const float*> ptrs(static_cast<size_t>(job.outChannels));
             for (int p = 0; p < totalSamples; p += 1024)

@@ -3,8 +3,10 @@
 // prototypes at any rate: the 48 k tables of the Recommendation are reproduced within 1e-5), 100 ms mean-square
 // sub-blocks, momentary (400 ms) and short-term (3 s) loudness, integrated loudness with the -70 LUFS absolute and
 // -10 LU relative gates over 400 ms blocks at 75 % overlap, and loudness range per EBU Tech 3342 (short-term values,
-// -70 LUFS absolute / -20 LU relative gates, 10th to 95th percentile). Histories are sized in prepare() for
-// maxSeconds of programme; nothing allocates afterwards. Channel weights per BS.1770 (surround channels 1.41).
+// -70 LUFS absolute / -20 LU relative gates, 10th to 95th percentile). The gated statistics live in 0.01 LU
+// histograms (count and summed power per bin), so a session of any length costs the same per sub-block and nothing
+// allocates after prepare(); the readings are recomputed once per 100 ms sub-block and read back from a cache.
+// Channel weights per BS.1770 (surround channels 1.41).
 #include "core/filters/Biquad.h"
 #include "core/filters/BiquadDesign.h"
 #include <algorithm>
@@ -45,15 +47,15 @@ public:
 
     static constexpr float kFloorLufs = -120.0f;
 
-    void prepare(double sampleRate, int channels, double maxSeconds = 600.0)
+    void prepare(double sampleRate, int channels)
     {
         sr = sampleRate;
         numChannels = std::clamp(channels, 1, kMaxChannels);
         subBlockSamples = std::max(1, static_cast<int>(std::lround(0.1 * sr)));
-        const int blocks = std::max(40, static_cast<int>(maxSeconds * 10.0) + 1);
-        blockPower.assign(static_cast<size_t>(blocks), 0.0);    // 400 ms block loudness (power), one per 100 ms hop
-        shortTermPower.assign(static_cast<size_t>(blocks), 0.0); // 3 s loudness (power), one per 100 ms hop
-        histogram.assign(static_cast<size_t>(kBins), 0);
+        blockHist.assign(static_cast<size_t>(kBins), 0);   // 400 ms block loudness, one per 100 ms hop
+        blockPow.assign(static_cast<size_t>(kBins), 0.0);
+        stHist.assign(static_cast<size_t>(kBins), 0);      // 3 s loudness, one per 100 ms hop
+        stPow.assign(static_cast<size_t>(kBins), 0.0);
         for (int ch = 0; ch < kMaxChannels; ++ch)
         {
             pre[static_cast<size_t>(ch)].setCoeffs(preFilter(sr));
@@ -81,70 +83,12 @@ public:
     float maxMomentaryLufs() const noexcept { return maxMomentary; }
     float maxShortTermLufs() const noexcept { return maxShortTerm; }
 
-    // gated integrated loudness over everything since reset (BS.1770-4 §4.2); the floor when nothing passed the gate
-    float integratedLufs() const noexcept
-    {
-        const double absGate = fromLufs(-70.0);
-        double sum = 0.0;
-        int count = 0;
-        for (int i = 0; i < blockCount; ++i)
-        {
-            const double p = blockPower[static_cast<size_t>(i)];
-            if (p >= absGate)
-            {
-                sum += p;
-                ++count;
-            }
-        }
-        if (count == 0)
-            return kFloorLufs;
-        const double relGate = (sum / count) * fromLu(-10.0);
-        sum = 0.0;
-        count = 0;
-        for (int i = 0; i < blockCount; ++i)
-        {
-            const double p = blockPower[static_cast<size_t>(i)];
-            if (p >= absGate && p >= relGate)
-            {
-                sum += p;
-                ++count;
-            }
-        }
-        return count == 0 ? kFloorLufs : toLufs(sum / count);
-    }
+    // gated integrated loudness over everything since reset (BS.1770-4 section 4.2); the floor when nothing passed
+    // the gate. Recomputed every 100 ms sub-block from the block histogram.
+    float integratedLufs() const noexcept { return cachedIntegrated; }
 
     // EBU Tech 3342: short-term values gated at -70 LUFS absolute and -20 LU relative; LRA = 95th - 10th percentile
-    float loudnessRangeLu() const noexcept
-    {
-        const double absGate = fromLufs(-70.0);
-        double sum = 0.0;
-        int count = 0;
-        for (int i = 0; i < shortTermCount; ++i)
-            if (shortTermPower[static_cast<size_t>(i)] >= absGate)
-            {
-                sum += shortTermPower[static_cast<size_t>(i)];
-                ++count;
-            }
-        if (count == 0)
-            return 0.0f;
-        const double relGate = (sum / count) * fromLu(-20.0);
-        // percentiles from a 0.01 LU histogram (no sort on the audio thread's data)
-        std::fill(histogram.begin(), histogram.end(), 0);
-        int total = 0;
-        for (int i = 0; i < shortTermCount; ++i)
-        {
-            const double p = shortTermPower[static_cast<size_t>(i)];
-            if (p >= absGate && p >= relGate)
-            {
-                ++histogram[static_cast<size_t>(binOf(toLufs(p)))];
-                ++total;
-            }
-        }
-        if (total == 0)
-            return 0.0f;
-        const double p10 = percentile(0.10, total), p95 = percentile(0.95, total);
-        return static_cast<float>(p95 - p10);
-    }
+    float loudnessRangeLu() const noexcept { return cachedLra; }
 
     void reset() noexcept
     {
@@ -158,8 +102,12 @@ public:
         recentHead = 0;
         recentCount = 0;
         subCount = 0;
-        blockCount = 0;
-        shortTermCount = 0;
+        std::fill(blockHist.begin(), blockHist.end(), 0);
+        std::fill(blockPow.begin(), blockPow.end(), 0.0);
+        std::fill(stHist.begin(), stHist.end(), 0);
+        std::fill(stPow.begin(), stPow.end(), 0.0);
+        cachedIntegrated = kFloorLufs;
+        cachedLra = 0.0f;
         hop = 0;
         maxMomentary = maxShortTerm = kFloorLufs;
     }
@@ -167,7 +115,7 @@ public:
 private:
     static constexpr int kMaxChannels = 5;
     static constexpr int kRecent = 30; // 3 s of 100 ms sub-blocks
-    static constexpr int kBins = 12000; // -120 .. 0 LUFS in 0.01 LU
+    static constexpr int kBins = 14000; // -120 .. +20 LUFS in 0.01 LU
     static constexpr double kWeights[kMaxChannels] = {1.0, 1.0, 1.0, 1.41, 1.41};
 
     static double fromLufs(double lufs) noexcept { return std::pow(10.0, (lufs + 0.691) / 10.0); }
@@ -178,17 +126,70 @@ private:
     }
     static int binOf(float lufs) noexcept { return std::clamp(static_cast<int>(std::lround((lufs + 120.0f) * 100.0f)), 0, kBins - 1); }
 
-    double percentile(double q, int total) const noexcept
+    static double binLufs(int b) noexcept { return b / 100.0 - 120.0; }
+
+    // the gated mean power of a histogram: bins from `absBin` up give the ungated mean, the relative gate `relLu`
+    // below it sets the final bin; returns false when nothing passed
+    static bool gatedMean(const std::vector<int>& hist, const std::vector<double>& pow, int absBin, double relLu, double& mean, int& gateBin) noexcept
     {
-        const int target = std::max(1, static_cast<int>(std::ceil(q * total)));
-        int acc = 0;
-        for (int b = 0; b < kBins; ++b)
+        double sum = 0.0;
+        long count = 0;
+        for (int b = absBin; b < kBins; ++b)
         {
-            acc += histogram[static_cast<size_t>(b)];
-            if (acc >= target)
-                return b / 100.0 - 120.0;
+            sum += pow[static_cast<size_t>(b)];
+            count += hist[static_cast<size_t>(b)];
         }
-        return 0.0;
+        if (count == 0)
+            return false;
+        const double relGate = (sum / static_cast<double>(count)) * fromLu(relLu);
+        gateBin = std::max(absBin, binOf(toLufs(relGate)));
+        sum = 0.0;
+        count = 0;
+        for (int b = gateBin; b < kBins; ++b)
+        {
+            sum += pow[static_cast<size_t>(b)];
+            count += hist[static_cast<size_t>(b)];
+        }
+        if (count == 0)
+            return false;
+        mean = sum / static_cast<double>(count);
+        return true;
+    }
+
+    void computeReadings() noexcept
+    {
+        const int absBin = binOf(-70.0f);
+        double mean = 0.0;
+        int gateBin = 0;
+        cachedIntegrated = gatedMean(blockHist, blockPow, absBin, -10.0, mean, gateBin) ? toLufs(mean) : kFloorLufs;
+        if (!gatedMean(stHist, stPow, absBin, -20.0, mean, gateBin))
+        {
+            cachedLra = 0.0f;
+            return;
+        }
+        long total = 0;
+        for (int b = gateBin; b < kBins; ++b)
+            total += stHist[static_cast<size_t>(b)];
+        const long t10 = std::max(1L, static_cast<long>(std::ceil(0.10 * static_cast<double>(total))));
+        const long t95 = std::max(1L, static_cast<long>(std::ceil(0.95 * static_cast<double>(total))));
+        double p10 = 0.0, p95 = 0.0;
+        long acc = 0;
+        bool got10 = false;
+        for (int b = gateBin; b < kBins; ++b)
+        {
+            acc += stHist[static_cast<size_t>(b)];
+            if (!got10 && acc >= t10)
+            {
+                p10 = binLufs(b);
+                got10 = true;
+            }
+            if (acc >= t95)
+            {
+                p95 = binLufs(b);
+                break;
+            }
+        }
+        cachedLra = static_cast<float>(p95 - p10);
     }
 
     // mean weighted power over the last `blocks` sub-blocks (0 if fewer have completed)
@@ -224,17 +225,20 @@ private:
         if (recentCount >= 4) // a 400 ms block completes every 100 ms once four sub-blocks exist
         {
             const double m = windowPower(4);
-            maxMomentary = std::max(maxMomentary, toLufs(m));
-            if (blockCount < static_cast<int>(blockPower.size()))
-                blockPower[static_cast<size_t>(blockCount++)] = m;
+            const float lufs = toLufs(m);
+            maxMomentary = std::max(maxMomentary, lufs);
+            ++blockHist[static_cast<size_t>(binOf(lufs))];
+            blockPow[static_cast<size_t>(binOf(lufs))] += m;
         }
         if (recentCount >= kRecent)
         {
             const double s = windowPower(kRecent);
-            maxShortTerm = std::max(maxShortTerm, toLufs(s));
-            if (shortTermCount < static_cast<int>(shortTermPower.size()))
-                shortTermPower[static_cast<size_t>(shortTermCount++)] = s;
+            const float lufs = toLufs(s);
+            maxShortTerm = std::max(maxShortTerm, lufs);
+            ++stHist[static_cast<size_t>(binOf(lufs))];
+            stPow[static_cast<size_t>(binOf(lufs))] += s;
         }
+        computeReadings();
     }
 
     double sr = 48000.0;
@@ -243,9 +247,9 @@ private:
     std::array<double, kMaxChannels> subSum{};
     std::array<double, kRecent> recent{};
     int recentHead = 0, recentCount = 0, hop = 0;
-    std::vector<double> blockPower, shortTermPower;
-    int blockCount = 0, shortTermCount = 0;
-    mutable std::vector<int> histogram;
+    std::vector<int> blockHist, stHist;    // counts per 0.01 LU bin
+    std::vector<double> blockPow, stPow;   // summed power per bin (the gated means are exact)
+    float cachedIntegrated = kFloorLufs, cachedLra = 0.0f;
     float maxMomentary = kFloorLufs, maxShortTerm = kFloorLufs;
 };
 } // namespace mm

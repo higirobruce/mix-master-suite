@@ -47,7 +47,7 @@ TEST_CASE("momentary and short-term loudness of a -23 dBFS stereo 1 kHz sine rea
     for (double sr : mm::test::kMatrixRates)
     {
         mm::LoudnessMeter m;
-        m.prepare(sr, 2, 60.0);
+        m.prepare(sr, 2);
         feedSine(m, sr, 1000.0, -23.0, 4.0);
         INFO("sr " << sr);
         REQUIRE(m.momentaryLufs() == Catch::Approx(-23.0).margin(0.05));
@@ -60,7 +60,7 @@ TEST_CASE("integrated loudness gates out a quiet tail and reads the programme le
 {
     // EBU Tech 3341 seq-3341-3 shape: -36 dBFS for 10 s, -23 for 60 s, -36 for 10 s -> -23.0 +/- 0.1 LUFS
     mm::LoudnessMeter m;
-    m.prepare(48000.0, 2, 120.0);
+    m.prepare(48000.0, 2);
     feedSine(m, 48000.0, 1000.0, -36.0, 10.0);
     feedSine(m, 48000.0, 1000.0, -23.0, 60.0);
     feedSine(m, 48000.0, 1000.0, -36.0, 10.0);
@@ -75,7 +75,7 @@ TEST_CASE("integrated loudness gates out a quiet tail and reads the programme le
 TEST_CASE("loudness range of a two-level sequence (EBU Tech 3342 seq-1: -20 / -30 dBFS, 20 s each) is 10 LU")
 {
     mm::LoudnessMeter m;
-    m.prepare(48000.0, 2, 60.0);
+    m.prepare(48000.0, 2);
     feedSine(m, 48000.0, 1000.0, -20.0, 20.0);
     feedSine(m, 48000.0, 1000.0, -30.0, 20.0);
     REQUIRE(m.loudnessRangeLu() == Catch::Approx(10.0).margin(1.0));
@@ -84,7 +84,7 @@ TEST_CASE("loudness range of a two-level sequence (EBU Tech 3342 seq-1: -20 / -3
 TEST_CASE("silence reads the floor and reset clears the histories")
 {
     mm::LoudnessMeter m;
-    m.prepare(48000.0, 2, 10.0);
+    m.prepare(48000.0, 2);
     REQUIRE(m.integratedLufs() <= -100.0f);
     feedSine(m, 48000.0, 1000.0, -23.0, 2.0);
     m.reset();
@@ -130,4 +130,18 @@ TEST_CASE("true-peak meter reads an inter-sample peak within 0.1 dBTP at four ra
         }
         REQUIRE(tp2.maxDbtp() == Catch::Approx(-1.0).margin(0.05));
     }
+}
+
+TEST_CASE("integrated loudness keeps integrating past ten minutes and costs nothing per block")
+{
+    // review finding: the histories were sized for 600 s and silently stopped appending. Ten minutes at -30 dBFS
+    // then one minute 6 dB louder: the gated mean is (10 p + 4 p) / 11 = 1.27 p, +1.05 dB over the first level
+    mm::LoudnessMeter m;
+    m.prepare(48000.0, 2);
+    feedSine(m, 48000.0, 1000.0, -30.0, 600.0);
+    const float first = m.integratedLufs();
+    REQUIRE(first == Catch::Approx(-30.0).margin(0.1));
+    feedSine(m, 48000.0, 1000.0, -24.0, 60.0);
+    REQUIRE(m.integratedLufs() == Catch::Approx(first + 1.05).margin(0.1));
+    REQUIRE(m.loudnessRangeLu() == Catch::Approx(6.0).margin(0.2));
 }
