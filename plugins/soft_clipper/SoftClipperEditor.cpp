@@ -50,7 +50,7 @@ void SoftClipperEditor::layoutContent(juce::Rectangle<int> area)
         k->setBounds(strip.removeFromLeft(kw).reduced(4, 0));
     delta.setBounds(strip.reduced(4, 0).withTrimmedTop(36).withHeight(44));
     area.removeFromBottom(6);
-    auto meterCol = area.removeFromRight(28);
+    auto meterCol = area.removeFromRight(44);
     clipLabel.setBounds(meterCol.removeFromTop(16));
     clipMeter.setBounds(meterCol.reduced(4, 0));
     area.removeFromRight(6);

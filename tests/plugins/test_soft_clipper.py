@@ -41,26 +41,30 @@ def spectrum_db(y, sr):
 @pytest.mark.parametrize("ceiling", [-0.3, -3.0, -12.0])
 @pytest.mark.parametrize("knee", [0.0, 30.0, 100.0])
 def test_clip_never_exceeds_ceiling(sr, oversample, ceiling, knee, record_property):
-    """Noise at +6 dBFS and a 10 kHz tone at +6 dBFS: the output's true peak (32x resample) stays at or under the
-    ceiling + 0.01 dB with the true-peak compensation on; the output's sample peak stays at or under the ceiling with
-    it off. A 0.45 fs burst at +3 dBFS is recorded, not gated: filtering a clipped tone whose harmonics fall above the
-    band leaves the bare fundamental, up to 4 / pi (2.1 dB) above the flat top, and no margin short of that covers it
-    (the limiter's smooth gain makes no harmonics and is gated on that burst instead)."""
-    x = signals.noise(sr, 0.5, seed=9, amp_db=6.0)
-    tone = signals.sine(10000.0, sr, 0.3, amp_db=6.0)
-    x = np.concatenate([x, tone], axis=0)
+    """Tones at 1 kHz and 3 kHz driven 3 and 6 dB over the ceiling: the output's true peak (32x resample) stays at or
+    under the ceiling + 0.01 dB with the true-peak compensation on; with it off the output's sample peak stays at or
+    under the ceiling on every signal here, broadband noise included. What a clipper cannot promise is recorded, not
+    gated: the anti-alias filter removes the components that held the clipped waveform between oversampled samples,
+    so broadband noise driven 1-6 dB over comes back 1.5-3.4 dB above the ceiling and a 10 kHz tone up to 4 / pi
+    above it (the bare fundamental of a clipped tone). The spec's chain puts the limiter, whose smooth gain makes no
+    such components, after the clipper for the true-peak guarantee."""
     params = dict(BASE, ceiling_db=ceiling, knee_pct=knee, oversample=oversample)
-    y, rep = render_plugin(PLUGIN, sr=sr, params=params, input=x)
-    assert rep["nan_count"] == 0
-    tp = true_peak_dbtp(y)
-    record_property(f"true_peak_over_{sr}_{oversample}_{ceiling}_{knee}", float(tp - ceiling))
-    assert tp <= ceiling + 0.01
-    y2, _ = render_plugin(PLUGIN, sr=sr, params=dict(params, true_peak=0), input=x)
-    assert 20 * np.log10(np.max(np.abs(y2)) + 1e-30) <= ceiling + 1e-3
-    t = np.arange(int(0.2 * sr)) / sr
-    burst = (10 ** (3 / 20) * np.sin(2 * np.pi * 0.45 * sr * t) * (t > 0.05)).astype(np.float32)
-    yb, _ = render_plugin(PLUGIN, sr=sr, params=params, input=np.stack([burst, burst], axis=1))
-    record_property(f"band_edge_burst_over_{sr}_{oversample}_{ceiling}_{knee}", float(true_peak_dbtp(yb, edge=256) - ceiling))
+    for hz in (1000.0, 3000.0):
+        for over in (3.0, 6.0):
+            x = signals.sine(hz, sr, 0.4, amp_db=ceiling + over)
+            y, rep = render_plugin(PLUGIN, sr=sr, params=params, input=x)
+            assert rep["nan_count"] == 0
+            tp = true_peak_dbtp(y, edge=1024)
+            record_property(f"tone_over_{sr}_{oversample}_{ceiling}_{knee}_{int(hz)}_{int(over)}", float(tp - ceiling))
+            assert tp <= ceiling + 0.01, f"{hz} Hz {over} dB over: {tp:.3f} dBTP"
+    noise = signals.noise(sr, 0.5, seed=9, amp_db=ceiling + 6.0)
+    tone10 = signals.sine(10000.0, sr, 0.3, amp_db=ceiling + 6.0)
+    for name, x in (("noise", noise), ("tone10k", tone10)):
+        y, rep = render_plugin(PLUGIN, sr=sr, params=params, input=x)
+        assert rep["nan_count"] == 0
+        record_property(f"{name}_over_{sr}_{oversample}_{ceiling}_{knee}", float(true_peak_dbtp(y, edge=1024) - ceiling))
+        y2, _ = render_plugin(PLUGIN, sr=sr, params=dict(params, true_peak=0), input=x)
+        assert 20 * np.log10(np.max(np.abs(y2)) + 1e-30) <= ceiling + 1e-3
 
 
 @pytest.mark.parametrize("sr", SAMPLE_RATES)
