@@ -29,7 +29,7 @@ public:
     void prepare(double sampleRate) noexcept
     {
         sr = sampleRate;
-        update();
+        setParamsA(freq, Q, ampA); // re-clamps the frequency and redesigns the tan for the new rate
         reset();
     }
     void setMode(Mode m) noexcept
@@ -37,11 +37,15 @@ public:
         mode = m;
         update();
     }
-    void setParams(double hz, double q, double gainDb) noexcept
+    void setParams(double hz, double q, double gainDb) noexcept { setParamsA(hz, q, std::pow(10.0, gainDb / 40.0)); }
+    // The peak / shelf gain as A = 10^(dB / 40) (the square root of the linear gain) for callers that track the gain
+    // in the linear domain already; the tan is only recomputed when the frequency moved. Together that makes a
+    // redesign cheap enough to follow a gain every few samples (the de-esser's bell).
+    void setParamsA(double hz, double q, double A) noexcept
     {
         freq = std::clamp(hz, 1.0, 0.499 * sr);
         Q = std::max(q, 1e-3);
-        gain = gainDb;
+        ampA = std::max(A, 1e-6);
         update();
     }
 
@@ -67,8 +71,14 @@ public:
 private:
     void update() noexcept
     {
-        const double A = std::pow(10.0, gain / 40.0);
-        g = std::tan(std::numbers::pi * freq / sr);
+        if (freq != tanFreq || sr != tanSr) // the tan only when the frequency or the rate moved
+        {
+            tanFreq = freq;
+            tanSr = sr;
+            gTan = std::tan(std::numbers::pi * freq / sr);
+        }
+        const double A = ampA;
+        g = gTan;
         k = 1.0 / Q;
         double mm0 = 0.0, mm1 = 0.0, mm2 = 0.0;
         switch (mode)
@@ -101,7 +111,8 @@ private:
     }
 
     Mode mode = Mode::LowPass;
-    double sr = 48000.0, freq = 1000.0, Q = 0.7071, gain = 0.0;
+    double sr = 48000.0, freq = 1000.0, Q = 0.7071, ampA = 1.0;
+    double gTan = 0.0, tanFreq = -1.0, tanSr = 0.0; // tan(pi tanFreq / tanSr)
     double g = 0.0, k = 1.0;
     T a1{}, a2{}, a3{}, m0{}, m1{}, m2{};
     T ic1{}, ic2{};

@@ -4,14 +4,16 @@
 
 namespace mm
 {
-// Integer-sample delay, per channel. Sized in prepare(); process() never allocates.
+// Integer-sample delay, per channel. Sized in prepare(); process() never allocates. The block forms write and read
+// `n <= maxBlock` samples in at most two contiguous copies each (a per-sample ring access costs ~5 ns, a copied
+// sample well under 1).
 template <typename T> class IntegerDelay
 {
 public:
-    void prepare(int maxSamples, int channels)
+    void prepare(int maxSamples, int channels, int maxBlock = 1)
     {
         maxDelay = std::max(0, maxSamples);
-        length = maxDelay + 1;
+        length = maxDelay + std::max(1, maxBlock);
         buffer.assign(static_cast<size_t>(length) * static_cast<size_t>(std::max(1, channels)), T(0));
         writePos.assign(static_cast<size_t>(std::max(1, channels)), 0);
         numChannels = std::max(1, channels);
@@ -43,6 +45,41 @@ public:
         if (r < 0)
             r += length;
         return buf[r];
+    }
+
+    // The last n writes' worth of ring, delayed: out[i] is what read(delaySamples) returned right after the i-th of
+    // the block's n samples was written. n must not exceed the prepared maxBlock.
+    void writeBlock(const T* in, int n, int ch) noexcept
+    {
+        T* buf = buffer.data() + static_cast<size_t>(ch) * static_cast<size_t>(length);
+        int& w = writePos[static_cast<size_t>(ch)];
+        while (n > 0)
+        {
+            const int run = std::min(n, length - w);
+            std::copy_n(in, run, buf + w);
+            in += run;
+            n -= run;
+            w += run;
+            if (w == length)
+                w = 0;
+        }
+    }
+    void readBlock(T* out, int n, int delaySamples, int ch) const noexcept
+    {
+        const T* buf = buffer.data() + static_cast<size_t>(ch) * static_cast<size_t>(length);
+        int r = writePos[static_cast<size_t>(ch)] - n - std::clamp(delaySamples, 0, maxDelay);
+        while (r < 0)
+            r += length;
+        while (n > 0)
+        {
+            const int run = std::min(n, length - r);
+            std::copy_n(buf + r, run, out);
+            out += run;
+            n -= run;
+            r += run;
+            if (r == length)
+                r = 0;
+        }
     }
 
     void reset() noexcept

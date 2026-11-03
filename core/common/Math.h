@@ -43,10 +43,12 @@ inline float fastLog2(float x) noexcept
 inline float fastExp2(float x) noexcept
 {
     x = std::clamp(x, -125.0f, 125.0f);
-    const float xi = std::floor(x + 0.5f);
+    // round to nearest by a truncating conversion (one cvttss2si; std::floor is a library call on MSVC's SSE2 baseline)
+    const int xiInt = static_cast<int>(x + (x >= 0.0f ? 0.5f : -0.5f));
+    const float xi = static_cast<float>(xiInt);
     const float f = (x - xi) * 0.69314718055994530942f; // ln 2 * fraction, |f| <= 0.3466
     const float p = 1.0f + f * (1.0f + f * (0.5f + f * (1.0f / 6.0f + f * (1.0f / 24.0f + f * (1.0f / 120.0f + f * (1.0f / 720.0f))))));
-    const float scale = std::bit_cast<float>(static_cast<std::uint32_t>(static_cast<int>(xi) + 127) << 23); // 2^xi
+    const float scale = std::bit_cast<float>(static_cast<std::uint32_t>(xiInt + 127) << 23); // 2^xi
     return p * scale;
 }
 inline float fastGainToDb(float gain, float floorDb = -120.0f) noexcept
