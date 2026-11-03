@@ -1,0 +1,673 @@
+{
+  "plugin": {
+    "id": "lp_eq",
+    "name": "Linear-phase EQ",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Lpeq",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "b1_enabled",
+      "name": "Band 1 on",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b1_type",
+      "name": "Band 1 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 3,
+      "group": "band"
+    },
+    {
+      "id": "b1_freq_hz",
+      "name": "Band 1 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 30.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_gain_db",
+      "name": "Band 1 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_q",
+      "name": "Band 1 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b1_phase",
+      "name": "Band 1 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b1_ms",
+      "name": "Band 1 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b2_enabled",
+      "name": "Band 2 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b2_type",
+      "name": "Band 2 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b2_freq_hz",
+      "name": "Band 2 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 100.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_gain_db",
+      "name": "Band 2 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_q",
+      "name": "Band 2 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b2_phase",
+      "name": "Band 2 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b2_ms",
+      "name": "Band 2 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b3_enabled",
+      "name": "Band 3 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b3_type",
+      "name": "Band 3 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b3_freq_hz",
+      "name": "Band 3 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 250.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_gain_db",
+      "name": "Band 3 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_q",
+      "name": "Band 3 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b3_phase",
+      "name": "Band 3 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b3_ms",
+      "name": "Band 3 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b4_enabled",
+      "name": "Band 4 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b4_type",
+      "name": "Band 4 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b4_freq_hz",
+      "name": "Band 4 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 630.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_gain_db",
+      "name": "Band 4 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_q",
+      "name": "Band 4 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b4_phase",
+      "name": "Band 4 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b4_ms",
+      "name": "Band 4 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b5_enabled",
+      "name": "Band 5 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b5_type",
+      "name": "Band 5 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b5_freq_hz",
+      "name": "Band 5 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 1600.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_gain_db",
+      "name": "Band 5 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_q",
+      "name": "Band 5 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b5_phase",
+      "name": "Band 5 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b5_ms",
+      "name": "Band 5 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b6_enabled",
+      "name": "Band 6 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b6_type",
+      "name": "Band 6 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b6_freq_hz",
+      "name": "Band 6 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 4000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b6_gain_db",
+      "name": "Band 6 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b6_q",
+      "name": "Band 6 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 1.0,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b6_phase",
+      "name": "Band 6 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b6_ms",
+      "name": "Band 6 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b7_enabled",
+      "name": "Band 7 on",
+      "type": "bool",
+      "default": true,
+      "group": "band"
+    },
+    {
+      "id": "b7_type",
+      "name": "Band 7 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 2,
+      "group": "band"
+    },
+    {
+      "id": "b7_freq_hz",
+      "name": "Band 7 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 8000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b7_gain_db",
+      "name": "Band 7 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b7_q",
+      "name": "Band 7 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b7_phase",
+      "name": "Band 7 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b7_ms",
+      "name": "Band 7 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "b8_enabled",
+      "name": "Band 8 on",
+      "type": "bool",
+      "default": false,
+      "group": "band"
+    },
+    {
+      "id": "b8_type",
+      "name": "Band 8 type",
+      "type": "choice",
+      "choices": [
+        "Bell",
+        "Low shelf",
+        "High shelf",
+        "Low cut",
+        "High cut",
+        "Notch"
+      ],
+      "default": 4,
+      "group": "band"
+    },
+    {
+      "id": "b8_freq_hz",
+      "name": "Band 8 frequency",
+      "type": "float",
+      "unit": "Hz",
+      "min": 20,
+      "max": 20000,
+      "default": 18000.0,
+      "skew": 0.25,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b8_gain_db",
+      "name": "Band 8 gain",
+      "type": "float",
+      "unit": "dB",
+      "min": -18,
+      "max": 18,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b8_q",
+      "name": "Band 8 Q",
+      "type": "float",
+      "unit": "",
+      "min": 0.1,
+      "max": 10,
+      "default": 0.7,
+      "skew": 0.3,
+      "smoothing_ms": 20,
+      "group": "band"
+    },
+    {
+      "id": "b8_phase",
+      "name": "Band 8 phase",
+      "type": "choice",
+      "choices": [
+        "Minimum",
+        "Linear"
+      ],
+      "default": 1,
+      "group": "band"
+    },
+    {
+      "id": "b8_ms",
+      "name": "Band 8 channel",
+      "type": "choice",
+      "choices": [
+        "Stereo",
+        "Mid",
+        "Side"
+      ],
+      "default": 0,
+      "group": "band"
+    },
+    {
+      "id": "fir_length",
+      "name": "FIR length",
+      "type": "choice",
+      "choices": [
+        "2048",
+        "4096",
+        "8192",
+        "16384"
+      ],
+      "default": 1,
+      "group": "advanced"
+    }
+  ]
+}

@@ -211,3 +211,19 @@ target_link_libraries(mm_gui_imager_tests PRIVATE imager mm_gui mm_plugin_base C
 mm_set_warnings(mm_gui_imager_tests)
 mm_enable_sanitizers(mm_gui_imager_tests)
 catch_discover_tests(mm_gui_imager_tests)
+
+# ---- linear-phase EQ
+add_executable(mm_lp_eq_tests test_lp_eq.cpp)
+target_include_directories(mm_lp_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/lp_eq)
+target_link_libraries(mm_lp_eq_tests PRIVATE lp_eq mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_lp_eq_tests)
+mm_enable_sanitizers(mm_lp_eq_tests)
+catch_discover_tests(mm_lp_eq_tests)
+
+# ---- linear-phase EQ GUI tests
+add_executable(mm_gui_lp_eq_tests test_gui_lp_eq.cpp)
+target_include_directories(mm_gui_lp_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/lp_eq)
+target_link_libraries(mm_gui_lp_eq_tests PRIVATE lp_eq mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_lp_eq_tests)
+mm_enable_sanitizers(mm_gui_lp_eq_tests)
+catch_discover_tests(mm_gui_lp_eq_tests)

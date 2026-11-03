@@ -25,10 +25,11 @@ MAX_STATIC_GAIN_DB = {"utility": 24 + 12, "channel_eq": 5 * 18 + 12, "channel_co
                       "delay": 6 + 12,         # line input soft-limited at +6 dBFS, plus trim
                       "reverb": 6 + 12,        # width 200 % can double a side, plus trim
                       "deesser": 12,           # only reduces, plus trim
-                      "imager": 6 + 12 + 12}   # width 200 % doubles the side, output +12, trim
+                      "imager": 6 + 12 + 12,   # width 200 % doubles the side, output +12, trim
+                      "lp_eq": 8 * 18 + 12}    # eight bands at +18, trim
 PURE_GAIN = {"utility": ["gain_db", "trim_db"], "channel_eq": ["trim_db"], "channel_comp": ["makeup_db", "trim_db"],
              "gate": ["trim_db"], "saturation": ["output_db", "trim_db"], "delay": ["trim_db"], "reverb": ["trim_db"],
-             "deesser": ["trim_db"], "imager": ["output_db", "trim_db"]}
+             "deesser": ["trim_db"], "imager": ["output_db", "trim_db"], "lp_eq": ["trim_db"]}
 # settings that make the plugin's path linear so a gain envelope is meaningful (the Clip character at drive 0 is
 # exactly linear below 0.5)
 PURE_GAIN_BASE = {"saturation": {"character": 3, "drive_db": 0.0}, "delay": {"mix_pct": 0.0}, "reverb": {"mix_pct": 0.0},
