@@ -1,5 +1,5 @@
 # Review: M5 Mastering
-Commit: a22818c (code; the docs commit follows)   Branch: milestone/m5-mastering
+Commit: c2dda14 (last code commit; the docs commit that follows carries this file)   Branch: milestone/m5-mastering
 
 ## What was built
 - **Linear-phase FIR engine** (`core/fir`, ADR-0011): a uniform-partition overlap-save convolver in double with its own radix-2 FFT (JUCE's is float), spectra computed off the audio thread and swapped per channel with a crossfade; latency P + (N−1)/2, bit-identical across block schedules. Frequency-sampling design of any biquad set's magnitude product with a Tukey half taper (resolved bands within 0.015 dB; a band under the resolution floor smears instead of ringing). Render-host module `fir_convolver`; bench rows `convolver_4096_p512` 115 ns, `convolver_16384_p512` 214 ns per sample.
@@ -31,7 +31,7 @@ Every number is in the "M5 measurements" table of docs/STATE.md.
 | CPU within budget (2.5 / 1.5 / 0.5 / 0.5 / 1.5 / 2.5 %) | ≤ budget | idle M2 Max, 100 instances, min of 3 × 3 s: LP-EQ 0.94 %, multiband 0.99 %, bus comp 0.12 %, M/S 0.14 %, clipper 0.63 %, limiter 1.07 % | ✓ |
 | Mastering chain in series on a synthetic mix | target ±0.5 LU; ≤ ceiling + 0.1 dBTP | −14.0 LUFS-I for a −14 target; −5.4 dBTP against a −1 dBTP ceiling (the clipper preset lands under it); summed CPU of the six 3.9 % of the 8.9 % budget sum | ✓ |
 | Stability fuzz 120 s, pluginval / auval / clap-validator, base checks | pass | validators pass for all six (macOS local: pluginval level 10, auval, clap-validator); 120 s fuzz green for all six (30 cases, MM_FUZZ_SECONDS=120); base checks pass | ✓ |
-| CI matrix + sanitizers | green | run <id> | <pending> |
+| CI matrix + sanitizers | green | run 41831670504: build-test macOS / Windows / Linux and sanitizers macOS / Linux all green (after six runs of CI hardening, see decisions) | ✓ |
 
 ## Decisions made without asking (link ADRs)
 ADR-0011 (linear-phase engine), ADR-0012 (limiter). Ledger rulings worth knowing:

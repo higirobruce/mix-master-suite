@@ -11,7 +11,7 @@ Updated: 2026-11-03
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
 | M4 Stereo and vocal | done; CI run 41655793686 green; merged to main | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal |
-| M5 Mastering | in progress (plan written 2026-11-03) | milestone/m5-mastering | — |
+| M5 Mastering | done; merged (plan written 2026-11-03) | milestone/m5-mastering | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
 
@@ -307,6 +307,6 @@ Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, 
 | Convolver: a second spectra swap inside a running fade | monotonic glide, no step above the fade's slope | pass (was a 0.47 step on a DC input: review fix, the swap waits for the fade) | 2026-11-03 |
 | Loudness meter: 10 min at −30 dBFS then 1 min 6 dB louder | integrated +1.05 LU; LRA 6 LU | pass (integration no longer stops at 600 s; per-block cost constant: review fix) | 2026-11-03 |
 | Mastering chain (LP-EQ → multiband → bus comp → M/S → clipper → limiter) on a synthetic −18 LUFS mix | −14 LUFS ± 0.5; ≤ −1 dBTP + 0.1 | −14.0 LUFS-I; −5.4 dBTP; LRA 0.03; summed CPU 3.88 % of the 8.9 % budget sum (idle bench) | 2026-11-03 |
-| CI hardening: Windows-safe paths test, GCC shadow, CMake Windows interpreter order, 150-minute job timeout, three-workload CPU calibration (tanh 0.364 / SVF 0.1154 / dynamics core 0.1142 % on the idle reference machine) | green on three OSes | CI_RESULT_PLACEHOLDER | 2026-11-04 |
+| CI hardening: Windows-safe paths test, GCC shadow, CMake Windows interpreter order, 150-minute job timeout, three-workload CPU calibration (tanh 0.364 / SVF 0.1154 / dynamics core 0.1142 % on the idle reference machine) | green on three OSes | green: run 41831670504, five jobs (warm build-test jobs 15–40 min with ccache; cold sanitizer builds 2–3 h) | 2026-11-04 |
 | Stability fuzz 120 s, all six | no NaN, no stuck gain, pure-gain reference within tolerance | pass (30 cases, MM_FUZZ_SECONDS=120, 2026-11-03 22:50) | 2026-11-03 |
 | CPU, idle M2 Max, 100 instances, min of 3 × 3 s (bench_cpu --all) | budgets | lp_eq 0.943, multiband_comp 0.994, bus_comp 0.120, ms_processor 0.135, soft_clipper 0.626, limiter 1.066 % (every other plugin within budget: utility 0.055, channel_eq 0.125, channel_comp 0.274, gate 0.157, saturation 0.731, delay 0.282, reverb 0.827, deesser 0.353, imager 0.179) | 2026-11-03 |
