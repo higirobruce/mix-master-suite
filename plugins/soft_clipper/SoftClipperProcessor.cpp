@@ -187,7 +187,7 @@ void SoftClipperProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
             maxClip = std::max(maxClip, clipB);
         }
     }
-    const bool delta = deltaRef.on();
+    const bool deltaOn = deltaRef.on(); // `delta` is a base-class member (GCC -Wshadow)
     for (int ch = 0; ch < numOut; ++ch)
     {
         float* outPtr = buffer.getWritePointer(ch);
@@ -201,7 +201,7 @@ void SoftClipperProcessor::processDsp(juce::AudioBuffer<float>& buffer, juce::Mi
             if (!truePeak)
                 wet = juce::jlimit(-c, c, wet); // sample peaks exactly at the ceiling
             const float mx = mixStart + (mixEnd - mixStart) * t;
-            outPtr[i] = delta ? d[i] - wet : d[i] + (wet - d[i]) * mx;
+            outPtr[i] = deltaOn ? d[i] - wet : d[i] + (wet - d[i]) * mx;
         }
     }
     clipDb.store(maxClip > 0.0f ? mm::gainToDb(1.0f + maxClip) : 0.0f, std::memory_order_relaxed);
