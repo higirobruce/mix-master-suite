@@ -15,6 +15,7 @@ jobs:
   build-test:
     name: build-test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 150 # a hung build or test fails instead of holding a runner for six hours (macos-15 took 3 h to build once in M5)
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +107,7 @@ jobs:
   sanitizers:
     name: sanitizers (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 150 # a hung build or test fails instead of holding a runner for six hours (macos-15 took 3 h to build once in M5)
     strategy:
       fail-fast: false
       matrix:
