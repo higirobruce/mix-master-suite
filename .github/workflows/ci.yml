@@ -72,7 +72,6 @@ jobs:
           if [ "$RUNNER_OS" != "Windows" ] && command -v ccache >/dev/null; then LAUNCHER="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"; fi
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMM_UNIVERSAL_BINARY=ON $LAUNCHER
         shell: bash
-        shell: bash
       - name: Build
         run: cmake --build build -j
         shell: bash
