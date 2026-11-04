@@ -3,6 +3,8 @@ on a synthetic mix: the output lands at the loudness target the test computes, n
 six plugins' summed cost is recorded against the sum of their budgets (M5 Task 9)."""
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pytest
 
@@ -63,7 +65,10 @@ def test_mastering_chain_target_and_ceiling(record_property):
 
 def test_mastering_chain_cpu_budget(record_property):  # "cpu_budget": CI runs it serially with the other timing gates
     """The six plugins' summed cost against the sum of their budgets: recorded, and gated at twice the sum so a
-    runaway shows up without the timing noise of a shared machine failing the build."""
+    runaway shows up without the timing noise of a shared machine failing the build. Release builds only, as the
+    per-plugin gates (a Debug + sanitizer build read 69 % on a hosted runner)."""
+    if os.environ.get("MM_PLUGIN_CONFIG", "Release") != "Release":
+        pytest.skip("CPU budget is measured on Release builds only")
     total = 0.0
     budget = 0.0
     for name in CHAIN:
