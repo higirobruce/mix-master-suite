@@ -1,12 +1,11 @@
 {
-  "_comment": "CPU-budget calibration workload on the reference machine (Apple M2 Max, Release, 2026-11-03): mm_render --bench module:oversampled_tanh --instances 100 --seconds 3 --set factor=4 --set drive_db=6, the minimum of 3 runs (runs 0.3642 / 0.3650 / 0.3672). A fixed, non-product workload of the plugins' shape (hosted process, 100 instances with their own buffers, 4x oversampling + ADAA). CI runners measure the same and scale the budget limits by max(1, measured / reference).",
-  "workload": "module:oversampled_tanh",
+  "_comment": "CPU-budget calibration workloads on the reference machine (Apple M2 Max, Release, idle, 2026-11-03/04): mm_render --bench <workload> --instances 100 --seconds 3, the minimum of 3 runs. Fixed, non-product workloads of the plugins' shape in the hosted process, 100 instances with their own buffers: the compute-bound 4x oversampled tanh (runs 0.3642 / 0.3650 / 0.3672), the SVF filter (0.1154 / 0.1155 / 0.1158) and the dynamics core: detector, envelope and gain computer (0.1142 / 0.1142 / 0.1161). CI runners measure the same and scale the budget limits by max(1, worst measured / reference): the two light workloads were added in M5 after hosted macOS runs read the tanh calibration 6 % fast while the lightest plugins (de-esser, Utility) read 20-28 % slow.",
   "instances": 100,
   "seconds": 3.0,
-  "params": [
-    "factor=4",
-    "drive_db=6"
-  ],
-  "cpu_percent_per_instance": 0.364,
-  "reps": 3
+  "reps": 3,
+  "workloads": [
+    {"workload": "module:oversampled_tanh", "params": ["factor=4", "drive_db=6"], "cpu_percent_per_instance": 0.364},
+    {"workload": "module:svf", "params": [], "cpu_percent_per_instance": 0.1154},
+    {"workload": "module:compressor_core", "params": [], "cpu_percent_per_instance": 0.1142}
+  ]
 }

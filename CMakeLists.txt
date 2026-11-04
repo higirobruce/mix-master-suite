@@ -28,10 +28,11 @@ set(MM_AAX_SDK_PATH "" CACHE PATH "Path to the AAX SDK; AAX format is skipped wh
 
 # Python 3.11 for parameter code generation (ADR-0001/0002). Prefer the project venv.
 if(NOT MM_PYTHON)
-    if(EXISTS ${CMAKE_SOURCE_DIR}/.venv/bin/python)
-        set(MM_PYTHON ${CMAKE_SOURCE_DIR}/.venv/bin/python CACHE FILEPATH "Python interpreter for codegen")
-    elseif(EXISTS ${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe)
+    # Scripts/ first: a uv venv on Windows also carries a bin/python trampoline that refuses to run
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe)
         set(MM_PYTHON ${CMAKE_SOURCE_DIR}/.venv/Scripts/python.exe CACHE FILEPATH "Python interpreter for codegen")
+    elseif(EXISTS ${CMAKE_SOURCE_DIR}/.venv/bin/python)
+        set(MM_PYTHON ${CMAKE_SOURCE_DIR}/.venv/bin/python CACHE FILEPATH "Python interpreter for codegen")
     else()
         find_package(Python3 3.11 COMPONENTS Interpreter REQUIRED)
         set(MM_PYTHON ${Python3_EXECUTABLE} CACHE FILEPATH "Python interpreter for codegen")

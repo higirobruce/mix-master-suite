@@ -46,6 +46,7 @@ struct Job
     double bypassHostAtSeconds = -1.0;
     juce::String output;
     juce::String report;
+    juce::String meter;      // "loudness": BS.1770 / EBU readings of the output in the report (M5)
 
     static Job parse(const juce::var& v, juce::String& error);
 };

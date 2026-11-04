@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Default" plugin="soft_clipper" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;clipper&quot;, &quot;init&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="0"/>
+    <PARAM id="ceiling_db" value="-0.3"/>
+    <PARAM id="knee_pct" value="30"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="listen_delta" value="0"/>
+    <PARAM id="oversample" value="0"/>
+    <PARAM id="true_peak" value="1"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

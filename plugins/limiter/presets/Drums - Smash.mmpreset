@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Drums - Smash" plugin="limiter" version="1" meta="{&quot;tags&quot;: [&quot;drums&quot;, &quot;limiter&quot;, &quot;smash&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;+12 dB in, Loud, unlinked channels.&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="12.0"/>
+    <PARAM id="ceiling_dbtp" value="-1.0"/>
+    <PARAM id="release_ms" value="100"/>
+    <PARAM id="auto_release" value="1"/>
+    <PARAM id="lookahead_ms" value="1.0"/>
+    <PARAM id="character" value="2"/>
+    <PARAM id="link_pct" value="0.0"/>
+    <PARAM id="dither" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

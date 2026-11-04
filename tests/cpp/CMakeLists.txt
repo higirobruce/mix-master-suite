@@ -26,6 +26,10 @@ add_executable(mm_core_tests
     test_spectrum.cpp
     test_smoother.cpp
     test_integer_delay.cpp
+    test_partitioned_convolver.cpp
+    test_linear_phase_design.cpp
+    test_loudness.cpp
+    test_dither.cpp
     test_onepole.cpp
     test_allpass.cpp
     test_meter_fifo.cpp
@@ -208,3 +212,99 @@ target_link_libraries(mm_gui_imager_tests PRIVATE imager mm_gui mm_plugin_base C
 mm_set_warnings(mm_gui_imager_tests)
 mm_enable_sanitizers(mm_gui_imager_tests)
 catch_discover_tests(mm_gui_imager_tests)
+
+# ---- linear-phase EQ
+add_executable(mm_lp_eq_tests test_lp_eq.cpp)
+target_include_directories(mm_lp_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/lp_eq)
+target_link_libraries(mm_lp_eq_tests PRIVATE lp_eq mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_lp_eq_tests)
+mm_enable_sanitizers(mm_lp_eq_tests)
+catch_discover_tests(mm_lp_eq_tests)
+
+# ---- linear-phase EQ GUI tests
+add_executable(mm_gui_lp_eq_tests test_gui_lp_eq.cpp)
+target_include_directories(mm_gui_lp_eq_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/lp_eq)
+target_link_libraries(mm_gui_lp_eq_tests PRIVATE lp_eq mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_lp_eq_tests)
+mm_enable_sanitizers(mm_gui_lp_eq_tests)
+catch_discover_tests(mm_gui_lp_eq_tests)
+
+# ---- multiband comp
+add_executable(mm_multiband_comp_tests test_multiband_comp.cpp)
+target_include_directories(mm_multiband_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/multiband_comp)
+target_link_libraries(mm_multiband_comp_tests PRIVATE multiband_comp mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_multiband_comp_tests)
+mm_enable_sanitizers(mm_multiband_comp_tests)
+catch_discover_tests(mm_multiband_comp_tests)
+
+# ---- gui multiband comp
+add_executable(mm_gui_multiband_comp_tests test_gui_multiband_comp.cpp)
+target_include_directories(mm_gui_multiband_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/multiband_comp)
+target_link_libraries(mm_gui_multiband_comp_tests PRIVATE multiband_comp mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_multiband_comp_tests)
+mm_enable_sanitizers(mm_gui_multiband_comp_tests)
+catch_discover_tests(mm_gui_multiband_comp_tests)
+
+# ---- bus comp
+add_executable(mm_bus_comp_tests test_bus_comp.cpp)
+target_include_directories(mm_bus_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/bus_comp)
+target_link_libraries(mm_bus_comp_tests PRIVATE bus_comp mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_bus_comp_tests)
+mm_enable_sanitizers(mm_bus_comp_tests)
+catch_discover_tests(mm_bus_comp_tests)
+
+# ---- gui bus comp
+add_executable(mm_gui_bus_comp_tests test_gui_bus_comp.cpp)
+target_include_directories(mm_gui_bus_comp_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/bus_comp)
+target_link_libraries(mm_gui_bus_comp_tests PRIVATE bus_comp mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_bus_comp_tests)
+mm_enable_sanitizers(mm_gui_bus_comp_tests)
+catch_discover_tests(mm_gui_bus_comp_tests)
+
+# ---- ms processor
+add_executable(mm_ms_processor_tests test_ms_processor.cpp)
+target_include_directories(mm_ms_processor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/ms_processor)
+target_link_libraries(mm_ms_processor_tests PRIVATE ms_processor mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_ms_processor_tests)
+mm_enable_sanitizers(mm_ms_processor_tests)
+catch_discover_tests(mm_ms_processor_tests)
+
+# ---- gui ms processor
+add_executable(mm_gui_ms_processor_tests test_gui_ms_processor.cpp)
+target_include_directories(mm_gui_ms_processor_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/ms_processor)
+target_link_libraries(mm_gui_ms_processor_tests PRIVATE ms_processor mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_ms_processor_tests)
+mm_enable_sanitizers(mm_gui_ms_processor_tests)
+catch_discover_tests(mm_gui_ms_processor_tests)
+
+# ---- soft clipper
+add_executable(mm_soft_clipper_tests test_soft_clipper.cpp)
+target_include_directories(mm_soft_clipper_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/soft_clipper)
+target_link_libraries(mm_soft_clipper_tests PRIVATE soft_clipper mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_soft_clipper_tests)
+mm_enable_sanitizers(mm_soft_clipper_tests)
+catch_discover_tests(mm_soft_clipper_tests)
+
+# ---- gui soft clipper
+add_executable(mm_gui_soft_clipper_tests test_gui_soft_clipper.cpp)
+target_include_directories(mm_gui_soft_clipper_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/soft_clipper)
+target_link_libraries(mm_gui_soft_clipper_tests PRIVATE soft_clipper mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_soft_clipper_tests)
+mm_enable_sanitizers(mm_gui_soft_clipper_tests)
+catch_discover_tests(mm_gui_soft_clipper_tests)
+
+# ---- limiter
+add_executable(mm_limiter_tests test_limiter.cpp)
+target_include_directories(mm_limiter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/limiter)
+target_link_libraries(mm_limiter_tests PRIVATE limiter mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_limiter_tests)
+mm_enable_sanitizers(mm_limiter_tests)
+catch_discover_tests(mm_limiter_tests)
+
+# ---- gui limiter
+add_executable(mm_gui_limiter_tests test_gui_limiter.cpp)
+target_include_directories(mm_gui_limiter_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_BINARY_DIR}/generated/limiter)
+target_link_libraries(mm_gui_limiter_tests PRIVATE limiter mm_gui mm_plugin_base Catch2::Catch2WithMain)
+mm_set_warnings(mm_gui_limiter_tests)
+mm_enable_sanitizers(mm_gui_limiter_tests)
+catch_discover_tests(mm_gui_limiter_tests)

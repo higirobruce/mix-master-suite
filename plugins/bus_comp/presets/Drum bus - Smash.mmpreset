@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Drum bus - Smash" plugin="bus_comp" version="1" meta="{&quot;tags&quot;: [&quot;bus&quot;, &quot;drums&quot;, &quot;smash&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;10:1, 0.3 ms, 0.1 s, 50 % mix.&quot;}">
+  <PARAMS>
+    <PARAM id="threshold_db" value="-20"/>
+    <PARAM id="ratio" value="2"/>
+    <PARAM id="attack" value="1"/>
+    <PARAM id="release" value="0"/>
+    <PARAM id="makeup_db" value="6"/>
+    <PARAM id="mix_pct" value="50"/>
+    <PARAM id="sc_hp_hz" value="0"/>
+    <PARAM id="oversample" value="0"/>
+    <PARAM id="sc_external" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

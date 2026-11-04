@@ -60,6 +60,7 @@ Job Job::parse(const juce::var& v, juce::String& error)
     j.bypassHostAtSeconds = static_cast<double>(v.getProperty("bypass_host_at_s", -1.0));
     j.output = v.getProperty("output", "").toString();
     j.report = v.getProperty("report", "").toString();
+    j.meter = v.getProperty("meter", "").toString();
     if (j.sampleRate <= 0 || j.blockSize <= 0 || j.inChannels < 1 || j.outChannels < 1)
         error = "invalid sample_rate / block_size / channels";
     return j;

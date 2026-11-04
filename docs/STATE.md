@@ -10,8 +10,8 @@ Updated: 2026-11-03
 | M1 Core DSP | done; CI green (run 41351360069); merged to main | milestone/m1-core-dsp | review/m1-core-dsp |
 | M2 Channel essentials | done; CI run 41386855649 green; merged to main | milestone/m2-channel-essentials | review/m2-channel-essentials |
 | M3 Colour and space | done; CI run 41521435810 green; merged to main | milestone/m3-colour-and-space | review/m3-colour-and-space |
-| M4 Stereo and vocal | built; CI run 41549350883 failed two CPU gates (fixed: see M4 CPU-gate fix); review tag on green | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal (after CI) |
-| M5 Mastering | planned (roadmap) | — | — |
+| M4 Stereo and vocal | done; CI run 41655793686 green; merged to main | milestone/m4-stereo-and-vocal | review/m4-stereo-and-vocal |
+| M5 Mastering | done; merged (plan written 2026-11-03) | milestone/m5-mastering | — |
 | M6 Delivery | planned (roadmap) | — | — |
 | M7 AI layer | planned (roadmap) | — | — |
 
@@ -230,3 +230,83 @@ Exit criteria (CLAUDE.md, verbatim): "De-esser, Stereo Imager. Mono-compatibilit
 | CPU per instance, 100 instances, 48 k / 64 (hosted VST3), local M2 Max, min of 3 × 3 s | de-esser < 0.4 %, imager < 0.4 % | de-esser 0.348 % (0.377–0.386 after the review fix pass, before the CPU-gate fix), imager 0.179 %; gate 0.157 %, utility 0.056 %, channel_comp 0.272 % unchanged or better | 2026-11-03 |
 | pluginval strictness 10, auval, clap-validator (macOS local) | pass | de-esser and imager: VST3, AU, CLAP PASS | 2026-11-03 |
 | Factory presets | ≥ 8 per plugin | de-esser 10, imager 11 (incl. Default; loaded by the C++ checks) | 2026-11-03 |
+
+## M5 Mastering — tasks
+
+Plan: docs/superpowers/plans/2026-11-03-m5-mastering.md
+
+Exit criteria (CLAUDE.md, verbatim): "Linear-phase FIR engine, Linear-phase EQ, Multiband comp, Bus comp, M/S processor, Soft clipper, True-peak limiter. EBU Tech 3341/3342 vectors within ±0.1 LU and ±0.3 dBTP; limiter never exceeds ceiling by more than 0.1 dBTP on the test set."
+
+- [x] Task 1 ADR-0011 and the linear-phase FIR engine (partitioned convolver, linear-phase design) (34e7269, b1c8411, dc9a0cf)
+- [x] Task 2 Loudness and true-peak metering with the EBU vectors (39e523f)
+- [x] Task 3 Linear-phase EQ (eedba70, 2d161e7)
+- [x] Task 4 Multiband compressor (ef108ad, 1dd2f50)
+- [x] Task 5 Bus compressor
+- [x] Task 6 M/S processor (079dc33, 2b1d801)
+- [x] Task 7 Soft clipper (6216f01, daefe1d)
+- [x] Task 8 ADR-0012 and the true-peak limiter (1aa9d4f, cacd82a)
+- [x] Task 9 Presets, fuzz, chain integration, STATE, REVIEW, review (fix pass: de04adf, 38da030, 0f99ba7, 14b6686, 1c68c80), CI, tag
+
+## M5 measurements
+
+| Criterion | Target | Measured | Date |
+| --- | --- | --- | --- |
+| FIR engine: partitioned convolver vs direct convolution, 1023 / 4097 / 16383 taps, varying block schedule (1 … 4096) | < −120 dBFS | pass (float output against a double direct form); output impulse at P + (N−1)/2 exactly; silent after reset | 2026-11-03 |
+| FIR engine cost, Release, M2 Max, P = 512 (ns per sample per channel) | fits 2.5 % at 16384 taps | convolver_4096_p512 115, convolver_16384_p512 214 (2.1 % of a stereo 48 k frame at the longest FIR) | 2026-11-03 |
+| Linear-phase design: three bands at 4 rates, 2048 and 16384 taps, bands ≥ 2 floors | ±0.1 dB above 2 × floor; phase ±2° | worst 0.015 dB (Tukey half taper; no window rings 0.57 dB from a sub-floor band, Kaiser β 8 costs 0.4 dB) | 2026-11-03 |
+| Loudness meter: BS.1770-4 Tables at 48 k; synthetic Tech 3341 seq 1 / 2 / 3 / 4 / 5 / 9 at 4 rates; Tech 3342 seq 1–4 | 1e-5; ±0.1 LU; LRA ±1 LU | tables to 1e-9 (De Man form); every synthetic sequence within 0.1 LU at 44.1 / 48 / 96 / 192 k; LRA 10 / 5 / 20 / 15 within 1 LU; pyloudnorm cross-check within 0.1 LU | 2026-11-03 |
+| True-peak meter: fs/4 inter-sample peak (sample peak −9.03, true −6.02 dBTP), 1 kHz at −1 dBFS, 4 rates | ±0.3 dBTP (spec); ±0.1 asserted | pass at ±0.1 dBTP | 2026-11-03 |
+| EBU real files (seq-3341-7/8, 3342-5/6, TP 15–23) | ±0.1 LU / ±0.3 dBTP | not run: the EBU serves the set behind a browser challenge; manual two-step in tests/fixtures/ebu/README.md (reviewer question) | 2026-11-03 |
+| LP-EQ: three linear bands, 4 rates, 4096 and 16384 taps | ±0.1 dB above 2 × floor; phase ±2° | pass (impulse centred on the reported latency) | 2026-11-03 |
+| LP-EQ: Minimum mode nulls against the Channel EQ (matched designs), 44.1 / 96 k | < −120 dBFS | pass | 2026-11-03 |
+| LP-EQ: all bands off = input delayed by the reported latency, every length, 4 rates; latency = P + (L−2)/2 | < −120 dBFS; exact | pass; 512 + 2047 at 4096 taps with 64-sample blocks (4096 + 2047 with 4096-sample blocks) | 2026-11-03 |
+| LP-EQ: FIR length 2048 → 16384 while a +6 dB band plays a tone | no sample step above 1.1 × the static output's own; level unchanged ±0.1 dB | pass (20 ms crossfade inside the convolver; the reported latency jumps at the swap) | 2026-11-03 |
+| LP-EQ: Mid-only / Side-only band isolation | untouched lane < −120 dBFS; targeted lane +6.0 ± 0.1 dB | pass | 2026-11-03 |
+| LP-EQ: base checks (variable blocks, SR change, state, extremes, denormals, channel configs) | pass | pass | 2026-11-03 |
+| LP-EQ CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 2.5 % | 1.02 % at 4096 taps, 0.93 % at 16384, 0.88 % at 2048 (loaded machine, load average 11; CPU gate passed) | 2026-11-03 |
+| LP-EQ pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS (clap-validator 32 passed, 0 failed, 1 warning, 11 skipped) | 2026-11-03 |
+| Multiband: every band 1:1 at 3 / 4 / 5 bands, 4 rates = the LR4 all-pass of every crossover (module reference) | null < −100 dBFS; latency 0 | pass (12 cases) | 2026-11-03 |
+| Multiband: per-band ratio 2 / 4 / 8 / 20 on every band (tone ≥ 2 octaves inside, band soloed) | within 0.1 | pass (20 cases); on the summed output the neighbours' −66 … −80 dB stopband residual bends 20:1 by up to 0.9 (recorded, inherent to LR4 multibands) | 2026-11-03 |
+| Multiband: band isolation (−6 dBFS tone in band 1, band 3 at −30 / 20:1 with a −40 dBFS tone) | band 3 tone unchanged ±0.1 dB | pass | 2026-11-03 |
+| Multiband: attack 10 / 100 ms, release 100 / 1000 ms on a 2 kHz burst, peak detector, against the Channel Compressor on the same burst | within 10 % + one cycle of each other; reduction within 0.5 dB | pass (a peak detector reads ~17 ms for a 10 ms label on a tone for either; M2's 10 % gate used DC steps) | 2026-11-03 |
+| Multiband: crossover 2 dragged below crossover 1 | held 1/3 octave above; sum still the clamped all-pass < −100 dBFS | pass | 2026-11-03 |
+| Multiband: solo / bypass | soloed band alone (others < −70 dB); bypassed band passes ±0.3 dB | pass | 2026-11-03 |
+| Multiband: base checks | pass | pass | 2026-11-03 |
+| Multiband CPU, 100 instances, 48 k / 64, 4 bands, min of 3 × 3 s | < 1.5 % | 1.018 % (runs 1.023 / 1.018 / 1.019) | 2026-11-03 |
+| Multiband pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| Bus comp: stepped attack 0.1 / 0.3 / 1 / 3 / 10 / 30 ms on a DC step, 4 rates | within 10 % + two samples | pass (24 cases) | 2026-11-03 |
+| Bus comp: stepped release 0.1 / 0.3 / 0.6 / 1.2 s on a DC step | within 10 % + one sample | pass; Auto recorded (program-dependent 60 ms → 500 ms) | 2026-11-03 |
+| Bus comp: stepped ratio 2 / 4 / 10 on DC levels | within 0.1 | pass | 2026-11-03 |
+| Bus comp: null at the +15 dB threshold, 4 rates | < −90 dBFS, latency 0 | pass | 2026-11-03 |
+| Bus comp: attack / ratio / release switched during 12 dB of reduction; 2× switched on while running | no step above 1.5 × the static output's own; latency re-reported; impulse at the latency | pass (10 ms crossfade after the oversampled path's warm-up) | 2026-11-03 |
+| Bus comp: sidechain HP 120 Hz | 40 Hz tone not reduced, 1 kHz reduced | pass | 2026-11-03 |
+| Bus comp: base checks | pass | pass | 2026-11-03 |
+| Bus comp CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 0.5 % | 0.124 % (2× on: 0.126 %; runs 0.124 / 0.371 / 0.150 on a loaded machine; gate passed) | 2026-11-03 |
+| Bus comp pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| M/S: encode / decode null at 4 rates; mid / side gains ±0.02 dB with the other channel untouched < −100 dBFS | < −120 dBFS; exact | pass | 2026-11-03 |
+| M/S: width 0 → correlation 1; 200 → side +6.02 ± 0.1; L + R unchanged < −100 dBFS at 0 / 50 / 150 / 200 | imager semantics | pass | 2026-11-03 |
+| M/S: bell / low shelf / high shelf on mid and on side vs the matched-biquad reference, 4 rates; other channel untouched | ±0.1 dB / ±2°; < −100 dBFS | pass (24 cases) | 2026-11-03 |
+| M/S: mono-below (side 2.9 oct below < −60 dB; 2 kHz unchanged), solo, width sweep and mono-below switch click-free | as the imager | pass | 2026-11-03 |
+| M/S: base checks; correlation meter ±0.02 on ±1 pairs | pass | pass | 2026-11-03 |
+| M/S CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 0.5 % | 0.135 % (idle, bench_cpu --all) | 2026-11-03 |
+| M/S pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| Soft clipper: ceiling never exceeded on +6 dBFS noise and a +6 dBFS 10 kHz tone, 3 ceilings × 3 knees × 4× / 8× × 4 rates; sample ceiling with the compensation off | true peak ≤ ceiling + 0.01 dB; sample peak ≤ ceiling | pass (72 cases); a full-scale 0.45 fs burst exceeds by the clipped fundamental's 4/π (+1.4 … +1.8 dB, recorded; inherent to filtering a clipped near-Nyquist tone) | 2026-11-03 |
+| Soft clipper: 19 kHz at the reference drive, 4× and 8×, 4 rates | < −80 dBFS | pass (full-drive floors recorded) | 2026-11-03 |
+| Soft clipper: knee curve (hard and 50 %), delta = dry − wet, latency per factor, oversampling switch, level flatness below the knee | exact; null; exact; click-free; ±0.2 dB (ADAA's two-point average droops 0.14 dB at 10 kHz at 4× / 44.1 k) | pass | 2026-11-03 |
+| Soft clipper: base checks | pass | pass | 2026-11-03 |
+| Soft clipper CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 1.5 % | 0.626 % (idle, bench_cpu --all) | 2026-11-03 |
+| Soft clipper pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| Limiter: ceiling never exceeded on 7 synthetic worst cases × 4 configurations (characters, releases, auto) × 3 ceilings × 3 lookaheads × 4 rates | ≤ ceiling + 0.1 dBTP | pass on every case measured from the output's first sample (lookahead window floored at 0.25 ms, release floors 1 / 2 ms, sample clamp after the down-sampler: ADR-0012 amendments); white noise 7–13 dB over recorded at 0.2–0.4 dBTP over | 2026-11-03 |
+| Limiter: release stages per character (500 ms burst → slow stage ±25 %; 5 ms burst → fast stage ±50 %) | labelled | pass: slow 299 / 492 / 150 ms for 300 / 500 / 150 (gate 10 %); fast 34 / 10 / 57 ms for 30 / 10 / 50 (gate 25 %: the slow stage's 4 % residual; reviewer question 6) | 2026-11-03 |
+| Limiter: null below the ceiling vs the oversampler passthrough, latency per lookahead, lookahead change, 19 kHz aliasing, dither (16 / 24-bit quantisation, −96.3 dBFS TPDF floor), link law | < −100 dBFS; exact; click-free; < −80 dBFS; exact / ±1 dB; pass | pass (null aligned by the reported latency; latency 12 + 45 at lookahead 0 / 48 k, 141 at 2 ms) | 2026-11-03 |
+| Limiter: base checks | pass | pass | 2026-11-03 |
+| Limiter CPU, 100 instances, 48 k / 64, min of 3 × 3 s | < 2.5 % | 1.066 % (idle, bench_cpu --all; before the meter's histogram rewrite, which removes per-block work) | 2026-11-03 |
+| Limiter pluginval / auval / clap-validator (macOS local) | pass | VST3, AU, CLAP PASS | 2026-11-03 |
+| Limiter mono in / mono out: +6 dB input gain reads +6 dB; 16-bit dither on silence leaves one TPDF floor | match the stereo path within 0.1 dB; −96.3 ± 1 dBFS | pass (was +12 dB and two floors: review fix) | 2026-11-03 |
+| Multiband band count 4 → 5 while a 100 Hz / 1 kHz tone runs | sample step ≤ 1.5× the static output's own | pass (was 7.1× / 5.9×: review fix, 30 ms warm-up + 20 ms crossfade) | 2026-11-03 |
+| Convolver: a second spectra swap inside a running fade | monotonic glide, no step above the fade's slope | pass (was a 0.47 step on a DC input: review fix, the swap waits for the fade) | 2026-11-03 |
+| Loudness meter: 10 min at −30 dBFS then 1 min 6 dB louder | integrated +1.05 LU; LRA 6 LU | pass (integration no longer stops at 600 s; per-block cost constant: review fix) | 2026-11-03 |
+| Mastering chain (LP-EQ → multiband → bus comp → M/S → clipper → limiter) on a synthetic −18 LUFS mix | −14 LUFS ± 0.5; ≤ −1 dBTP + 0.1 | −14.0 LUFS-I; −5.4 dBTP; LRA 0.03; summed CPU 3.88 % of the 8.9 % budget sum (idle bench) | 2026-11-03 |
+| CI hardening: Windows-safe paths test, GCC shadow, CMake Windows interpreter order, 150-minute job timeout, three-workload CPU calibration (tanh 0.364 / SVF 0.1154 / dynamics core 0.1142 % on the idle reference machine) | green on three OSes | green: run 41831670504, five jobs (warm build-test jobs 15–40 min with ccache; cold sanitizer builds 2–3 h) | 2026-11-04 |
+| Stability fuzz 120 s, all six | no NaN, no stuck gain, pure-gain reference within tolerance | pass (30 cases, MM_FUZZ_SECONDS=120, 2026-11-03 22:50) | 2026-11-03 |
+| CPU, idle M2 Max, 100 instances, min of 3 × 3 s (bench_cpu --all) | budgets | lp_eq 0.943, multiband_comp 0.994, bus_comp 0.120, ms_processor 0.135, soft_clipper 0.626, limiter 1.066 % (every other plugin within budget: utility 0.055, channel_eq 0.125, channel_comp 0.274, gate 0.157, saturation 0.731, delay 0.282, reverb 0.827, deesser 0.353, imager 0.179) | 2026-11-03 |

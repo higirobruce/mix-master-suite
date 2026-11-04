@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Default" plugin="ms_processor" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;mid/side&quot;, &quot;init&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;&quot;}">
+  <PARAMS>
+    <PARAM id="mid_db" value="0"/>
+    <PARAM id="side_db" value="0"/>
+    <PARAM id="width_pct" value="100"/>
+    <PARAM id="mono_below_hz" value="0"/>
+    <PARAM id="mid_eq1_enabled" value="0"/>
+    <PARAM id="mid_eq1_type" value="0"/>
+    <PARAM id="mid_eq1_freq_hz" value="300.0"/>
+    <PARAM id="mid_eq1_gain_db" value="0"/>
+    <PARAM id="mid_eq1_q" value="0.7"/>
+    <PARAM id="mid_eq2_enabled" value="0"/>
+    <PARAM id="mid_eq2_type" value="2"/>
+    <PARAM id="mid_eq2_freq_hz" value="6000.0"/>
+    <PARAM id="mid_eq2_gain_db" value="0"/>
+    <PARAM id="mid_eq2_q" value="0.7"/>
+    <PARAM id="side_eq1_enabled" value="0"/>
+    <PARAM id="side_eq1_type" value="0"/>
+    <PARAM id="side_eq1_freq_hz" value="300.0"/>
+    <PARAM id="side_eq1_gain_db" value="0"/>
+    <PARAM id="side_eq1_q" value="0.7"/>
+    <PARAM id="side_eq2_enabled" value="0"/>
+    <PARAM id="side_eq2_type" value="2"/>
+    <PARAM id="side_eq2_freq_hz" value="6000.0"/>
+    <PARAM id="side_eq2_gain_db" value="0"/>
+    <PARAM id="side_eq2_q" value="0.7"/>
+    <PARAM id="solo" value="0"/>
+    <PARAM id="output_db" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

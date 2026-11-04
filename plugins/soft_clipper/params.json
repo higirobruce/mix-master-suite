@@ -1,0 +1,86 @@
+{
+  "plugin": {
+    "id": "soft_clipper",
+    "name": "Soft Clipper",
+    "family": "mastering",
+    "version": "0.1.0",
+    "code": "Sclp",
+    "accent": "#D8DDE4"
+  },
+  "params": [
+    {
+      "id": "input_db",
+      "name": "Input",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 12,
+      "default": 0,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "ceiling_db",
+      "name": "Ceiling",
+      "type": "float",
+      "unit": "dB",
+      "min": -12,
+      "max": 0,
+      "default": -0.3,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "knee_pct",
+      "name": "Knee",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 30,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "mix_pct",
+      "name": "Mix",
+      "type": "float",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "default": 100,
+      "skew": 1.0,
+      "smoothing_ms": 20,
+      "group": "main"
+    },
+    {
+      "id": "listen_delta",
+      "name": "Delta",
+      "type": "bool",
+      "default": false,
+      "ai": false,
+      "group": "main"
+    },
+    {
+      "id": "oversample",
+      "name": "Oversampling",
+      "type": "choice",
+      "choices": [
+        "4x",
+        "8x"
+      ],
+      "default": 0,
+      "group": "advanced"
+    },
+    {
+      "id": "true_peak",
+      "name": "True-peak ceiling",
+      "type": "bool",
+      "default": true,
+      "group": "advanced"
+    }
+  ]
+}

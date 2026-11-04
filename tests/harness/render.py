@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -71,6 +72,14 @@ def render(job: dict, scratch: Path | None = None) -> tuple[np.ndarray, dict]:
     """Run one mm_render job. Returns (audio frames x channels, report dict)."""
     own_tmp = scratch is None
     tmp = Path(tempfile.mkdtemp(prefix="mm_render_")) if own_tmp else scratch
+    try:
+        return _render_in(job, tmp)
+    finally:
+        if own_tmp:
+            shutil.rmtree(tmp, ignore_errors=True)  # the result is in memory; nothing stays on disk
+
+
+def _render_in(job: dict, tmp: Path) -> tuple[np.ndarray, dict]:
     job = dict(job)
     inp = job.get("input")
     if isinstance(inp, np.ndarray):

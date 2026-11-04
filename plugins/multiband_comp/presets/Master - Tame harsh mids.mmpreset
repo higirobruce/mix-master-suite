@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Master - Tame harsh mids" plugin="multiband_comp" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;multiband&quot;, &quot;mids&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Presence band compressed with a fast attack.&quot;}">
+  <PARAMS>
+    <PARAM id="num_bands" value="1"/>
+    <PARAM id="xover_1_hz" value="120.0"/>
+    <PARAM id="xover_2_hz" value="600.0"/>
+    <PARAM id="xover_3_hz" value="2500.0"/>
+    <PARAM id="xover_4_hz" value="8000.0"/>
+    <PARAM id="b1_threshold_db" value="0"/>
+    <PARAM id="b1_ratio" value="1"/>
+    <PARAM id="b1_attack_ms" value="10"/>
+    <PARAM id="b1_release_ms" value="100"/>
+    <PARAM id="b1_gain_db" value="0"/>
+    <PARAM id="b1_solo" value="0"/>
+    <PARAM id="b1_bypass" value="0"/>
+    <PARAM id="b2_threshold_db" value="0"/>
+    <PARAM id="b2_ratio" value="1"/>
+    <PARAM id="b2_attack_ms" value="10"/>
+    <PARAM id="b2_release_ms" value="100"/>
+    <PARAM id="b2_gain_db" value="0"/>
+    <PARAM id="b2_solo" value="0"/>
+    <PARAM id="b2_bypass" value="0"/>
+    <PARAM id="b3_threshold_db" value="-20"/>
+    <PARAM id="b3_ratio" value="3"/>
+    <PARAM id="b3_attack_ms" value="2"/>
+    <PARAM id="b3_release_ms" value="80"/>
+    <PARAM id="b3_gain_db" value="0"/>
+    <PARAM id="b3_solo" value="0"/>
+    <PARAM id="b3_bypass" value="0"/>
+    <PARAM id="b4_threshold_db" value="0"/>
+    <PARAM id="b4_ratio" value="1"/>
+    <PARAM id="b4_attack_ms" value="10"/>
+    <PARAM id="b4_release_ms" value="100"/>
+    <PARAM id="b4_gain_db" value="0"/>
+    <PARAM id="b4_solo" value="0"/>
+    <PARAM id="b4_bypass" value="0"/>
+    <PARAM id="b5_threshold_db" value="-20"/>
+    <PARAM id="b5_ratio" value="2"/>
+    <PARAM id="b5_attack_ms" value="10"/>
+    <PARAM id="b5_release_ms" value="100"/>
+    <PARAM id="b5_gain_db" value="0"/>
+    <PARAM id="b5_solo" value="0"/>
+    <PARAM id="b5_bypass" value="0"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="detector" value="1"/>
+    <PARAM id="sc_external" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

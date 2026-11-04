@@ -9,6 +9,8 @@
 #include "core/filters/BiquadDesign.h"
 #include "core/filters/FIRDesign.h"
 #include "core/filters/FIRFilter.h"
+#include "core/fir/LinearPhaseDesign.h"
+#include "core/fir/PartitionedConvolver.h"
 #include "core/filters/LinkwitzRiley.h"
 #include "core/filters/SVF.h"
 #include "core/metering/Correlation.h"
@@ -23,6 +25,7 @@
 #include <chrono>
 #include <cstdio>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace
@@ -81,6 +84,15 @@ int main()
     auto taps = mm::fir::windowedSinc(255, 0.25, mm::fir::Window::Kaiser);
     fir.setTaps(taps.data(), 255);
     rows.push_back({"fir_255_float", nsPerSample([&](float v) { return fir.process(v, 0); }, x)});
+    for (int nTaps : {4096, 16384})
+    {
+        auto conv = std::make_shared<mm::fir::PartitionedConvolver>();
+        conv->prepare(nTaps, 64, 1, 512);
+        const auto h = mm::fir::design({{mm::FilterType::LowPass, 1000.0, 0.7071, 0.0}}, nTaps, kSr);
+        conv->setImpulse(h.data(), static_cast<int>(h.size()));
+        rows.push_back({nTaps == 4096 ? "convolver_4096_p512" : "convolver_16384_p512",
+                        nsPerSample([conv](float v) { float s = v; conv->process(&s, 1, 0); return s; }, x)});
+    }
     mm::Smoother<float> sm;
     sm.prepare(kSr, 20.0);
     sm.setTarget(1.0f);

@@ -4,6 +4,8 @@
 //   mm_render --bench <plugin>|module:<name> --instances N --seconds S --sample-rate R --block B [--set id=value]...
 //   mm_render --list-modules
 // Exit codes: 0 ok, 2 job error, 3 plugin load failure.
+#include "core/metering/LoudnessMeter.h"
+#include "core/metering/TruePeakMeter.h"
 #include "tools/render/Bench.h"
 #include "tools/render/Job.h"
 #include "tools/render/ModuleRegistry.h"
@@ -12,6 +14,7 @@
 #include <juce_events/juce_events.h>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <iostream>
 
 using namespace mmr;
@@ -176,6 +179,31 @@ int renderJob(const juce::File& jobFile)
         o->setProperty("audio_time_s", audioSeconds);
         o->setProperty("realtime_ratio", audioSeconds > 0 ? processSeconds / audioSeconds : 0.0);
         o->setProperty("params", target->paramsDump());
+        if (job.meter == "loudness")
+        {
+            // BS.1770-4 / EBU readings of the rendered output (core meters, offline, 1024-sample chunks)
+            mm::LoudnessMeter lm;
+            mm::TruePeakMeter tp;
+            lm.prepare(job.sampleRate, job.outChannels);
+            tp.prepare(job.sampleRate, job.outChannels, 1024);
+            std::vector<const float*> ptrs(static_cast<size_t>(job.outChannels));
+            for (int p = 0; p < totalSamples; p += 1024)
+            {
+                const int n = juce::jmin(1024, totalSamples - p);
+                for (int ch = 0; ch < job.outChannels; ++ch)
+                    ptrs[static_cast<size_t>(ch)] = output.getReadPointer(ch, p);
+                lm.process(ptrs.data(), n);
+                tp.processBlock(ptrs.data(), n);
+            }
+            auto* m = new juce::DynamicObject();
+            m->setProperty("lufs_i", lm.integratedLufs());
+            m->setProperty("lufs_m_max", lm.maxMomentaryLufs());
+            m->setProperty("lufs_s_max", lm.maxShortTermLufs());
+            m->setProperty("lra", lm.loudnessRangeLu());
+            m->setProperty("true_peak_dbtp", tp.maxDbtp());
+            m->setProperty("true_peak_oversampling", tp.oversamplingFactor());
+            o->setProperty("meter", juce::var(m));
+        }
         juce::File(job.report).replaceWithText(juce::JSON::toString(juce::var(o)));
     }
     target->release();
@@ -185,6 +213,11 @@ int renderJob(const juce::File& jobFile)
 
 int main(int argc, char* argv[])
 {
+#if ! JUCE_WINDOWS
+    // a closed pipe (the test harness, a dying X server on a CI runner) surfaces as a write error, not a kill:
+    // one Linux CI render died with signal 13 inside a plugin's base checks (run 41785906260)
+    std::signal(SIGPIPE, SIG_IGN);
+#endif
     juce::ScopedJuceInitialiser_GUI juceInit;
     juce::MessageManager::getInstance()->setCurrentThreadAsMessageThread();
     registerCoreModules();

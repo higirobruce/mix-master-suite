@@ -11,9 +11,9 @@ from tests.harness.matrix import SAMPLE_RATES
 from tests.harness.measure import residual_dbfs
 from tests.harness.render import mm_render_path, render_module
 
-EXPECTED = ["allpass1", "allpass2", "biquad", "compressor_core", "correlation", "delay", "envelope", "fdn", "fir", "identity",
-            "lr_crossover", "onepole", "oversampled_tanh", "plate", "smoother", "svf", "tape", "tube", "waveshaper"]
-LINEAR = ["allpass1", "allpass2", "biquad", "delay", "fir", "identity", "lr_crossover", "onepole", "svf"]
+EXPECTED = ["allpass1", "allpass2", "biquad", "compressor_core", "correlation", "delay", "envelope", "fdn", "fir", "fir_convolver",
+            "identity", "lr_crossover", "onepole", "oversampled_tanh", "plate", "smoother", "svf", "tape", "tube", "waveshaper"]
+LINEAR = ["allpass1", "allpass2", "biquad", "delay", "fir", "fir_convolver", "identity", "lr_crossover", "onepole", "svf"]
 SILENT_OUT = [m for m in EXPECTED if m not in ("smoother", "envelope", "correlation")]  # these emit control signals
 
 

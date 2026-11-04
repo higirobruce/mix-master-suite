@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Streaming - Loud" plugin="limiter" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;limiter&quot;, &quot;loud&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;+6 dB in, Loud character, 3 ms lookahead.&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="6.0"/>
+    <PARAM id="ceiling_dbtp" value="-1.0"/>
+    <PARAM id="release_ms" value="100"/>
+    <PARAM id="auto_release" value="1"/>
+    <PARAM id="lookahead_ms" value="3.0"/>
+    <PARAM id="character" value="2"/>
+    <PARAM id="link_pct" value="100"/>
+    <PARAM id="dither" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

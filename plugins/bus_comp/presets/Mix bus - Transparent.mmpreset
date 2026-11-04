@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Mix bus - Transparent" plugin="bus_comp" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;bus&quot;, &quot;transparent&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;2:1, 10 ms, auto, high threshold.&quot;}">
+  <PARAMS>
+    <PARAM id="threshold_db" value="-3"/>
+    <PARAM id="ratio" value="0"/>
+    <PARAM id="attack" value="4"/>
+    <PARAM id="release" value="4"/>
+    <PARAM id="makeup_db" value="0"/>
+    <PARAM id="mix_pct" value="100"/>
+    <PARAM id="sc_hp_hz" value="0"/>
+    <PARAM id="oversample" value="0"/>
+    <PARAM id="sc_external" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PRESET name="Master - Punchy" plugin="limiter" version="1" meta="{&quot;tags&quot;: [&quot;mastering&quot;, &quot;limiter&quot;, &quot;punchy&quot;], &quot;author&quot;: &quot;MixMaster&quot;, &quot;notes&quot;: &quot;Punchy character, 1 ms lookahead, 200 ms release.&quot;}">
+  <PARAMS>
+    <PARAM id="input_db" value="0"/>
+    <PARAM id="ceiling_dbtp" value="-1.0"/>
+    <PARAM id="release_ms" value="200.0"/>
+    <PARAM id="auto_release" value="0"/>
+    <PARAM id="lookahead_ms" value="1.0"/>
+    <PARAM id="character" value="1"/>
+    <PARAM id="link_pct" value="100"/>
+    <PARAM id="dither" value="0"/>
+    <PARAM id="bypass" value="0"/>
+    <PARAM id="trim_db" value="0"/>
+  </PARAMS>
+</PRESET>

@@ -18,6 +18,7 @@ public:
     void pull(); // editor timer: fetch new frames
     void setMarkerHz(float hz); // vertical accent line (0 = none): the imager's mono-below frequency
     float markerHz() const noexcept { return marker; }
+    void setMarkerPrefix(const juce::String& text) { markerPrefix = text; } // label before the frequency ("mono < ")
     void paint(juce::Graphics&) override;
 
 private:
@@ -27,6 +28,7 @@ private:
     double sampleRate, minHz, maxHz;
     bool showPreFlag = true, showPostFlag = true;
     float marker = 0.0f;
+    juce::String markerPrefix{"mono < "};
     Theme theme = Theme::dark(accents::eq);
 };
 } // namespace mm::gui
