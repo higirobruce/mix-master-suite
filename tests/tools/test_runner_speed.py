@@ -13,8 +13,8 @@ def test_runner_factor_is_the_worst_workload_ratio(monkeypatch):
     assert len(ref["workloads"]) >= 2, "a compute-bound and a dynamics calibration workload"
     costs = {w["workload"]: w["cpu_percent_per_instance"] for w in ref["workloads"]}
     names = list(costs)
-    # the first workload reads 6 % faster than the reference, the second 28 % slower
-    measured = {names[0]: costs[names[0]] * 0.94, names[1]: costs[names[1]] * 1.28}
+    # the first workload reads 6 % faster than the reference, the second 28 % slower, the rest exactly on it
+    measured = {n: costs[n] for n in names} | {names[0]: costs[names[0]] * 0.94, names[1]: costs[names[1]] * 1.28}
 
     def fake_bench_min(cmd, reps):
         workload = cmd[cmd.index("--bench") + 1]
@@ -25,7 +25,8 @@ def test_runner_factor_is_the_worst_workload_ratio(monkeypatch):
     assert abs(runner_speed.runner_factor() - 1.28) < 1e-9
     limit, factor = runner_speed.effective_budget(0.4)
     assert abs(limit - 0.512) < 1e-9 and abs(factor - 1.28) < 1e-9
-    measured[names[1]] = costs[names[1]] * 0.9  # both faster: no relief
+    measured = {n: costs[n] * 0.9 for n in names}  # every workload faster: no relief
     runner_speed.runner_factor.cache_clear()
-    assert runner_speed.effective_budget(0.4) == (0.4, max(0.94, 0.9))
+    limit, factor = runner_speed.effective_budget(0.4)
+    assert limit == 0.4 and abs(factor - 0.9) < 1e-9
     runner_speed.runner_factor.cache_clear()
