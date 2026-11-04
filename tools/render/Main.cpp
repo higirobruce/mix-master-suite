@@ -14,6 +14,7 @@
 #include <juce_events/juce_events.h>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <iostream>
 
 using namespace mmr;
@@ -212,6 +213,11 @@ int renderJob(const juce::File& jobFile)
 
 int main(int argc, char* argv[])
 {
+#if ! JUCE_WINDOWS
+    // a closed pipe (the test harness, a dying X server on a CI runner) surfaces as a write error, not a kill:
+    // one Linux CI render died with signal 13 inside a plugin's base checks (run 41785906260)
+    std::signal(SIGPIPE, SIG_IGN);
+#endif
     juce::ScopedJuceInitialiser_GUI juceInit;
     juce::MessageManager::getInstance()->setCurrentThreadAsMessageThread();
     registerCoreModules();

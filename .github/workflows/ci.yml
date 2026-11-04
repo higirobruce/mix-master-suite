@@ -10,12 +10,15 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 2G
+  CCACHE_COMPRESS: "1"
 
 jobs:
   build-test:
     name: build-test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 150 # a hung build or test fails instead of holding a runner for six hours (macos-15 took 3 h to build once in M5)
+    timeout-minutes: 330 # a hung job fails before GitHub's six-hour cap; a cold universal macOS build alone takes two to three hours (ccache below makes the warm ones minutes)
     strategy:
       fail-fast: false
       matrix:
@@ -34,10 +37,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev ladspa-sdk libcurl4-openssl-dev \
             libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
-            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb
+            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb ccache
       - name: macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install ninja
+        run: brew install ninja ccache
       - name: Windows dependencies
         if: runner.os == 'Windows'
         run: choco install ninja -y
@@ -55,13 +58,27 @@ jobs:
         with:
           path: build/_deps
           key: deps-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+      - name: Compiler cache (macOS, Linux)
+        if: runner.os != 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-release-${{ matrix.os }}-${{ github.sha }}
+          restore-keys: ccache-release-${{ matrix.os }}-
 
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMM_UNIVERSAL_BINARY=ON
+        run: |
+          LAUNCHER=""
+          if [ "$RUNNER_OS" != "Windows" ] && command -v ccache >/dev/null; then LAUNCHER="-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"; fi
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DMM_UNIVERSAL_BINARY=ON $LAUNCHER
+        shell: bash
         shell: bash
       - name: Build
         run: cmake --build build -j
         shell: bash
+      - name: Compiler cache statistics
+        if: runner.os != 'Windows'
+        run: ccache -s
 
       - name: C++ tests
         run: |
@@ -107,7 +124,7 @@ jobs:
   sanitizers:
     name: sanitizers (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 150 # a hung build or test fails instead of holding a runner for six hours (macos-15 took 3 h to build once in M5)
+    timeout-minutes: 330 # a hung job fails before GitHub's six-hour cap; a cold universal macOS build alone takes two to three hours (ccache below makes the warm ones minutes)
     strategy:
       fail-fast: false
       matrix:
@@ -129,10 +146,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libasound2-dev libjack-jackd2-dev ladspa-sdk libcurl4-openssl-dev \
             libfreetype6-dev libfontconfig1-dev libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
-            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb
+            libxinerama-dev libxrandr-dev libxrender-dev libwebkit2gtk-4.0-dev libglu1-mesa-dev mesa-common-dev xvfb ccache
       - name: macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install ninja
+        run: brew install ninja ccache
       - name: Python dependencies
         run: |
           uv venv --python ${{ env.PYTHON_VERSION }} .venv
@@ -142,10 +159,18 @@ jobs:
         with:
           path: build-asan/_deps
           key: deps-asan-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake') }}
+      - name: Compiler cache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-asan-${{ matrix.os }}-${{ github.sha }}
+          restore-keys: ccache-asan-${{ matrix.os }}-
       - name: Configure (Debug + sanitizers)
-        run: cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMM_SANITIZE=ON
+        run: cmake -B build-asan -G Ninja -DCMAKE_BUILD_TYPE=Debug -DMM_SANITIZE=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
       - name: Build
         run: cmake --build build-asan -j
+      - name: Compiler cache statistics
+        run: ccache -s
       - name: C++ tests
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then xvfb-run -a ctest --test-dir build-asan --output-on-failure; else ctest --test-dir build-asan --output-on-failure; fi
